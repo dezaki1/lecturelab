@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "lecturelab",
+      "name": "lecturelab-dev",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "lecturelab", "serve", "--no-browser"],
-      "port": 8765
+      "runtimeArgs": ["run", "lecturelab", "--data-dir", "data/dev", "serve", "--no-browser", "--no-tray", "--no-hotkeys", "--port", "8766"],
+      "port": 8766
     }
   ]
 }

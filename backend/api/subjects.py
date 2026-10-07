@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session, col, func, select
 
 from backend.core.db import get_session
+from backend.core.events import bus
 from backend.core.models import Lecture, Subject, utcnow
 from backend.core.util import slugify
 
@@ -100,6 +101,7 @@ def create_subject(session: Session, data: SubjectCreate) -> Subject:
     session.add(subject)
     session.commit()
     session.refresh(subject)
+    bus.publish("subjects", {"id": subject.id})
     return subject
 
 
@@ -158,6 +160,7 @@ def patch_subject(
     session.add(subject)
     session.commit()
     session.refresh(subject)
+    bus.publish("subjects", {"id": subject_id})
     return _read(subject, _counts(session).get(subject_id, 0))
 
 
@@ -171,4 +174,5 @@ def delete_subject(subject_id: int, session: Session = Depends(get_session)) -> 
         )
     session.delete(subject)
     session.commit()
+    bus.publish("subjects", {"id": subject_id})
     return Response(status_code=204)

@@ -3,7 +3,12 @@
 ## Phase 1 (MVP)
 
 - [x] **M1 Skeleton**: uv project, config, SQLite (WAL) + Alembic, job queue, SSE bus, subjects CRUD, app shell, `start.ps1`
-- [ ] **M2 Recorder**
+- [x] **M2 Recorder**: WASAPI loopback (+ optional mic) via `soundcard`, wall-clock silence padding,
+  crash-safe PCM (fsync every 3 s) with recovery on next start, disk-space guard, live meters,
+  bookmarks, UI/tray/hotkey control, AAC encode job, lecture list + lecture page with player
+  - Verified on this laptop: Razer headset loopback + Realtek mic, tone captured at -27 dBFS,
+    file length = wall-clock length; hotkeys verified with injected key events.
+  - Not yet verified with a real default-device switch (covered by a unit test with a fake device).
 - [ ] **M3 Import**
 - [ ] **M4 Transcription**
 - [ ] **M5 Generation**

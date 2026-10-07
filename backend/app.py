@@ -11,7 +11,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.api import subjects, system
+from backend.api import lectures, recorder, subjects, system
+from backend.capture import encode  # noqa: F401  (registers the encode job handler)
+from backend.capture.recorder import (
+    RecorderService,
+    SourceFactory,
+    default_sources,
+    recover_interrupted,
+    set_recorder,
+)
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db
@@ -21,9 +29,18 @@ log = logging.getLogger(__name__)
 FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 
-def create_app(settings: Settings, *, start_worker: bool = True) -> FastAPI:
+def create_app(
+    settings: Settings,
+    *,
+    start_worker: bool = True,
+    source_factory: SourceFactory = default_sources,
+) -> FastAPI:
     set_settings(settings)
     init_db(settings.db_path)
+    rec = RecorderService(settings, source_factory)
+    set_recorder(rec)
+    if n := recover_interrupted():
+        log.warning("Recovered %d interrupted recording(s)", n)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -32,11 +49,14 @@ def create_app(settings: Settings, *, start_worker: bool = True) -> FastAPI:
         try:
             yield
         finally:
+            rec.shutdown()  # finalises an in-progress recording; encoding resumes next start
             jobs.stop_worker()
 
     app = FastAPI(title="LectureLab", version="0.1.0", lifespan=lifespan)
     app.include_router(system.router)
     app.include_router(subjects.router)
+    app.include_router(lectures.router)
+    app.include_router(recorder.router)
 
     _mount_frontend(app)
     return app

@@ -38,3 +38,56 @@ export interface SystemInfo {
   hotkeys: { start_stop: string; important: string; confused: string; enabled: boolean }
   recorder: { mic_default: boolean }
 }
+
+export type BookmarkKind = 'important' | 'confused' | 'question'
+
+export interface Bookmark {
+  id: number
+  t_s: number
+  kind: BookmarkKind
+  note: string
+}
+
+export type LectureStatus = 'recording' | 'processing' | 'ready' | 'failed'
+
+export interface Lecture {
+  id: number
+  subject_id: number
+  number: number
+  title: string
+  kind: string
+  started_at: string
+  duration_s: number | null
+  source: 'recording' | 'import'
+  status: LectureStatus
+  stages: Record<string, string>
+  error: string | null
+  has_audio: boolean
+  bookmark_count: number
+  job_progress: number | null
+  job_message: string
+}
+
+export interface LectureDetail extends Lecture {
+  bookmarks: Bookmark[]
+}
+
+export interface RecorderStatus {
+  recording: boolean
+  free_gb: number
+  last_subject_id?: number | null
+  lecture_id?: number
+  subject_id?: number
+  subject_name?: string
+  title?: string
+  mic?: boolean
+  elapsed_s?: number
+  devices?: Record<string, string>
+  bookmarks?: { t_s: number; kind: BookmarkKind; note: string }[]
+}
+
+export interface Level {
+  rms_db: number
+  peak_db: number
+  active: boolean
+}

@@ -28,7 +28,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
   api/              routers: system (health, SSE /api/events), subjects, ...
   core/             config (pydantic-settings + <data>/config.toml), db (SQLite WAL, Alembic),
                     models (SQLModel tables), jobs (persistent queue + worker), events (SSE bus)
-  capture/          recorder, hotkeys, tray (M2)
+  capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
+                    padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
+                    crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray
   pipeline/ ai/ study/ search/ exports/   later milestones
 prompts/            prompt templates (M5)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
@@ -39,6 +41,9 @@ scripts/            seed data
 
 Data lives in `%USERPROFILE%\LectureLab` (override: `LECTURELAB_DATA_DIR` or `--data-dir`):
 `lecturelab.db`, `config.toml`, `logs/`, `subjects/<slug>/<YYYY-MM-DD>_<slug>/`, `trash/`.
+
+Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
+`lecturelab --data-dir data/dev serve --no-browser --no-tray --no-hotkeys --port 8766`.
 
 ## Conventions
 
@@ -52,4 +57,6 @@ Data lives in `%USERPROFILE%\LectureLab` (override: `LECTURELAB_DATA_DIR` or `--
   `useEvent(type, fn)` (one shared EventSource).
 - Tests: never call real LLM APIs or real audio devices; use fakes. `client` fixture gives a
   TestClient over a temp data dir with the worker not started (`Worker().run_pending()` to drain).
+- Recorder threading: capture threads push into `SourceBuffer`s; one mixer loop writes. Never
+  block pynput hook callbacks (hand work to the hotkey worker thread).
 - Ask before adding heavy deps or downloading models (SPEC §0.8).

@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
 
+import { RecorderPanel } from '@/components/RecorderPanel'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api'
@@ -29,6 +30,8 @@ export function AppShell() {
           <GraduationCap className="size-5 text-primary" />
           <span className="font-semibold tracking-tight">LectureLab</span>
         </div>
+
+        <RecorderPanel />
 
         <nav className="px-2">
           <NavLink to="/" end className={linkClass}>

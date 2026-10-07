@@ -1,0 +1,118 @@
+"""Audio capture sources (Windows, via the ``soundcard`` library / WASAPI).
+
+``soundcard`` queries Core Audio live, so we notice when the default device changes (e.g.
+headphones plugged in) and reopen on the new device. It also asks Windows to convert to our
+sample rate and channel count, and pads silent loopback periods with zeros itself.
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+import time
+import warnings
+from collections.abc import Callable
+from typing import Literal, Protocol
+
+from backend.capture.mixer import SourceBuffer
+
+log = logging.getLogger(__name__)
+
+DeviceCallback = Callable[[str, str], None]  # (source name, device name)
+
+
+class CaptureSource(Protocol):
+    name: str
+    buffer: SourceBuffer
+    device: str
+
+    def start(self) -> None: ...
+    def stop(self) -> None: ...
+
+
+class SoundcardSource:
+    """System audio (WASAPI loopback of the default output) or the default microphone."""
+
+    def __init__(
+        self,
+        kind: Literal["loopback", "mic"],
+        sample_rate: int,
+        poll_s: float = 2.0,
+        on_device: DeviceCallback | None = None,
+    ) -> None:
+        self.kind = kind
+        self.name = "system" if kind == "loopback" else "mic"
+        self.sample_rate = sample_rate
+        self.poll_s = poll_s
+        self.on_device = on_device
+        self.buffer = SourceBuffer()
+        self.device = ""
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._run, name=f"capture-{self.name}", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=3)
+
+    def _default(self):  # type: ignore[no-untyped-def]
+        import soundcard as sc
+
+        if self.kind == "loopback":
+            speaker = sc.default_speaker()
+            return speaker.id, speaker.name, sc.get_microphone(id=speaker.id, include_loopback=True)
+        mic = sc.default_microphone()
+        return mic.id, mic.name, mic
+
+    def _current_default_id(self) -> str | None:
+        import soundcard as sc
+
+        try:
+            dev = sc.default_speaker() if self.kind == "loopback" else sc.default_microphone()
+            return str(dev.id)
+        except Exception:
+            return None
+
+    def _run(self) -> None:
+        warnings.filterwarnings("ignore", message="data discontinuity")
+        while not self._stop.is_set():
+            try:
+                dev_id, dev_name, device = self._default()
+            except Exception as e:
+                log.warning("No %s device available (%s); retrying", self.name, e)
+                self._stop.wait(1.0)
+                continue
+            self.device = dev_name
+            log.info("Capturing %s from %s", self.name, dev_name)
+            if self.on_device:
+                self.on_device(self.name, dev_name)
+            try:
+                with device.recorder(samplerate=self.sample_rate, channels=1) as rec:
+                    next_check = time.monotonic() + self.poll_s
+                    while not self._stop.is_set():
+                        data = rec.record(numframes=None)
+                        if data.size:
+                            self.buffer.push(data[:, 0])
+                        if time.monotonic() >= next_check:
+                            next_check = time.monotonic() + self.poll_s
+                            current = self._current_default_id()
+                            if current is not None and current != str(dev_id):
+                                log.info("Default %s device changed; switching", self.name)
+                                break
+            except Exception as e:  # device unplugged / invalidated
+                log.warning("%s capture error on %s: %s; reopening", self.name, dev_name, e)
+                self._stop.wait(0.5)
+
+
+def default_device_names() -> dict[str, str]:
+    """Best-effort names of the current default output and input devices."""
+    try:
+        import soundcard as sc
+
+        return {"system": sc.default_speaker().name, "mic": sc.default_microphone().name}
+    except Exception:
+        return {}

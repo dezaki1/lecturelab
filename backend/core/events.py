@@ -8,12 +8,15 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import threading
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -28,11 +31,28 @@ class EventBus:
         self._subs: set[tuple[asyncio.AbstractEventLoop, asyncio.Queue[Event]]] = set()
         self._lock = threading.Lock()
         self._queue_size = queue_size
+        self._listeners: list[Callable[[Event], None]] = []
+
+    def add_listener(self, fn: Callable[[Event], None]) -> None:
+        """Synchronous listener, called on the publishing thread (keep it fast)."""
+        with self._lock:
+            self._listeners.append(fn)
+
+    def remove_listener(self, fn: Callable[[Event], None]) -> None:
+        with self._lock:
+            if fn in self._listeners:
+                self._listeners.remove(fn)
 
     def publish(self, type: str, data: dict[str, Any] | None = None) -> None:
         evt = Event(type, data or {})
         with self._lock:
             subs = list(self._subs)
+            listeners = list(self._listeners)
+        for fn in listeners:
+            try:
+                fn(evt)
+            except Exception:
+                log.exception("Event listener failed for %s", type)
         for loop, queue in subs:
             try:
                 loop.call_soon_threadsafe(_offer, queue, evt)

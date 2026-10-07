@@ -1,4 +1,13 @@
-import type { Subject, SubjectInput, SystemInfo } from './types'
+import type {
+  Bookmark,
+  BookmarkKind,
+  Lecture,
+  LectureDetail,
+  RecorderStatus,
+  Subject,
+  SubjectInput,
+  SystemInfo,
+} from './types'
 
 export class ApiError extends Error {
   status: number
@@ -41,4 +50,21 @@ export const api = {
   updateSubject: (id: number, data: Partial<Subject>) =>
     request<Subject>('PATCH', `/api/subjects/${id}`, data),
   deleteSubject: (id: number) => request<void>('DELETE', `/api/subjects/${id}`),
+
+  lectures: (subjectId: number) => request<Lecture[]>('GET', `/api/lectures?subject_id=${subjectId}`),
+  lecture: (id: number) => request<LectureDetail>('GET', `/api/lectures/${id}`),
+  updateLecture: (id: number, data: Partial<Pick<Lecture, 'title' | 'kind' | 'subject_id'>>) =>
+    request<LectureDetail>('PATCH', `/api/lectures/${id}`, data),
+  deleteLecture: (id: number) => request<void>('DELETE', `/api/lectures/${id}`),
+  addBookmark: (lectureId: number, data: { t_s: number; kind: BookmarkKind; note?: string }) =>
+    request<Bookmark>('POST', `/api/lectures/${lectureId}/bookmarks`, data),
+  deleteBookmark: (lectureId: number, id: number) =>
+    request<void>('DELETE', `/api/lectures/${lectureId}/bookmarks/${id}`),
+  audioUrl: (lectureId: number) => `/api/lectures/${lectureId}/audio`,
+
+  recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
+  startRecording: (data: { subject_id: number; mic: boolean }) =>
+    request<RecorderStatus>('POST', '/api/recorder/start', data),
+  stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
+  bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),
 }

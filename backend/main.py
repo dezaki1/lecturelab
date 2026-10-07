@@ -67,7 +67,30 @@ def serve(settings: Settings) -> None:
             webbrowser.open(url)
 
     threading.Thread(target=after_start, daemon=True).start()
-    server.run()
+
+    from backend.capture.recorder import get_recorder
+
+    hotkeys = tray = None
+    if settings.hotkeys.enabled:
+        from backend.capture.hotkeys import Hotkeys
+
+        hotkeys = Hotkeys(settings.hotkeys, get_recorder())
+        hotkeys.start()
+    if settings.tray:
+        from backend.capture.tray import Tray
+
+        def quit_app() -> None:
+            server.should_exit = True
+
+        tray = Tray(get_recorder(), url, quit_app)
+        tray.start()
+    try:
+        server.run()
+    finally:
+        if hotkeys:
+            hotkeys.stop()
+        if tray:
+            tray.stop()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -77,6 +100,7 @@ def main(argv: list[str] | None = None) -> None:
     p_serve = sub.add_parser("serve", help="run the app (default)")
     p_serve.add_argument("--no-browser", action="store_true")
     p_serve.add_argument("--no-tray", action="store_true")
+    p_serve.add_argument("--no-hotkeys", action="store_true")
     p_serve.add_argument("--port", type=int)
     p_seed = sub.add_parser("seed-subjects", help="import subjects from a JSON file")
     p_seed.add_argument("file", type=Path)
@@ -87,6 +111,8 @@ def main(argv: list[str] | None = None) -> None:
         overrides["open_browser"] = False
     if getattr(args, "no_tray", False):
         overrides["tray"] = False
+    if getattr(args, "no_hotkeys", False):
+        overrides["hotkeys"] = {"enabled": False}
     if getattr(args, "port", None):
         overrides["port"] = args.port
     settings = load_settings(args.data_dir, **overrides)

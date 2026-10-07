@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
+import { LectureList } from '@/components/LectureList'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import {
   AlertDialog,
@@ -107,7 +108,7 @@ export function SubjectPage() {
 
       <section className="mt-8">
         <h2 className="text-lg font-semibold">Lectures</h2>
-        <p className="mt-2 text-sm text-muted-foreground">No lectures yet.</p>
+        <LectureList subjectId={subject.id} />
       </section>
 
       <SubjectDialog open={editing} onOpenChange={setEditing} subject={subject} />
