@@ -1,0 +1,14 @@
+[
+  {"name": "Algorithms and Data Structures 2", "instructions": "Exercises (UE) use Python. Show algorithms as pseudocode and Python; include complexity analysis.", "color": "#0ea5e9"},
+  {"name": "Statistical Machine Learning", "instructions": "Math-heavy: show derivations step by step.", "color": "#8b5cf6"},
+  {"name": "Natural Language Processing", "color": "#10b981"},
+  {"name": "Machine Learning: Supervised Techniques", "instructions": "Math-heavy: show derivations step by step.", "color": "#f59e0b"},
+  {"name": "Hands-on AI I", "color": "#ef4444"},
+  {"name": "Reinforcement Learning", "instructions": "Math-heavy: show derivations step by step.", "color": "#14b8a6"},
+  {"name": "Mathematics for AI III", "instructions": "Math-heavy: state definitions and theorems precisely and show proofs/derivations step by step.", "color": "#6366f1"},
+  {"name": "Mathematics for AI I", "instructions": "Math-heavy: state definitions and theorems precisely and show proofs/derivations step by step.", "color": "#3b82f6"},
+  {"name": "Computational Logics for AI", "instructions": "Use formal notation exactly as the lecturer does.", "color": "#a855f7"},
+  {"name": "Formal Models in AI", "instructions": "Use formal notation exactly as the lecturer does.", "color": "#ec4899"},
+  {"name": "Computer Forensics and IT Law", "color": "#64748b"},
+  {"name": "Special Topics in AI: Accelerating Deep Learning", "instructions": "Topic: accelerating deep learning, from inference to hardware.", "color": "#84cc16"}
+]
