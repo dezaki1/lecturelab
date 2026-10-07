@@ -16,7 +16,8 @@ export function LectureList({ subjectId }: { subjectId: number }) {
   if (!lectures?.length)
     return (
       <p className="mt-2 text-sm text-muted-foreground">
-        No lectures yet. Pick this subject in the recorder (top left) and press Record.
+        No lectures yet. Pick this subject in the recorder (top left) and press Record, or drop a recording
+        anywhere on this page to import it.
       </p>
     )
 

@@ -9,7 +9,10 @@
   - Verified on this laptop: Razer headset loopback + Realtek mic, tone captured at -27 dBFS,
     file length = wall-clock length; hotkeys verified with injected key events.
   - Not yet verified with a real default-device switch (covered by a unit test with a fake device).
-- [ ] **M3 Import**
+- [x] **M3 Import**: drag & drop anywhere (or Import button) for mp4/m4a/mp3/wav/webm (+ mkv, mov,
+  ogg, opus, flac, aac, wma); raw-body streaming upload with progress, ffprobe validation (rejects
+  files without audio), recording date from the container's creation_time or file mtime − duration,
+  `import_media` job extracts mono AAC and deletes the uploaded copy after verifying duration
 - [ ] **M4 Transcription**
 - [ ] **M5 Generation**
 - [ ] **M6 Search & chat**

@@ -3,6 +3,7 @@ import { ThemeProvider } from 'next-themes'
 import { BrowserRouter, Route, Routes } from 'react-router'
 
 import { AppShell } from '@/components/AppShell'
+import { ImportProvider } from '@/components/ImportDialog'
 import { LiveUpdates } from '@/components/LiveUpdates'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -20,13 +21,15 @@ export default function App() {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <BrowserRouter>
-            <Routes>
-              <Route element={<AppShell />}>
-                <Route index element={<Home />} />
-                <Route path="subjects/:id" element={<SubjectPage />} />
-                <Route path="lectures/:id" element={<LecturePage />} />
-              </Route>
-            </Routes>
+            <ImportProvider>
+              <Routes>
+                <Route element={<AppShell />}>
+                  <Route index element={<Home />} />
+                  <Route path="subjects/:id" element={<SubjectPage />} />
+                  <Route path="lectures/:id" element={<LecturePage />} />
+                </Route>
+              </Routes>
+            </ImportProvider>
           </BrowserRouter>
           <LiveUpdates />
           <Toaster position="bottom-right" />

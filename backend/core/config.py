@@ -94,11 +94,15 @@ class Settings(BaseSettings):
         return self.data_dir / "trash"
 
     @property
+    def tmp_dir(self) -> Path:
+        return self.data_dir / "tmp"
+
+    @property
     def logs_dir(self) -> Path:
         return self.data_dir / "logs"
 
     def ensure_dirs(self) -> None:
-        for d in (self.data_dir, self.subjects_dir, self.trash_dir, self.logs_dir):
+        for d in (self.data_dir, self.subjects_dir, self.trash_dir, self.logs_dir, self.tmp_dir):
             d.mkdir(parents=True, exist_ok=True)
 
 

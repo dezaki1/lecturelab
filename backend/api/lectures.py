@@ -131,6 +131,13 @@ def _get(session: Session, lecture_id: int) -> Lecture:
     return lecture
 
 
+def lecture_read(session: Session, lecture: Lecture) -> dict[str, object]:
+    job = _active_jobs(session, [lecture.id]).get(lecture.id)  # type: ignore[list-item, arg-type]
+    count = len(session.exec(select(Bookmark.id).where(Bookmark.lecture_id == lecture.id)).all())
+    number = _numbers(session, lecture.subject_id)[lecture.id]  # type: ignore[index]
+    return _to_read(lecture, number, count, job)
+
+
 def _detail(session: Session, lecture: Lecture) -> dict[str, object]:
     bookmarks = session.exec(
         select(Bookmark).where(Bookmark.lecture_id == lecture.id).order_by(col(Bookmark.t_s))

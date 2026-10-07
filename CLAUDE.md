@@ -27,11 +27,14 @@ backend/            Python package (import as `backend.*`), entry point backend/
   app.py            FastAPI factory; serves frontend/dist + SPA fallback
   api/              routers: system (health, SSE /api/events), subjects, ...
   core/             config (pydantic-settings + <data>/config.toml), db (SQLite WAL, Alembic),
-                    models (SQLModel tables), jobs (persistent queue + worker), events (SSE bus)
+                    models (SQLModel tables), jobs (persistent queue + worker), events (SSE bus),
+                    media (ffprobe/ffmpeg helpers; all audio ends up as mono AAC audio.m4a),
+                    library (lecture folders), state (last-used subject)
   capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
                     crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray
-  pipeline/ ai/ study/ search/ exports/   later milestones
+  pipeline/         ingest (import job), stages (per-lecture stage bookkeeping); later: transcribe...
+  ai/ study/ search/ exports/   later milestones
 prompts/            prompt templates (M5)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
   src/components/ui shadcn-generated, don't hand-edit (excluded from lint/format)

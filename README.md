@@ -39,6 +39,13 @@ The app listens on `http://127.0.0.1:8765` only. Data is stored in `%USERPROFILE
 - When you stop, the recording is encoded to AAC (`audio.m4a`, ~30 MB per 90 min).
 - Quit via the tray icon (**Quit**) so an in-progress recording is finalised cleanly.
 
+## Importing recordings
+
+Drag audio or video files (mp4, m4a, mp3, wav, webm, …) anywhere onto the LectureLab window, or
+use **Import** on a subject page. Pick the subject, adjust titles, and import. Only the audio is
+kept (as `audio.m4a`); your original files are left untouched. The lecture date is taken from
+the file's metadata.
+
 Hotkeys and other settings can be changed in `%USERPROFILE%\LectureLab\config.toml`.
 
 ## Development

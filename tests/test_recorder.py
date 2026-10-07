@@ -13,9 +13,9 @@ from fastapi.testclient import TestClient
 
 from backend.app import create_app
 from backend.capture import recorder as recorder_mod
-from backend.capture.encode import probe_duration
 from backend.core.config import Settings, load_settings
 from backend.core.jobs import Worker
+from backend.core.media import probe_duration
 from tests.fakes import fake_factory
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not on PATH")

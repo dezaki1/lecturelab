@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Pencil, Trash2, User } from 'lucide-react'
-import { useState } from 'react'
+import { CalendarDays, Pencil, Trash2, Upload, User } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
+import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import {
@@ -29,6 +30,8 @@ export function SubjectPage() {
   const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const { openImport } = useImport()
+  const fileInput = useRef<HTMLInputElement>(null)
 
   const { data: subject, error } = useQuery({
     queryKey: ['subject', id],
@@ -107,7 +110,23 @@ export function SubjectPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold">Lectures</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Lectures</h2>
+          <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
+            <Upload /> Import
+          </Button>
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            accept={IMPORT_ACCEPT}
+            className="hidden"
+            onChange={(e) => {
+              openImport(Array.from(e.target.files ?? []), subject.id)
+              e.target.value = ''
+            }}
+          />
+        </div>
         <LectureList subjectId={subject.id} />
       </section>
 

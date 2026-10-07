@@ -68,3 +68,36 @@ export const api = {
   stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
   bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),
 }
+
+/** Stream a file to the import endpoint (raw body), reporting upload progress 0..1. */
+export function uploadImport(
+  file: File,
+  opts: { subject_id: number; title?: string; kind?: string },
+  onProgress: (fraction: number) => void,
+): Promise<Lecture> {
+  const params = new URLSearchParams({
+    subject_id: String(opts.subject_id),
+    filename: file.name,
+    last_modified_ms: String(file.lastModified),
+  })
+  if (opts.title) params.set('title', opts.title)
+  if (opts.kind) params.set('kind', opts.kind)
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `/api/imports?${params}`)
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream')
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total)
+    xhr.onload = () => {
+      let data: { detail?: unknown } = {}
+      try {
+        data = JSON.parse(xhr.responseText)
+      } catch {
+        /* not JSON */
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as Lecture)
+      else reject(new ApiError(xhr.status, typeof data.detail === 'string' ? data.detail : xhr.statusText))
+    }
+    xhr.onerror = () => reject(new ApiError(0, 'Upload failed (is LectureLab still running?)'))
+    xhr.send(file)
+  })
+}
