@@ -169,3 +169,125 @@ class Job(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
     started_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+class NoteKind(StrEnum):
+    summary = "summary"
+    notes = "notes"
+    glossary = "glossary"
+    announcements = "announcements"
+    # Phase 2: cheat_sheet, concept_map, subject-level running summary
+
+
+class Note(SQLModel, table=True):
+    """A versioned Markdown document for a lecture (or, later, a subject).
+
+    Each generation or first manual edit creates a new version; exactly one version per
+    (lecture, kind) is current. Old versions are kept so edits are never silently lost.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    kind: str = Field(index=True)
+    version: int = 1
+    is_current: bool = True
+    content_md: str = ""
+    # Structured form as generated (sections, glossary terms...), used by the UI and exports.
+    data: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    source_refs: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    edited_by_me: bool = False
+    model: str = ""
+    prompt_version: str = ""
+    instructions: str = ""  # extra instructions given when regenerating
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Flashcard(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    type: str = "basic"  # basic | cloze | reversed
+    front: str
+    back: str = ""
+    tags: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    difficulty: str = "medium"
+    source_refs: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    generation: int = 1  # which generation run of this lecture created it
+    is_current: bool = True
+    verified: str = "unchecked"  # unchecked | ok | flagged
+    verify_note: str = ""
+    edited_by_me: bool = False
+    suspended: bool = False
+    # FSRS scheduling state (M7)
+    fsrs: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    due: datetime | None = Field(default=None, index=True)
+    model: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Question(SQLModel, table=True):
+    """Exam question or practice exercise (``kind``)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    kind: str = Field(default="exam", index=True)  # exam | exercise
+    type: str = "short"  # mcq | multi | tf | short | long | calculation | code | (exercise kinds)
+    title: str = ""
+    bloom: str = ""
+    difficulty: str = "medium"
+    points: float = 1.0
+    prompt: str
+    options: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    answer: str = ""
+    explanation: str = ""
+    rubric: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    hints: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    solution_steps: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    expected_output: str = ""
+    emphasized: bool = False
+    source_refs: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    generation: int = 1
+    is_current: bool = True
+    verified: str = "unchecked"
+    verify_note: str = ""
+    edited_by_me: bool = False
+    model: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class UsageRecord(SQLModel, table=True):
+    __tablename__ = "usage_record"
+
+    id: int | None = Field(default=None, primary_key=True)
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="SET NULL"
+    )
+    subject_id: int | None = Field(default=None, foreign_key="subject.id", index=True)
+    task: str = Field(index=True)
+    provider: str
+    model: str
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utcnow, index=True)

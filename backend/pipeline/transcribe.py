@@ -17,6 +17,8 @@ from typing import Any
 
 from sqlmodel import delete
 
+from backend.ai.providers import is_configured as llm_configured
+from backend.core import jobs
 from backend.core.config import TranscriptionConfig, get_settings
 from backend.core.db import session_scope
 from backend.core.events import bus
@@ -24,7 +26,7 @@ from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import abs_path, lecture_dir
 from backend.core.media import CREATE_NO_WINDOW
 from backend.core.models import Lecture, LectureStatus, Subject, TranscriptSegment
-from backend.pipeline.stages import TRANSCRIBE_JOB, stage_failed
+from backend.pipeline.stages import GENERATE_JOB, TRANSCRIBE_JOB, stage_failed
 
 log = logging.getLogger(__name__)
 
@@ -237,12 +239,18 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
         lecture.language = data.get("language")
         lecture.meta = {**lecture.meta, "transcription": stats}
         lecture.stages = {**lecture.stages, "transcribe": "done"}
-        # Later milestones queue generation here; for now a transcript means "ready".
-        lecture.status = LectureStatus.ready
         lecture.error = None
+        auto_generate = get_settings().generation.auto and llm_configured()
+        if auto_generate:
+            lecture.stages["generate"] = "pending"
+            lecture.status = LectureStatus.processing
+        else:
+            lecture.status = LectureStatus.ready
         s.add(lecture)
         s.commit()
         subject_id, title = lecture.subject_id, lecture.title
+        if auto_generate:
+            jobs.enqueue(s, GENERATE_JOB, lecture_id=lecture_id)
     log.info("Transcribed lecture %s: %s", lecture_id, stats)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     bus.publish("notify", {"title": "Transcript ready", "message": title, "level": "success"})

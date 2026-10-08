@@ -52,6 +52,7 @@ class LectureRead(BaseModel):
     has_audio: bool
     language: str | None = None
     transcription: dict | None = None  # model, device, speed_x, ... from the last run
+    cost_usd: float = 0.0
     bookmark_count: int = 0
     job_progress: float | None = None
     job_message: str = ""
@@ -185,6 +186,7 @@ def patch_lecture(
         move_lecture(lecture, subject)
     if "title" in changes:
         lecture.title = changes["title"].strip()
+        lecture.meta = {**lecture.meta, "title_is_default": False}
     if "kind" in changes:
         lecture.kind = changes["kind"]
     session.add(lecture)

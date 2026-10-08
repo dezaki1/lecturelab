@@ -5,6 +5,10 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { LectureStatusBadge } from '@/components/LectureStatusBadge'
+import { SeekContext } from '@/components/Markdown'
+import { GenerationPanel } from '@/components/materials/GenerationPanel'
+import { ExerciseList, FlashcardList, QuestionList } from '@/components/materials/ItemLists'
+import { NoteView } from '@/components/materials/NoteView'
 import { TranscriptionPanel } from '@/components/TranscriptionPanel'
 import { TranscriptView } from '@/components/TranscriptView'
 import {
@@ -44,6 +48,11 @@ export function LecturePage() {
 
   const { data: lecture, error } = useQuery({ queryKey: ['lecture', id], queryFn: () => api.lecture(id) })
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
+  const { data: materials } = useQuery({
+    queryKey: ['materials', id, lecture?.stages.generate, lecture?.job_progress],
+    queryFn: () => api.materials(id),
+    enabled: lecture?.stages.transcribe === 'done',
+  })
   const transcribed = lecture?.stages.transcribe === 'done'
   const { data: transcript } = useQuery({
     queryKey: ['transcript', id, lecture?.transcription?.elapsed_s],
@@ -101,6 +110,9 @@ export function LecturePage() {
   if (error) return <div className="p-10 text-sm text-destructive">{error.message}</div>
   if (!lecture) return null
   const subject = subjects.find((s) => s.id === lecture.subject_id)
+
+  const hasNotes = Boolean(materials && Object.keys(materials.notes).length)
+  const count = (xs?: unknown[]) => (xs && xs.length ? ` (${xs.length})` : '')
 
   const seek = (t: number, preRoll: number) => {
     const el = audio.current
@@ -208,75 +220,108 @@ export function LecturePage() {
       </div>
 
       <TranscriptionPanel lecture={lecture} />
+      <GenerationPanel lecture={lecture} />
 
-      <Tabs defaultValue="transcript" className="mt-4">
-        <TabsList>
-          <TabsTrigger value="transcript">Transcript</TabsTrigger>
-          <TabsTrigger value="bookmarks">Bookmarks ({lecture.bookmarks.length})</TabsTrigger>
-        </TabsList>
+      <SeekContext.Provider value={(t) => seek(t, 0)}>
+        <Tabs
+          key={hasNotes ? 'material' : 'plain'}
+          defaultValue={hasNotes ? 'summary' : 'transcript'}
+          className="mt-4"
+        >
+          <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+            <TabsTrigger value="transcript">Transcript</TabsTrigger>
+            <TabsTrigger value="flashcards">Flashcards{count(materials?.flashcards)}</TabsTrigger>
+            <TabsTrigger value="exercises">Exercises{count(materials?.exercises)}</TabsTrigger>
+            <TabsTrigger value="questions">Exam questions{count(materials?.questions)}</TabsTrigger>
+            <TabsTrigger value="glossary">Glossary</TabsTrigger>
+            <TabsTrigger value="announcements">Announcements</TabsTrigger>
+            <TabsTrigger value="bookmarks">Bookmarks ({lecture.bookmarks.length})</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="transcript" className="mt-2">
-          {transcript?.segments.length ? (
-            <TranscriptView
-              segments={transcript.segments}
-              bookmarks={lecture.bookmarks}
-              currentTime={currentTime}
-              onSeek={(t) => seek(t, 0)}
-            />
-          ) : (
-            <p className="py-6 text-sm text-muted-foreground">
-              {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
-                ? 'The transcript will appear here when transcription has finished.'
-                : 'No transcript yet.'}
-            </p>
-          )}
-        </TabsContent>
+          {(['summary', 'notes', 'glossary', 'announcements'] as const).map((kind) => (
+            <TabsContent key={kind} value={kind} className="mt-4">
+              {materials ? (
+                <NoteView lectureId={lecture.id} kind={kind} note={materials.notes[kind]} />
+              ) : (
+                <p className="py-6 text-sm text-muted-foreground">Available after transcription.</p>
+              )}
+            </TabsContent>
+          ))}
+          <TabsContent value="flashcards" className="mt-4">
+            {materials && <FlashcardList lectureId={lecture.id} cards={materials.flashcards} />}
+          </TabsContent>
+          <TabsContent value="exercises" className="mt-4">
+            {materials && <ExerciseList lectureId={lecture.id} items={materials.exercises} />}
+          </TabsContent>
+          <TabsContent value="questions" className="mt-4">
+            {materials && <QuestionList lectureId={lecture.id} items={materials.questions} />}
+          </TabsContent>
 
-        <TabsContent value="bookmarks" className="mt-2">
-          {lecture.has_audio && (
-            <div className="mb-2 flex gap-1">
-              <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('important')}>
-                <Star /> Important here
-              </Button>
-              <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('confused')}>
-                <CircleHelp /> Confused here
-              </Button>
-            </div>
-          )}
-          {lecture.bookmarks.length === 0 ? (
-            <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
-          ) : (
-            <ul className="mt-2 divide-y rounded-lg border bg-card">
-              {lecture.bookmarks.map((b) => {
-                const Icon = KIND_ICON[b.kind]
-                return (
-                  <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-                    <Icon
-                      className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
-                    />
-                    <button
-                      className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
-                      disabled={!lecture.has_audio}
-                      onClick={() => seek(b.t_s, PRE_ROLL_S)}
-                    >
-                      {formatDuration(b.t_s)}
-                    </button>
-                    <span className="capitalize text-muted-foreground">{b.kind}</span>
-                    {b.note && <span className="truncate">{b.note}</span>}
-                    <button
-                      className="ml-auto opacity-0 transition group-hover:opacity-100"
-                      aria-label="Remove bookmark"
-                      onClick={() => delBookmark.mutate(b.id)}
-                    >
-                      <X className="size-4 text-muted-foreground" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="transcript" className="mt-2">
+            {transcript?.segments.length ? (
+              <TranscriptView
+                segments={transcript.segments}
+                bookmarks={lecture.bookmarks}
+                currentTime={currentTime}
+                onSeek={(t) => seek(t, 0)}
+              />
+            ) : (
+              <p className="py-6 text-sm text-muted-foreground">
+                {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
+                  ? 'The transcript will appear here when transcription has finished.'
+                  : 'No transcript yet.'}
+              </p>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bookmarks" className="mt-2">
+            {lecture.has_audio && (
+              <div className="mb-2 flex gap-1">
+                <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('important')}>
+                  <Star /> Important here
+                </Button>
+                <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('confused')}>
+                  <CircleHelp /> Confused here
+                </Button>
+              </div>
+            )}
+            {lecture.bookmarks.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
+            ) : (
+              <ul className="mt-2 divide-y rounded-lg border bg-card">
+                {lecture.bookmarks.map((b) => {
+                  const Icon = KIND_ICON[b.kind]
+                  return (
+                    <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
+                      <Icon
+                        className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
+                      />
+                      <button
+                        className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
+                        disabled={!lecture.has_audio}
+                        onClick={() => seek(b.t_s, PRE_ROLL_S)}
+                      >
+                        {formatDuration(b.t_s)}
+                      </button>
+                      <span className="capitalize text-muted-foreground">{b.kind}</span>
+                      {b.note && <span className="truncate">{b.note}</span>}
+                      <button
+                        className="ml-auto opacity-0 transition group-hover:opacity-100"
+                        aria-label="Remove bookmark"
+                        onClick={() => delBookmark.mutate(b.id)}
+                      >
+                        <X className="size-4 text-muted-foreground" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </TabsContent>
+        </Tabs>
+      </SeekContext.Provider>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>

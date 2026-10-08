@@ -39,8 +39,14 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     transcribe (job: runs whisper_worker child process, CPU fallback, re-segments
                     into sentence lines), whisper_worker (standalone child: ffmpeg decode +
                     faster-whisper or the "fake" engine; JSON-lines progress on stdout)
-  ai/ study/ search/ exports/   later milestones
-prompts/            prompt templates (M5)
+                    generate (job: study material; context building, refs, versioning, dedupe,
+                    verification)
+  ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
+                    outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
+                    keys (keyring)
+  study/ search/ exports/   later milestones
+prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
+                    (stored on every generated note as prompt_version)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
   src/components/ui shadcn-generated, don't hand-edit (excluded from lint/format)
 tests/              pytest; fixtures/lecture.m4a + lecture.txt = 2-min TTS sample lecture
@@ -71,4 +77,9 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - While the user's own instance is running, `uv run` can't replace .venv\Scripts\lecturelab.exe:
   use `uv run --no-sync ...` / `uv sync --inexact --no-install-project` and don't kill their app.
 - faster-whisper gets audio as a NumPy array decoded by our ffmpeg (PyAV 19 broke its av.open).
+- LLM calls: only through `backend.ai.providers.get_provider()`. Tests use `llm.provider = "mock"`
+  (conftest) and must never reach a real API. Every generated item needs source_refs.
+- Anthropic: claude-sonnet-5-5 (main) / claude-haiku-5-5 (cheap), adaptive thinking via effort,
+  streaming + `output_format=PydanticModel`, cache breakpoint after the lecture context,
+  `fallbacks: "default"` (beta server-side-fallback-2026-07-01) on Sonnet only.
 - Ask before adding heavy deps or downloading models (SPEC §0.8).

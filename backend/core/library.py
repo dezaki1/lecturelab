@@ -45,6 +45,7 @@ def create_lecture(
     title: str | None = None,
     kind: str = "",
     started_at: datetime | None = None,
+    title_is_default: bool | None = None,
 ) -> Lecture:
     started_at = started_at or utcnow()
     local = started_at.astimezone()
@@ -60,6 +61,8 @@ def create_lecture(
         status=status,
         folder=rel_path(folder),
         stages={"capture": "running"},
+        # A default title gets replaced by the generated topic title (M5).
+        meta={"title_is_default": title is None if title_is_default is None else title_is_default},
     )
     session.add(lecture)
     session.commit()

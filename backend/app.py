@@ -11,7 +11,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.api import imports, lectures, recorder, subjects, system
+from backend.api import imports, lectures, materials, recorder, subjects, system
+from backend.api import settings as settings_api
 from backend.capture import encode  # noqa: F401  (registers the encode job handler)
 from backend.capture.recorder import (
     RecorderService,
@@ -23,7 +24,7 @@ from backend.capture.recorder import (
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db
-from backend.pipeline import ingest, transcribe  # noqa: F401  (job handlers)
+from backend.pipeline import generate, ingest, transcribe  # noqa: F401  (job handlers)
 
 log = logging.getLogger(__name__)
 
@@ -60,6 +61,8 @@ def create_app(
     app.include_router(lectures.router)
     app.include_router(recorder.router)
     app.include_router(imports.router)
+    app.include_router(materials.router)
+    app.include_router(settings_api.router)
 
     _mount_frontend(app)
     return app

@@ -65,6 +65,7 @@ export interface Lecture {
   has_audio: boolean
   language: string | null
   transcription: TranscriptionStats | null
+  cost_usd: number
   bookmark_count: number
   job_progress: number | null
   job_message: string
@@ -118,4 +119,101 @@ export interface Transcript {
   lecture_id: number
   language: string | null
   segments: Segment[]
+}
+
+export interface SourceRef {
+  type: 'lecture' | 'material'
+  lecture_id?: number
+  start_s?: number
+  end_s?: number
+  material_id?: number
+  page?: number | null
+}
+
+export interface NoteVersion {
+  id: number
+  version: number
+  created_at: string
+  edited_by_me: boolean
+  model: string
+  instructions: string
+}
+
+export interface Note {
+  id: number
+  kind: string
+  version: number
+  is_current: boolean
+  content_md: string
+  data: Record<string, any>
+  source_refs: SourceRef[]
+  edited_by_me: boolean
+  model: string
+  prompt_version: string
+  created_at: string
+  updated_at: string
+  versions: NoteVersion[]
+}
+
+export interface Card {
+  id: number
+  type: 'basic' | 'cloze' | 'reversed'
+  front: string
+  back: string
+  tags: string[]
+  difficulty: string
+  source_refs: SourceRef[]
+  verified: 'unchecked' | 'ok' | 'flagged'
+  verify_note: string
+  edited_by_me: boolean
+}
+
+export interface QuestionItem {
+  id: number
+  kind: 'exam' | 'exercise'
+  type: string
+  title: string
+  bloom: string
+  difficulty: string
+  points: number
+  prompt: string
+  options: { text: string; correct: boolean; explanation: string }[]
+  answer: string
+  explanation: string
+  rubric: { criterion: string; points: number }[]
+  hints: string[]
+  solution_steps: string[]
+  expected_output: string
+  emphasized: boolean
+  source_refs: SourceRef[]
+  verified: 'unchecked' | 'ok' | 'flagged'
+  verify_note: string
+}
+
+export interface Materials {
+  notes: Record<string, Note>
+  flashcards: Card[]
+  exercises: QuestionItem[]
+  questions: QuestionItem[]
+}
+
+export interface LLMSettings {
+  provider: string
+  providers: string[]
+  anthropic: {
+    main: string
+    cheap: string
+    main_effort: string
+    key: { set: boolean; hint: string | null; source: string | null }
+  }
+  ollama: { url: string; model: string }
+  openai: { base_url: string; model: string }
+}
+
+export interface Estimate {
+  provider: string
+  model?: string
+  usd: number
+  context_tokens: number
+  configured: boolean
 }

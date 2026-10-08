@@ -88,6 +88,8 @@ async def import_file(
                 source=LectureSource.import_,
                 status=LectureStatus.processing,
                 title=(title or "").strip() or title_from_filename(filename),
+                title_is_default=not (title or "").strip()
+                or (title or "").strip() == title_from_filename(filename),
                 kind=kind,
                 started_at=guess_started_at(info, last_modified),
             )

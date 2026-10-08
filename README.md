@@ -67,6 +67,20 @@ and followed, clicking a line plays from there, `/` searches, Space plays/pauses
 Add technical terms to a subject's **Vocabulary** so Whisper spells them correctly. A subject's
 language can be forced (English/German) and any lecture can be re-transcribed from its page.
 
+## Study material (AI)
+
+After transcription, LectureLab generates for each lecture: a summary, structured study notes,
+a glossary (with German terms), announcements/deadlines, flashcards, practice exercises with
+hints and worked solutions, and exam-style questions with rubrics. Everything links back to the
+moment in the lecture it came from, and a cheap second pass flags cards/questions that the cited
+passage doesn't support. Notes can be edited in place (old versions are kept), and any section
+can be regenerated with extra instructions.
+
+Setup: open **Settings**, paste an Anthropic API key (stored in Windows Credential Manager). The
+lecture page shows a cost estimate before generating, typically a few tens of cents for a
+90-minute lecture with Claude Sonnet 5.5. For offline use, pick **Ollama** in Settings (install
+Ollama and `ollama pull qwen3:8b`); quality is lower.
+
 Hotkeys and other settings can be changed in `%USERPROFILE%\LectureLab\config.toml`.
 
 ## Development

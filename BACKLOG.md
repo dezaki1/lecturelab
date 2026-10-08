@@ -12,3 +12,6 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Transcription speed: try faster-whisper's BatchedInferencePipeline (2-4x faster) if VRAM allows.
 - Word-level karaoke highlight in the transcript (word timings are already in transcript.json).
 - Inline transcript corrections (keep raw + edited, like the Phase 2 cleanup diff).
+- Cost: use the Message Batches API (50% off) for non-urgent overnight generation.
+- Show a per-lecture cost breakdown (usage_record already stores it; M8 adds the page).
+- Card/question inline editing (Phase 2 card management).

@@ -16,8 +16,16 @@ def settings(tmp_path: Path) -> Settings:
 
 
 def make_settings(data_dir: Path) -> Settings:
-    # Fake transcription engine: no Whisper model needed (see test_transcribe for the real one).
-    return load_settings(data_dir, open_browser=False, tray=False, transcription={"engine": "fake"})
+    # Fake transcription engine (no Whisper model) and the mock LLM provider: tests never call
+    # real APIs. Auto-generation is off by default; test_generate turns it on explicitly.
+    return load_settings(
+        data_dir,
+        open_browser=False,
+        tray=False,
+        transcription={"engine": "fake"},
+        llm={"provider": "mock"},
+        generation={"auto": False},
+    )
 
 
 @pytest.fixture

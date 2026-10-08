@@ -1,6 +1,10 @@
 import type {
   Bookmark,
   BookmarkKind,
+  Estimate,
+  LLMSettings,
+  Materials,
+  Note,
   Lecture,
   LectureDetail,
   RecorderStatus,
@@ -65,6 +69,23 @@ export const api = {
   transcript: (lectureId: number) => request<Transcript>('GET', `/api/lectures/${lectureId}/transcript`),
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
+
+  materials: (lectureId: number) => request<Materials>('GET', `/api/lectures/${lectureId}/materials`),
+  estimate: (lectureId: number) => request<Estimate>('GET', `/api/lectures/${lectureId}/generate/estimate`),
+  generate: (lectureId: number, kinds?: string[], instructions = '') =>
+    request<{ job_id: number }>('POST', `/api/lectures/${lectureId}/generate`, { kinds, instructions }),
+  note: (id: number) => request<Note>('GET', `/api/notes/${id}`),
+  editNote: (id: number, content_md: string) => request<Note>('PATCH', `/api/notes/${id}`, { content_md }),
+  restoreNote: (id: number) => request<Note>('POST', `/api/notes/${id}/restore`),
+  deleteCard: (id: number) => request<void>('DELETE', `/api/flashcards/${id}`),
+  deleteQuestion: (id: number) => request<void>('DELETE', `/api/questions/${id}`),
+
+  llmSettings: () => request<LLMSettings>('GET', '/api/settings/llm'),
+  setProvider: (provider: string) => request<LLMSettings>('PUT', '/api/settings/llm/provider', { provider }),
+  setApiKey: (key: string, provider = 'anthropic') =>
+    request<{ set: boolean; hint: string | null }>('PUT', '/api/settings/api-key', { provider, key }),
+  deleteApiKey: (provider = 'anthropic') => request<unknown>('DELETE', `/api/settings/api-key/${provider}`),
+  testLlm: () => request<{ ok: boolean; error?: string; model?: string }>('POST', '/api/settings/llm/test'),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean }) =>

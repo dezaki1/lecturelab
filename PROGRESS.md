@@ -22,7 +22,16 @@
     lecture + ~7 s model load), **CPU 1.6× real time** (~55 min per 90-min lecture).
     Word accuracy vs. script: 99.1 % (`LECTURELAB_TEST_WHISPER=1 uv run pytest -k real`).
   - Still to confirm on a real 90-minute Zoom lecture.
-- [ ] **M5 Generation**
+- [x] **M5 Generation**: summary, study notes, glossary, announcements, flashcards, exercises, exam
+  questions (prompts/*.md, versioned) via structured outputs validated with Pydantic + retries;
+  shared prompt-cached prefix (system + lecture context); refs from cited timestamps on every item;
+  Haiku verification pass flags unsupported cards/questions; card dedupe across the subject;
+  versioned notes with in-place editing, history and restore; regenerate any section with extra
+  instructions; auto-generation after transcription; cost estimate + usage records; providers:
+  Anthropic (Sonnet 5.5 / Haiku 5.5, refusal fallback), Ollama, OpenAI-compatible, mock;
+  Settings page with key in Windows Credential Manager
+  - Verified end to end with the mock provider (tests + UI). **Real Claude output still to be
+    checked on the fixture lecture once the API key is added.**
 - [ ] **M6 Search & chat**
 - [ ] **M7 Review & practice**
 - [ ] **M8 Jobs & costs**

@@ -68,6 +68,39 @@ class TranscriptionConfig(BaseModel):
     models_dir: Path | None = None
 
 
+class LLMConfig(BaseModel):
+    # anthropic | ollama | openai (any OpenAI-compatible endpoint) | mock (tests, offline UI work)
+    provider: str = "anthropic"
+    # Two tiers (SPEC §13.1): "main" writes study material and chats, "cheap" verifies/cleans up.
+    anthropic_main: str = "claude-sonnet-5-5"
+    anthropic_cheap: str = "claude-haiku-5-5"
+    main_effort: str = "medium"  # low | medium | high | xhigh | max
+    cheap_effort: str = "low"
+    # Server-side refusal fallback for the main model (Claude API only; Haiku has none).
+    anthropic_fallbacks: bool = True
+    ollama_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3:8b"
+    ollama_num_ctx: int = 32768
+    openai_base_url: str = ""
+    openai_model: str = ""
+    # Optional per-task model override, e.g. {"questions": "claude-opus-5-5"}.
+    task_models: dict[str, str] = Field(default_factory=dict)
+    max_retries: int = 2  # extra attempts when the output fails validation
+    timeout_s: float = 900.0
+
+
+class GenerationConfig(BaseModel):
+    # Generate study material automatically after transcription (if an LLM is configured).
+    auto: bool = True
+    verify: bool = True
+    # Output amounts scale with lecture length; the model picks within these bounds
+    # depending on how dense the content is (SPEC §9: never fixed counts).
+    cards_per_10min: tuple[float, float] = (2.0, 6.0)
+    questions_per_10min: tuple[float, float] = (0.8, 2.5)
+    exercises_per_10min: tuple[float, float] = (0.3, 1.2)
+    min_items: int = 3
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -83,6 +116,8 @@ class Settings(BaseSettings):
     hotkeys: HotkeyConfig = Field(default_factory=HotkeyConfig)
     recorder: RecorderConfig = Field(default_factory=RecorderConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
+    llm: LLMConfig = Field(default_factory=LLMConfig)
+    generation: GenerationConfig = Field(default_factory=GenerationConfig)
 
     @classmethod
     def settings_customise_sources(
@@ -155,6 +190,18 @@ CONFIG_TEMPLATE = """\
 # cuda_compute_type = "int8_float16"
 # cpu_model = "large-v3-turbo"   # e.g. "small" for faster CPU fallback
 # auto = true                # transcribe automatically after recording/import
+
+[llm]
+# provider = "anthropic"     # anthropic | ollama | openai | mock
+# anthropic_main = "claude-sonnet-5-5"
+# anthropic_cheap = "claude-haiku-5-5"
+# main_effort = "medium"
+# ollama_model = "qwen3:8b"
+# The Anthropic API key is stored in Windows Credential Manager (Settings page in the app).
+
+[generation]
+# auto = true                # generate study material after transcription
+# verify = true              # cheap second pass that checks cards/questions against the source
 """
 
 

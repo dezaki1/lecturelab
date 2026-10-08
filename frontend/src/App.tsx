@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Home } from '@/pages/Home'
 import { LecturePage } from '@/pages/LecturePage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import { SubjectPage } from '@/pages/SubjectPage'
 
 const queryClient = new QueryClient({
@@ -27,6 +28,7 @@ export default function App() {
                   <Route index element={<Home />} />
                   <Route path="subjects/:id" element={<SubjectPage />} />
                   <Route path="lectures/:id" element={<LecturePage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                 </Route>
               </Routes>
             </ImportProvider>

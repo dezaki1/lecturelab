@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { GraduationCap, Home, Moon, Plus, Sun } from 'lucide-react'
+import { GraduationCap, Home, Moon, Plus, Settings, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router'
@@ -61,7 +61,9 @@ export function AppShell() {
         </nav>
 
         <div className="flex items-center justify-between border-t px-3 py-2">
-          <span className="text-xs text-muted-foreground">v0.1</span>
+          <NavLink to="/settings" className={linkClass}>
+            <Settings className="size-4" /> Settings
+          </NavLink>
           <Button
             size="icon-sm"
             variant="ghost"

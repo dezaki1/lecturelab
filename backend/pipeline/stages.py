@@ -12,6 +12,7 @@ from backend.core.library import rel_path
 from backend.core.models import Lecture, LectureStatus
 
 TRANSCRIBE_JOB = "transcribe"
+GENERATE_JOB = "generate"
 
 
 def capture_done(lecture_id: int, audio: Path, duration: float | None, notify_title: str) -> None:
