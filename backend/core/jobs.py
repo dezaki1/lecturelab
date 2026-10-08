@@ -51,6 +51,17 @@ class JobContext:
 Handler = Callable[[JobContext], None]
 HANDLERS: dict[str, Handler] = {}
 
+# Human-readable job names (UI + notifications).
+LABELS = {
+    "encode_recording": "Saving recording",
+    "import_media": "Importing",
+    "transcribe": "Transcription",
+    "generate": "Study material",
+    "index": "Search indexing",
+}
+# Kinds that announce their own failures (generation reports which sections failed).
+SELF_NOTIFYING = {"generate"}
+
 
 def handler(kind: str) -> Callable[[Handler], Handler]:
     def register(fn: Handler) -> Handler:
@@ -168,6 +179,16 @@ class Worker:
             s.commit()
             bus.publish(
                 "job", _job_event(ctx.job_id, status, job.progress, error or "", ctx.lecture_id)
+            )
+        if status == JobStatus.failed and ctx.kind not in SELF_NOTIFYING:
+            bus.publish(
+                "notify",
+                {
+                    "title": f"{LABELS.get(ctx.kind, ctx.kind)} failed",
+                    "message": error or "",
+                    "level": "error",
+                    "lecture_id": ctx.lecture_id,
+                },
             )
 
     def _loop(self) -> None:

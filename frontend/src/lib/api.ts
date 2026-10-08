@@ -4,6 +4,8 @@ import type {
   AttemptResult,
   ChatMessage,
   ChatThread,
+  JobRow,
+  Usage,
   PracticeItem,
   ReviewNext,
   ReviewSummary,
@@ -149,6 +151,19 @@ export const api = {
       duration_ms?: number
     },
   ) => request<AttemptResult>('POST', `/api/practice/questions/${questionId}/attempts`, data),
+
+  jobs: (status = 'all') => request<JobRow[]>('GET', `/api/jobs?status=${status}`),
+  jobCounts: () =>
+    request<{ queued: number; running: number; failed_recent: number }>('GET', '/api/jobs/counts'),
+  retryJob: (id: number) => request<unknown>('POST', `/api/jobs/${id}/retry`),
+  cancelJob: (id: number) => request<unknown>('POST', `/api/jobs/${id}/cancel`),
+  usage: (days = 30) => request<Usage>('GET', `/api/usage?days=${days}`),
+  pendingGeneration: () =>
+    request<{ count: number; usd: number; configured: boolean; lectures: { id: number; title: string }[] }>(
+      'GET',
+      '/api/generate/pending',
+    ),
+  generatePending: () => request<{ queued: number }>('POST', '/api/generate/pending'),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean }) =>

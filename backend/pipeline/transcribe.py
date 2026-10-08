@@ -26,7 +26,7 @@ from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import abs_path, lecture_dir
 from backend.core.media import CREATE_NO_WINDOW
 from backend.core.models import Lecture, LectureStatus, Subject, TranscriptSegment
-from backend.pipeline.stages import GENERATE_JOB, TRANSCRIBE_JOB, stage_failed
+from backend.pipeline.stages import GENERATE_JOB, TRANSCRIBE_JOB, lecture_ready, stage_failed
 
 log = logging.getLogger(__name__)
 
@@ -257,4 +257,5 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
             queue_index(s, lecture_id)
     log.info("Transcribed lecture %s: %s", lecture_id, stats)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
-    bus.publish("notify", {"title": "Transcript ready", "message": title, "level": "success"})
+    if not auto_generate:  # otherwise generation announces the finished lecture
+        lecture_ready(lecture_id, title)

@@ -312,3 +312,51 @@ export interface AttemptResult {
   auto_graded: boolean
   correct_options: number[]
 }
+
+export interface JobRow {
+  id: number
+  kind: string
+  label: string
+  detail: string
+  lecture_id: number | null
+  lecture_title: string | null
+  subject_name: string | null
+  subject_color: string | null
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+  progress: number
+  message: string
+  error: string | null
+  attempts: number
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+  duration_s: number | null
+}
+
+export interface UsageBucket {
+  cost: number
+  input: number
+  output: number
+  cache_read: number
+  cache_write: number
+  calls: number
+}
+
+export interface Usage {
+  days: number
+  total_cost: number
+  all_time_cost: number
+  calls: number
+  cache_savings: number
+  by_task: (UsageBucket & { task: string })[]
+  by_model: (UsageBucket & { model: string })[]
+  by_day: { day: string; cost: number }[]
+  by_subject: { subject_id: number; name: string; color: string; cost: number }[]
+  by_lecture: (UsageBucket & {
+    lecture_id: number
+    title: string
+    number: number | null
+    subject: string
+    duration_s: number | null
+  })[]
+}

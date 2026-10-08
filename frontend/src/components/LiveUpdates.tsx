@@ -18,6 +18,7 @@ export function LiveUpdates() {
   useEvent('settings', () => qc.invalidateQueries({ queryKey: ['llm-settings'] }))
   useEvent('review', () => qc.invalidateQueries({ queryKey: ['review-summary'] }))
   useEvent('job', (d: { lecture_id: number | null }) => {
+    qc.invalidateQueries({ queryKey: ['job-counts'] })
     if (d.lecture_id == null) return
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
     qc.invalidateQueries({ queryKey: ['lectures'] })

@@ -36,7 +36,16 @@ def capture_done(lecture_id: int, audio: Path, duration: float | None, notify_ti
         if auto:
             jobs.enqueue(s, TRANSCRIBE_JOB, lecture_id=lecture_id)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
-    bus.publish("notify", {"title": notify_title, "message": title, "level": "success"})
+    if notify_title:
+        bus.publish("notify", {"title": notify_title, "message": title, "level": "success"})
+
+
+def lecture_ready(lecture_id: int, title: str) -> None:
+    """The one notification per lecture that matters: everything is done (SPEC M8)."""
+    bus.publish(
+        "notify",
+        {"title": "Lecture ready", "message": title, "level": "success", "lecture_id": lecture_id},
+    )
 
 
 def stage_failed(lecture_id: int, stage: str, error: str) -> None:

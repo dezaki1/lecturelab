@@ -85,7 +85,8 @@ def _import(ctx: JobContext) -> None:
     )
     actual = check_duration(out, info.duration)
     src.unlink()
-    capture_done(ctx.lecture_id, out, actual, "Import finished")  # type: ignore[arg-type]
+    # No notification here; "Lecture ready" comes when the pipeline has finished.
+    capture_done(ctx.lecture_id, out, actual, "")  # type: ignore[arg-type]
 
 
 def move_upload(tmp: Path, folder: Path, ext: str) -> str:

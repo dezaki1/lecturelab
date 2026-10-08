@@ -9,11 +9,13 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Home } from '@/pages/Home'
 import { ChatPage } from '@/pages/ChatPage'
+import { JobsPage } from '@/pages/JobsPage'
 import { LecturePage } from '@/pages/LecturePage'
 import { PracticePage } from '@/pages/PracticePage'
 import { ReviewPage } from '@/pages/ReviewPage'
 import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { UsagePage } from '@/pages/UsagePage'
 import { SubjectPage } from '@/pages/SubjectPage'
 
 const queryClient = new QueryClient({
@@ -33,6 +35,8 @@ export default function App() {
                   <Route path="subjects/:id" element={<SubjectPage />} />
                   <Route path="lectures/:id" element={<LecturePage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="jobs" element={<JobsPage />} />
+                  <Route path="usage" element={<UsagePage />} />
                   <Route path="search" element={<SearchPage />} />
                   <Route path="review" element={<ReviewPage />} />
                   <Route path="practice" element={<PracticePage />} />

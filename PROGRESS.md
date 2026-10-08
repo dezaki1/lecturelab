@@ -51,7 +51,28 @@
   blanks, suspend, review logs with undo, streak; practice mode (random or weakest-first, exam
   questions or exercises): MCQ/TF auto-graded, multi-select partial credit, open questions scored
   by ticking rubric items after seeing the model answer, attempts stored; sidebar review badge
-- [ ] **M8 Jobs & costs**
+- [x] **M8 Jobs & costs**: jobs page (running/waiting, failed, all) with live progress, errors,
+  retry and cancel; sidebar indicator for active and recently failed jobs; one "Lecture ready"
+  Windows notification per lecture (tray) plus one notice per failed job; usage page with cost
+  per day (bar chart), per task, per model, per subject and per lecture, cost per lecture hour
+  and cache savings; "Generate all" for transcribed lectures without study material, with a
+  total cost estimate first
+
+## Phase 1 acceptance (SPEC §6)
+
+- [~] One hotkey records a 90-minute lecture; killing the app leaves a playable recording.
+  Hotkeys, recording and crash recovery verified (kill test in the suite); a full 90-minute
+  Zoom lecture not yet recorded.
+- [~] 90-minute lecture transcribes on the GPU; CPU fallback works. Measured on the fixture:
+  GPU ~15x real time, CPU 1.6x (fallback tested); real 90-minute timing still to report.
+- [x] All seven output types generated; every note section, card and question links to a
+  timestamp that seeks the audio.
+- [x] Chat answers cite sources; grounded mode says when something isn't in the material.
+- [ ] Everything works offline with Ollama selected. Ollama + bge-m3 (search) installed and
+  verified; an offline LLM model (e.g. qwen3) is not installed yet, so offline generation/chat
+  is untested.
+- [x] Tests run the pipeline end-to-end on the fixture with the mock provider; README covers
+  setup incl. CUDA/cuDNN on Windows.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

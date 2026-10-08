@@ -44,7 +44,7 @@ from backend.core.models import (
     utcnow,
 )
 from backend.core.util import format_hms
-from backend.pipeline.stages import GENERATE_JOB
+from backend.pipeline.stages import GENERATE_JOB, lecture_ready
 
 log = logging.getLogger(__name__)
 
@@ -712,9 +712,7 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
         subject_id, title = lecture.subject_id, lecture.title
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     if len(errors) < len(kinds):
-        bus.publish(
-            "notify", {"title": "Study material ready", "message": title, "level": "success"}
-        )
+        lecture_ready(lecture_id, title)
     else:
         bus.publish(
             "notify",

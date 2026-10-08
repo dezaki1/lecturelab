@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  Coins,
   GraduationCap,
+  ListChecks,
   Home,
   Layers,
   MessageSquare,
@@ -30,6 +32,12 @@ export function AppShell() {
     refetchInterval: 60_000,
   })
   const toReview = review ? review.due + review.new : 0
+  const { data: jobCounts } = useQuery({
+    queryKey: ['job-counts'],
+    queryFn: api.jobCounts,
+    refetchInterval: 30_000,
+  })
+  const activeJobs = jobCounts ? jobCounts.queued + jobCounts.running : 0
   const [creating, setCreating] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
   const navigate = useNavigate()
@@ -125,9 +133,29 @@ export function AppShell() {
         </nav>
 
         <div className="flex items-center justify-between border-t px-3 py-2">
-          <NavLink to="/settings" className={linkClass}>
-            <Settings className="size-4" /> Settings
-          </NavLink>
+          <div className="flex flex-col gap-0.5">
+            <NavLink to="/jobs" className={linkClass}>
+              <ListChecks className="size-4" /> Jobs
+              {activeJobs > 0 && (
+                <span className="ml-auto flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className="size-1.5 animate-pulse rounded-full bg-primary" />
+                  {activeJobs}
+                </span>
+              )}
+              {activeJobs === 0 && (jobCounts?.failed_recent ?? 0) > 0 && (
+                <span
+                  className="ml-auto size-1.5 rounded-full bg-destructive"
+                  title="A job failed recently"
+                />
+              )}
+            </NavLink>
+            <NavLink to="/usage" className={linkClass}>
+              <Coins className="size-4" /> Usage
+            </NavLink>
+            <NavLink to="/settings" className={linkClass}>
+              <Settings className="size-4" /> Settings
+            </NavLink>
+          </div>
           <Button
             size="icon-sm"
             variant="ghost"

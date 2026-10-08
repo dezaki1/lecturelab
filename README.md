@@ -89,6 +89,16 @@ New cards are introduced 30 per day by default (`[study] new_cards_per_day` in c
 **Practice** quizzes you on the generated exam questions or exercises; multiple choice is graded
 automatically, open questions by ticking the rubric points you got.
 
+## Jobs, notifications and costs
+
+Recording, import, transcription, study material and search indexing run as background jobs,
+one at a time, and resume after a restart. **Jobs** (sidebar) shows progress and errors, with
+Retry and Cancel; a red dot means something failed recently. When a lecture is fully
+processed you get one Windows notification ("Lecture ready"). **Usage** shows estimated API
+costs per day, task, model, subject and lecture, and how much prompt caching saved. If you
+transcribed lectures before adding an API key, **Jobs → Generate all** processes them, with a
+cost estimate first.
+
 ## Search and chat
 
 Press **Ctrl+K** to search all lectures (keywords and meaning, across English and German).
