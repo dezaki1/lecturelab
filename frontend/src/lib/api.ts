@@ -1,8 +1,12 @@
 import type {
   Bookmark,
   BookmarkKind,
+  AttemptResult,
   ChatMessage,
   ChatThread,
+  PracticeItem,
+  ReviewNext,
+  ReviewSummary,
   SearchHit,
   Estimate,
   LLMSettings,
@@ -116,6 +120,35 @@ export const api = {
   deleteThread: (id: number) => request<void>('DELETE', `/api/chat/threads/${id}`),
   flashcardsFromMessage: (id: number) =>
     request<{ created: number }>('POST', `/api/chat/messages/${id}/flashcards`),
+
+  reviewSummary: () => request<ReviewSummary>('GET', '/api/review/summary'),
+  reviewNext: (subjectId?: number) =>
+    request<ReviewNext>('GET', `/api/review/next${subjectId ? `?subject_id=${subjectId}` : ''}`),
+  reviewCard: (id: number, rating: number, duration_ms?: number) =>
+    request<unknown>('POST', `/api/review/${id}`, { rating, duration_ms }),
+  reviewUndo: () => request<{ card_id: number }>('POST', '/api/review/undo'),
+  reviewExtraNew: (count = 10) => request<unknown>('POST', '/api/review/extra-new', { count }),
+  updateCard: (id: number, data: { front?: string; back?: string; suspended?: boolean }) =>
+    request<unknown>('PATCH', `/api/flashcards/${id}`, data),
+  practiceQuestions: (params: Record<string, string | number | undefined>) =>
+    request<PracticeItem[]>(
+      'GET',
+      `/api/practice/questions?${new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined && v !== '')
+          .map(([k, v]) => [k, String(v)]),
+      )}`,
+    ),
+  submitAttempt: (
+    questionId: number,
+    data: {
+      selected?: number[]
+      answer_text?: string
+      rubric_checked?: number[]
+      self_score?: number
+      duration_ms?: number
+    },
+  ) => request<AttemptResult>('POST', `/api/practice/questions/${questionId}/attempts`, data),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean }) =>

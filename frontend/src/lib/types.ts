@@ -264,3 +264,51 @@ export interface ChatThread {
   scope_label: string
   messages: ChatMessage[]
 }
+
+export interface ReviewCounts {
+  due: number
+  new: number
+  new_total: number
+  next_due: string | null
+}
+
+export interface ReviewSummary extends ReviewCounts {
+  reviewed_today: number
+  streak: number
+  by_subject: { subject_id: number; name: string; color: string; due: number; new: number }[]
+}
+
+export interface ReviewNext {
+  card: Card | null
+  remaining: ReviewCounts
+  subject_name?: string
+  subject_color?: string
+  lecture_number?: number | null
+  lecture_title?: string
+  lecture_id?: number | null
+  is_new?: boolean
+  reverse?: boolean
+  intervals?: Record<string, number>
+}
+
+export interface PracticeItem {
+  id: number
+  attempts: number
+  last_score: number | null
+  last_max: number | null
+  question: QuestionItem
+  lecture_id: number | null
+  subject_name: string
+  subject_color: string
+  lecture_number: number | null
+  lecture_title: string
+}
+
+export interface AttemptResult {
+  attempt_id: number
+  correct: boolean | null
+  score: number
+  max_points: number
+  auto_graded: boolean
+  correct_options: number[]
+}

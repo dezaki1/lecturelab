@@ -360,3 +360,37 @@ class ChatMessage(SQLModel, table=True):
     cost_usd: float = 0.0
     error: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class ReviewLog(SQLModel, table=True):
+    """One flashcard review. ``card_before`` holds the FSRS state before it, for undo."""
+
+    __tablename__ = "review_log"
+
+    id: int | None = Field(default=None, primary_key=True)
+    card_id: int = Field(foreign_key="flashcard.id", index=True, ondelete="CASCADE")
+    rating: int  # 1 again, 2 hard, 3 good, 4 easy
+    reviewed_at: datetime = Field(default_factory=utcnow, index=True)
+    duration_ms: int | None = None
+    card_before: dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    due_before: datetime | None = None
+    state_after: int | None = None
+    stability_after: float | None = None
+
+
+class Attempt(SQLModel, table=True):
+    """One answer to a practice/exam question or exercise."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    question_id: int = Field(foreign_key="question.id", index=True, ondelete="CASCADE")
+    selected: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    answer_text: str = ""
+    rubric_checked: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    auto_graded: bool = False
+    correct: bool | None = None
+    score: float = 0.0
+    max_points: float = 0.0
+    duration_ms: int | None = None
+    created_at: datetime = Field(default_factory=utcnow, index=True)

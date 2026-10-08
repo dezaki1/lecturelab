@@ -66,6 +66,7 @@ class CardRead(BaseModel):
     verified: str
     verify_note: str
     edited_by_me: bool
+    suspended: bool = False
 
 
 class QuestionRead(BaseModel):
@@ -272,3 +273,27 @@ def delete_question(question_id: int, session: Session = Depends(get_session)) -
     session.delete(q)
     session.commit()
     return Response(status_code=204)
+
+
+class CardUpdate(BaseModel):
+    front: str | None = Field(default=None, min_length=1)
+    back: str | None = None
+    suspended: bool | None = None
+
+
+@router.patch("/flashcards/{card_id}", response_model=CardRead)
+def update_card(
+    card_id: int, data: CardUpdate, session: Session = Depends(get_session)
+) -> Flashcard:
+    card = session.get(Flashcard, card_id)
+    if card is None:
+        raise HTTPException(404, "Card not found")
+    changes = data.model_dump(exclude_unset=True)
+    for k, v in changes.items():
+        setattr(card, k, v.strip() if isinstance(v, str) else v)
+    if "front" in changes or "back" in changes:
+        card.edited_by_me = True  # survives regeneration
+    session.add(card)
+    session.commit()
+    session.refresh(card)
+    return card

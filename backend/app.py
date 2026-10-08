@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.api import chat, imports, lectures, materials, recorder, subjects, system
+from backend.api import chat, imports, lectures, materials, recorder, study, subjects, system
 from backend.api import settings as settings_api
 from backend.capture import encode  # noqa: F401  (registers the encode job handler)
 from backend.capture.recorder import (
@@ -68,6 +68,7 @@ def create_app(
     app.include_router(materials.router)
     app.include_router(settings_api.router)
     app.include_router(chat.router)
+    app.include_router(study.router)
 
     _mount_frontend(app)
     return app

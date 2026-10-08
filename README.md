@@ -81,6 +81,14 @@ lecture page shows a cost estimate before generating, typically a few tens of ce
 90-minute lecture with Claude Sonnet 5.5. For offline use, pick **Ollama** in Settings (install
 Ollama and `ollama pull qwen3:8b`); quality is lower.
 
+## Review and practice
+
+**Review** (sidebar, with a badge for cards due) runs a daily spaced-repetition session across
+all subjects (FSRS): Space shows the answer, 1-4 rates it (Again/Hard/Good/Easy), U undoes.
+New cards are introduced 30 per day by default (`[study] new_cards_per_day` in config.toml).
+**Practice** quizzes you on the generated exam questions or exercises; multiple choice is graded
+automatically, open questions by ticking the rubric points you got.
+
 ## Search and chat
 
 Press **Ctrl+K** to search all lectures (keywords and meaning, across English and German).

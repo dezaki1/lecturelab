@@ -113,6 +113,12 @@ class SearchConfig(BaseModel):
     chat_top_k: int = 12  # retrieved chunks per subject/all-scope chat turn
 
 
+class StudyConfig(BaseModel):
+    desired_retention: float = 0.9  # FSRS target recall probability
+    new_cards_per_day: int = 30
+    max_reviews_per_day: int = 400
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -131,6 +137,7 @@ class Settings(BaseSettings):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
+    study: StudyConfig = Field(default_factory=StudyConfig)
 
     @classmethod
     def settings_customise_sources(

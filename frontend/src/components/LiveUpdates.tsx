@@ -12,9 +12,11 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['lectures', d.subject_id] })
     qc.invalidateQueries({ queryKey: ['lecture', d.id] })
     qc.invalidateQueries({ queryKey: ['transcript', d.id] })
+    qc.invalidateQueries({ queryKey: ['review-summary'] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })
   useEvent('settings', () => qc.invalidateQueries({ queryKey: ['llm-settings'] }))
+  useEvent('review', () => qc.invalidateQueries({ queryKey: ['review-summary'] }))
   useEvent('job', (d: { lecture_id: number | null }) => {
     if (d.lecture_id == null) return
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })

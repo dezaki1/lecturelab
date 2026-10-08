@@ -1,5 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
-import { GraduationCap, Home, MessageSquare, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
+import {
+  GraduationCap,
+  Home,
+  Layers,
+  MessageSquare,
+  Moon,
+  Plus,
+  Search,
+  Settings,
+  Sun,
+  Target,
+} from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
@@ -13,6 +24,12 @@ import { cn } from '@/lib/utils'
 
 export function AppShell() {
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
+  const { data: review } = useQuery({
+    queryKey: ['review-summary'],
+    queryFn: api.reviewSummary,
+    refetchInterval: 60_000,
+  })
+  const toReview = review ? review.due + review.new : 0
   const [creating, setCreating] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
   const navigate = useNavigate()
@@ -69,6 +86,17 @@ export function AppShell() {
         <nav className="space-y-0.5 px-2">
           <NavLink to="/" end className={linkClass}>
             <Home className="size-4" /> Overview
+          </NavLink>
+          <NavLink to="/review" className={linkClass}>
+            <Layers className="size-4" /> Review
+            {toReview > 0 && (
+              <span className="ml-auto rounded-full bg-primary px-1.5 text-[11px] font-medium text-primary-foreground">
+                {toReview}
+              </span>
+            )}
+          </NavLink>
+          <NavLink to="/practice" className={linkClass}>
+            <Target className="size-4" /> Practice
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             <MessageSquare className="size-4" /> Ask your lectures

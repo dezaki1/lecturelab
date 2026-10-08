@@ -10,6 +10,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { Home } from '@/pages/Home'
 import { ChatPage } from '@/pages/ChatPage'
 import { LecturePage } from '@/pages/LecturePage'
+import { PracticePage } from '@/pages/PracticePage'
+import { ReviewPage } from '@/pages/ReviewPage'
 import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SubjectPage } from '@/pages/SubjectPage'
@@ -32,6 +34,8 @@ export default function App() {
                   <Route path="lectures/:id" element={<LecturePage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="search" element={<SearchPage />} />
+                  <Route path="review" element={<ReviewPage />} />
+                  <Route path="practice" element={<PracticePage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:id" element={<ChatPage />} />
                 </Route>

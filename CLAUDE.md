@@ -47,7 +47,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
   search/           embeddings (Ollama bge-m3, cache table, mock), index (chunking + `index` job,
                     chunk/chunk_fts/chunk_vec share rowids), retrieve (hybrid FTS5 + vec0 + RRF),
                     chat (scoped context, retrieval, citation labels -> lecture/time)
-  study/ exports/   later milestones
+  study/            review (FSRS scheduling, queue, undo, stats), practice (grading, picking)
+  exports/          later milestones
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query

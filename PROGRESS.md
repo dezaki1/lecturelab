@@ -45,7 +45,12 @@
   - Installed Ollama 0.40.1 (winget) + bge-m3. Verified on real data: German query finds the
     English passage (semantic rank 1, no keyword match); subject chat answers cite exact moments;
     lecture chat follow-ups read the prompt cache ($0.009 first turn, $0.0026 follow-up).
-- [ ] **M7 Review & practice**
+- [x] **M7 Review & practice**: FSRS (`fsrs` 6.3) daily queue across subjects (due first, then
+  up to 30 new cards/day in lecture order, "learn 10 more"), keyboard review (Space flip/Good,
+  1-4 rate, U undo), interval previews on the buttons, reversed cards alternate direction, cloze
+  blanks, suspend, review logs with undo, streak; practice mode (random or weakest-first, exam
+  questions or exercises): MCQ/TF auto-graded, multi-select partial credit, open questions scored
+  by ticking rubric items after seeing the model answer, attempts stored; sidebar review badge
 - [ ] **M8 Jobs & costs**
 
 ## Decisions (from SPEC §13, 2026-10-08)
