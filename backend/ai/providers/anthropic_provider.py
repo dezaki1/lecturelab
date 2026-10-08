@@ -18,6 +18,21 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 FALLBACK_MODELS = ("claude-sonnet-5-5", "claude-opus-5-5", "claude-opus-5", "claude-fable-5-1")
 
 
+def tool_name(task: str) -> str:
+    return f"submit_{task}"
+
+
+def tool_defs(outputs: dict[str, type[pydantic.BaseModel]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": tool_name(task),
+            "description": f"Submit the {task} for this lecture.",
+            "input_schema": model.model_json_schema(),
+        }
+        for task, model in sorted(outputs.items())
+    ]
+
+
 class AnthropicProvider:
     name = "anthropic"
 
@@ -33,6 +48,12 @@ class AnthropicProvider:
     def complete(self, req: LLMRequest) -> LLMResult:
         model = self.model_for(req.task, req.tier)
         effort = self.cfg.main_effort if req.tier == "main" else self.cfg.cheap_effort
+        tool_mode = bool(req.shared_outputs) and req.task in (req.shared_outputs or {})
+        instruction = req.instruction
+        if tool_mode:
+            instruction += (
+                f"\n\nSubmit your answer by calling the `{tool_name(req.task)}` tool exactly once."
+            )
         kwargs: dict[str, Any] = {
             "model": model,
             "max_tokens": req.max_tokens,
@@ -48,13 +69,19 @@ class AnthropicProvider:
                             "text": req.context,
                             "cache_control": {"type": "ephemeral"},
                         },
-                        {"type": "text", "text": req.instruction},
+                        {"type": "text", "text": instruction},
                     ],
                 }
             ],
-            "output_format": req.output,
             "output_config": {"effort": effort},
         }
+        if tool_mode:
+            # The same tool list (sorted, identical bytes) on every related call keeps the
+            # cached prefix shared. Non-strict: strict tools compile into a grammar that is
+            # too large for seven schemas; Pydantic validates the arguments instead.
+            kwargs["tools"] = tool_defs(req.shared_outputs or {})
+        else:
+            kwargs["output_format"] = req.output
         if self.cfg.anthropic_fallbacks and model in FALLBACK_MODELS:
             kwargs["fallbacks"] = "default"
             kwargs["betas"] = [FALLBACK_BETA]
@@ -100,10 +127,26 @@ class AnthropicProvider:
             if msg.stop_reason == "refusal":
                 category = getattr(msg.stop_details, "category", None) if msg.stop_details else None
                 raise LLMRefusal(f"Claude declined this request ({category or 'no category'}).")
-            parsed = next(
-                (b.parsed_output for b in msg.content if b.type == "text" and b.parsed_output),
-                None,
-            )
+            if tool_mode:
+                call = next(
+                    (
+                        b
+                        for b in msg.content
+                        if b.type == "tool_use" and b.name == tool_name(req.task)
+                    ),
+                    None,
+                )
+                try:
+                    parsed = req.output.model_validate(call.input) if call else None
+                except pydantic.ValidationError as e:
+                    last_error = f"invalid tool input: {e.errors()[0].get('msg', e)}"
+                    log.warning("%s attempt %d: %s", req.task, attempt, last_error)
+                    continue
+            else:
+                parsed = next(
+                    (b.parsed_output for b in msg.content if b.type == "text" and b.parsed_output),
+                    None,
+                )
             if parsed is None:
                 last_error = f"no structured output (stop_reason={msg.stop_reason})"
                 log.warning("%s attempt %d: %s", req.task, attempt, last_error)

@@ -51,6 +51,7 @@ log = logging.getLogger(__name__)
 NOTE_KINDS = ("summary", "notes", "glossary", "announcements")
 ITEM_KINDS = ("flashcards", "exercises", "questions")
 ALL_KINDS = (*NOTE_KINDS, *ITEM_KINDS)
+SHARED_OUTPUTS = {k: sc.OUTPUTS[k] for k in ALL_KINDS}
 LANGUAGE_NAMES = {"en": "English", "de": "German"}
 TS = re.compile(r"^(?:(\d+):)?(\d{1,3}):(\d{2})$")
 REF_TOLERANCE_S = 5.0
@@ -215,6 +216,9 @@ class Runner:
     def call(
         self, task: str, instruction: str, output: type[BaseModel], tier: str = "main"
     ) -> LLMResult:
+        # All main-tier generation calls for a lecture send the same set of output schemas, so
+        # they share one cached prefix (see LLMRequest.shared_outputs).
+        shared = SHARED_OUTPUTS if tier == "main" and task in SHARED_OUTPUTS else None
         req = LLMRequest(
             task=task,
             system=self.ctx.system,
@@ -222,6 +226,7 @@ class Runner:
             instruction=instruction,
             output=output,
             tier=tier,
+            shared_outputs=shared,
         )
         result = self.provider.complete(req)
         cost = result.usage.cost(result.model)
@@ -366,7 +371,8 @@ def gen_note(r: Runner, kind: str, instructions: str) -> str:
         content = render_announcements(out)
         for a in out.items:
             all_refs += ts_ref(ctx.lecture_id, a.at, ctx.duration)
-    save_note(ctx, kind, content, out.model_dump(), all_refs, result, prompt.tag, instructions)
+    tag = f"{prompt.tag}+{load_prompt('system').tag}"
+    save_note(ctx, kind, content, out.model_dump(), all_refs, result, tag, instructions)
     return kind
 
 
@@ -565,9 +571,23 @@ def gen_questions(r: Runner, kind: str, instructions: str) -> str:
     verify_items(
         r,
         Question,
-        [(q.id, f"{q.title}\n{q.prompt}\nAnswer: {q.answer}".strip(), q.source_refs) for q in rows],  # type: ignore[misc]
+        [(q.id, item_text(q), q.source_refs) for q in rows],  # type: ignore[misc]
     )
     return kind
+
+
+def item_text(q: Question) -> str:
+    """Everything the verifier needs to judge a question or exercise, incl. its solution."""
+    kind = "Practice exercise" if q.kind == "exercise" else f"Exam question ({q.type})"
+    parts = [f"{kind}: {q.title}" if q.title else kind, q.prompt]
+    for o in q.options:
+        parts.append(f"- [{'x' if o.get('correct') else ' '}] {o.get('text', '')}")
+    if q.solution_steps:
+        parts.append("Solution: " + " ".join(q.solution_steps))
+    parts.append(f"Answer: {q.answer}")
+    if q.expected_output:
+        parts.append(f"Expected output: {q.expected_output}")
+    return "\n".join(p for p in parts if p)
 
 
 def verify_items(

@@ -80,6 +80,9 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - LLM calls: only through `backend.ai.providers.get_provider()`. Tests use `llm.provider = "mock"`
   (conftest) and must never reach a real API. Every generated item needs source_refs.
 - Anthropic: claude-sonnet-5-5 (main) / claude-haiku-5-5 (cheap), adaptive thinking via effort,
-  streaming + `output_format=PydanticModel`, cache breakpoint after the lecture context,
-  `fallbacks: "default"` (beta server-side-fallback-2026-07-01) on Sonnet only.
+  streaming, cache breakpoint after the lecture context, `fallbacks: "default"` (beta
+  server-side-fallback-2026-07-01) on Sonnet only. The 7 generation calls send ALL output schemas
+  as (non-strict) tools `submit_<kind>` so the cached prefix is identical; a per-call
+  `output_format` sits in the prefix and kills cache sharing, and one combined strict schema
+  is rejected ("compiled grammar is too large"). Single-schema calls (verify) use output_format.
 - Ask before adding heavy deps or downloading models (SPEC §0.8).

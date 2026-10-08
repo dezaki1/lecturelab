@@ -30,8 +30,11 @@
   instructions; auto-generation after transcription; cost estimate + usage records; providers:
   Anthropic (Sonnet 5.5 / Haiku 5.5, refusal fallback), Ollama, OpenAI-compatible, mock;
   Settings page with key in Windows Credential Manager
-  - Verified end to end with the mock provider (tests + UI). **Real Claude output still to be
-    checked on the fixture lecture once the API key is added.**
+  - Verified end to end with the mock provider (tests + UI) and with real Claude on the 2-min
+    fixture: all 7 sections correct (exercise arithmetic checked by hand), 27-31 s, **$0.09**.
+    Prompt caching: 1 cache write (tools + rules + transcript) and 6 cache reads per lecture.
+    Verifier tested with planted errors (wrong fact, wrong eigenvalues): both flagged.
+  - Still to measure on a real 90-minute lecture: cost (estimate ~$0.40-0.60) and time.
 - [ ] **M6 Search & chat**
 - [ ] **M7 Review & practice**
 - [ ] **M8 Jobs & costs**

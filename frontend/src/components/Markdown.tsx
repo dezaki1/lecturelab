@@ -22,7 +22,8 @@ function nodeText(node: ReactNode): string {
 /** Lets timestamp chips anywhere inside a lecture page seek the player. */
 export const SeekContext = createContext<((t: number) => void) | null>(null)
 
-const TS = /\[(\d{1,2}:)?(\d{1,3}):(\d{2})\](?!\()/g
+// [12:34], [1:02:03] and ranges like [12:34-13:10] (the chip seeks to the start).
+const TS = /\[((?:\d{1,2}:)?\d{1,3}:\d{2})(?:\s*[-–]\s*((?:\d{1,2}:)?\d{1,3}:\d{2}))?\](?!\()/g
 
 export function parseTs(text: string): number | null {
   const m = /^(?:(\d+):)?(\d{1,3}):(\d{2})$/.exec(text.trim())
@@ -37,8 +38,8 @@ export function linkTimestamps(md: string): string {
     .map((part, i) =>
       i % 2 === 1
         ? part
-        : part.replace(TS, (whole) => {
-            const t = parseTs(whole.slice(1, -1))
+        : part.replace(TS, (whole, start: string) => {
+            const t = parseTs(start)
             return t == null ? whole : `[${whole.slice(1, -1)}](#t=${t})`
           }),
     )

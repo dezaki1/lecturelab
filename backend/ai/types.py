@@ -68,6 +68,10 @@ class LLMRequest:
     output: type[BaseModel]
     tier: str = "main"  # main | cheap
     max_tokens: int = 32_000
+    # Related calls that should share one cached prefix: every call sends all of these output
+    # schemas (as tools, for Claude) and answers with the one for ``task``. A per-call output
+    # schema would sit in the cached prefix and give every task its own cache entry.
+    shared_outputs: dict[str, type[BaseModel]] | None = None
 
 
 @dataclass

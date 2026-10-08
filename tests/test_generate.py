@@ -62,7 +62,7 @@ def test_full_pipeline_with_mock_provider(client: TestClient) -> None:
     assert set(m["notes"]) == {"summary", "notes", "glossary", "announcements"}
     summary = m["notes"]["summary"]
     assert "## TL;DR" in summary["content_md"] and "[00:" in summary["content_md"]
-    assert summary["prompt_version"] == "summary@v1" and summary["version"] == 1
+    assert summary["prompt_version"] == "summary@v2+system@v2" and summary["version"] == 1
     assert "★" in m["notes"]["notes"]["content_md"]  # emphasized section marked
     assert "Hauptkomponente" in m["notes"]["glossary"]["content_md"]
 
@@ -288,3 +288,40 @@ def test_anthropic_request_shape_without_network() -> None:
     provider.complete(cheap)
     assert calls[0]["model"] == "claude-haiku-5-5" and "fallbacks" not in calls[0]
     assert calls[0]["output_config"] == {"effort": "low"}
+
+
+def test_shared_tool_mode_keeps_prefix_identical() -> None:
+    """Main-tier calls send the same tool list for every task (shared cache prefix)."""
+    calls: list[dict] = []
+    summary_input = {"topic_title": "PCA", "tldr": [], "remember": []}
+
+    class ToolStream(_FakeStream):
+        def get_final_message(self) -> SimpleNamespace:
+            msg = super().get_final_message()
+            task = calls[-1]["messages"][0]["content"][1]["text"].split("`submit_")[1].split("`")[0]
+            data = summary_input if task == "summary" else {"terms": []}
+            msg.content = [SimpleNamespace(type="tool_use", name=f"submit_{task}", input=data)]
+            msg.stop_reason = "tool_use"
+            return msg
+
+    def stream(**kwargs: object) -> ToolStream:
+        calls.append(kwargs)
+        return ToolStream(None)
+
+    provider = AnthropicProvider(LLMConfig(), api_key="sk-ant-fake")
+    provider.client = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=stream)))
+    for task in ("summary", "glossary"):
+        r = provider.complete(
+            LLMRequest(
+                task=task, system="S", context="C", instruction="I",
+                output=sc.OUTPUTS[task], shared_outputs=gen.SHARED_OUTPUTS,
+            )
+        )  # fmt: skip
+        assert isinstance(r.parsed, sc.OUTPUTS[task])
+    a, b = calls
+    assert "output_format" not in a and a["tools"] == b["tools"] and len(a["tools"]) == 7
+    assert [t["name"] for t in a["tools"]] == sorted(t["name"] for t in a["tools"])
+    assert (
+        a["system"] == b["system"]
+        and a["messages"][0]["content"][0] == b["messages"][0]["content"][0]
+    )
