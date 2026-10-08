@@ -21,8 +21,7 @@ uv sync                         # creates .venv with Python 3.12
 
 `uv sync` installs faster-whisper plus NVIDIA's cuBLAS and cuDNN 9 (CUDA 12) as Python wheels
 (~2 GB) inside `.venv`, so no system-wide CUDA Toolkit or cuDNN install is needed. The
-transcription process adds `.venv\Lib\site-packages
-vidia\*in` to its DLL search path itself.
+transcription process adds `.venv\Lib\site-packages\nvidia\*\bin` to its DLL search path itself.
 You only need a recent NVIDIA driver (`nvidia-smi` should work).
 
 The Whisper model (`large-v3-turbo`, ~1.6 GB) downloads to `%USERPROFILE%\LectureLab\models`
