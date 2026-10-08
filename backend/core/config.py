@@ -82,6 +82,7 @@ class LLMConfig(BaseModel):
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:8b"
     ollama_num_ctx: int = 32768
+    ollama_think: bool = False  # qwen3 etc. can "think"; off = much faster on a 4 GB GPU
     openai_base_url: str = ""
     openai_model: str = ""
     # Optional per-task model override, e.g. {"questions": "claude-opus-5-5"}.
@@ -94,6 +95,9 @@ class GenerationConfig(BaseModel):
     # Generate study material automatically after transcription (if an LLM is configured).
     auto: bool = True
     verify: bool = True
+    # Local models passed wrong answers in testing; "ok" from them is false confidence, so by
+    # default items generated offline stay "unchecked".
+    verify_local: bool = False
     # Output amounts scale with lecture length; the model picks within these bounds
     # depending on how dense the content is (SPEC §9: never fixed counts).
     cards_per_10min: tuple[float, float] = (2.0, 6.0)

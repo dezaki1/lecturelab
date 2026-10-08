@@ -330,3 +330,27 @@ def test_shared_tool_mode_keeps_prefix_identical() -> None:
         a["system"] == b["system"]
         and a["messages"][0]["content"][0] == b["messages"][0]["content"][0]
     )
+
+
+def test_ollama_context_window_sizing() -> None:
+    from backend.ai.providers.local_providers import context_size
+
+    assert context_size(0, 32768) == 8192  # minimum window
+    assert context_size(1_000, 32768, reserve=4096) == 8192  # short chat
+    assert context_size(20_000, 32768) == 16384  # ~5.7k tokens + 8k answer reserve
+    assert context_size(90_000, 32768) == 32768  # 90-min lecture
+    assert context_size(400_000, 32768) == 32768  # capped at the configured maximum
+
+
+def test_repair_latex_escapes_from_local_models() -> None:
+    import json
+
+    from backend.ai.providers.local_providers import repair_latex_escapes
+
+    # What a local model actually emits: unescaped LaTeX backslashes inside a JSON string.
+    raw = r'{"t": "$$\begin{bmatrix} 4 \\ 3 \end{bmatrix}$$ \text{a} \frac{a}{b} \nabla f \theta"}'
+    fixed = json.loads(repair_latex_escapes(raw))["t"]
+    assert fixed == r"$$\begin{bmatrix} 4 \ 3 \end{bmatrix}$$ \text{a} \frac{a}{b} \nabla f \theta"
+    # Real newlines/quotes and correctly escaped LaTeX are left alone.
+    ok = r'{"t": "line one\nThe end \"q\" \\alpha \\text{x} é"}'
+    assert json.loads(repair_latex_escapes(ok))["t"] == 'line one\nThe end "q" \\alpha \\text{x} é'

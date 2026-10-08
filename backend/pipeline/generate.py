@@ -595,7 +595,12 @@ def verify_items(
 ) -> None:
     """Cheap second pass: check each item against the transcript excerpt it cites."""
     items = [it for it in items if it[2]]
-    if not items or not get_settings().generation.verify:
+    cfg = get_settings().generation
+    if (
+        not items
+        or not cfg.verify
+        or (r.provider.name in ("ollama", "openai") and not cfg.verify_local)
+    ):
         return
     blocks = [
         f"- id={i}\n  Item: {text}\n  Cited excerpt: {excerpt(r.ctx.lines, refs)}"
@@ -669,7 +674,9 @@ def generate(ctx_job: JobContext) -> None:
     ctx_job.progress(0.0, f"Generating {len(kinds)} section(s)")
     # First call alone: it writes the prompt cache that the parallel calls then read.
     first, rest = kinds[0], kinds[1:]
-    for batch, workers in (([first], 1), (rest, 3)):
+    # Claude serves parallel requests; a local model on one GPU queues them, which only
+    # makes later requests time out while they wait.
+    for batch, workers in (([first], 1), (rest, provider.max_parallel)):
         if not batch:
             continue
         with ThreadPoolExecutor(max_workers=workers) as pool:

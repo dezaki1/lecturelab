@@ -16,5 +16,9 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Show a per-lecture cost breakdown (usage_record already stores it; M8 adds the page).
 - Card/question inline editing (Phase 2 card management).
 - Search snippets: render light Markdown/LaTeX instead of raw `**`/`$` characters.
+- Offline generation: try qwen3:4b (fits in 4 GB VRAM) and compare speed/quality; maybe
+  generate only summary + notes + flashcards offline and leave questions for Claude.
+- "Lecture ready" notification click could open the lecture (pystray balloons can't; would
+  need a WinRT toast library).
 - Chat: optional reranking with the cheap model for subject/all scope (SPEC 10 says optional).
 - Chat: show the retrieved sources under each answer (they are streamed as a `sources` event).

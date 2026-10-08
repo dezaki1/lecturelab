@@ -13,6 +13,7 @@ from backend.core.state import load_state
 
 class Provider(Protocol):
     name: str
+    max_parallel: int
 
     def model_for(self, task: str, tier: str) -> str: ...
     def complete(self, req: LLMRequest) -> LLMResult: ...

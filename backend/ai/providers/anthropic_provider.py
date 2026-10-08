@@ -44,6 +44,7 @@ def tool_defs(outputs: dict[str, type[pydantic.BaseModel]]) -> list[dict[str, An
 
 class AnthropicProvider:
     name = "anthropic"
+    max_parallel = 3  # concurrent requests the backend serves well
 
     def __init__(self, cfg: LLMConfig, api_key: str) -> None:
         self.cfg = cfg

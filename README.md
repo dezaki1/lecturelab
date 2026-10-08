@@ -78,8 +78,14 @@ can be regenerated with extra instructions.
 
 Setup: open **Settings**, paste an Anthropic API key (stored in Windows Credential Manager). The
 lecture page shows a cost estimate before generating, typically a few tens of cents for a
-90-minute lecture with Claude Sonnet 5.5. For offline use, pick **Ollama** in Settings (install
-Ollama and `ollama pull qwen3:8b`); quality is lower.
+90-minute lecture with Claude Sonnet 5.5.
+
+**Offline mode:** pick **Ollama** in Settings (requires [Ollama](https://ollama.com) with
+`ollama pull qwen3:8b`). Nothing leaves your computer. On a 4 GB GPU the 8B model runs mostly
+on the CPU: chat answers take ~30-40 s, which is fine, but generating study material is very
+slow (~40 min for a 2-minute test lecture) and noticeably less accurate. Use offline mode for
+chat and as a fallback, and let Claude generate the study material. `[llm] ollama_model` in config.toml can point to a smaller model (e.g.
+`qwen3:4b`, which fits in 4 GB of VRAM) for speed.
 
 ## Review and practice
 

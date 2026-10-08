@@ -68,9 +68,15 @@
 - [x] All seven output types generated; every note section, card and question links to a
   timestamp that seeks the audio.
 - [x] Chat answers cite sources; grounded mode says when something isn't in the material.
-- [ ] Everything works offline with Ollama selected. Ollama + bge-m3 (search) installed and
-  verified; an offline LLM model (e.g. qwen3) is not installed yet, so offline generation/chat
-  is untested.
+- [x] Everything works offline with Ollama selected (qwen3:8b + bge-m3), with caveats.
+  Measured on the 2-min fixture (RTX A1000 4 GB: qwen3:8b runs ~70% on CPU, ~3.4 tok/s):
+  - Chat: first words after ~21 s, full answer ~36 s, correct with correct citations.
+  - Study material: all 7 sections generated, but ~40 min of model time for a 2-minute lecture
+    (a 90-minute lecture would take hours), weaker content (one wrong citation, one wrong
+    definition, a wrong eigenvalue calculation). Local fact-checking passed wrong answers, so
+    it is off for local models by default (items stay "unchecked").
+  - Conclusion: Claude for generation; Ollama for offline chat/search and as an emergency
+    fallback (or a smaller model such as qwen3:4b for speed).
 - [x] Tests run the pipeline end-to-end on the fixture with the mock provider; README covers
   setup incl. CUDA/cuDNN on Windows.
 

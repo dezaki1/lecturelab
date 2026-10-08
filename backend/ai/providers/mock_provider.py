@@ -19,6 +19,7 @@ ITEM_ID = re.compile(r"^- id=(\d+)", re.M)
 
 class MockProvider:
     name = "mock"
+    max_parallel = 3
 
     def model_for(self, task: str, tier: str) -> str:
         return f"mock-{tier}"
