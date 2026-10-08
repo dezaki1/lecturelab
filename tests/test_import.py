@@ -65,11 +65,12 @@ def test_import_formats(client: TestClient, settings: Settings, media, fmt: str)
     assert r.status_code == 201, r.text
     lec = r.json()
     assert lec["source"] == "import" and lec["status"] == "processing" and lec["kind"] == "UE"
-    assert Worker().run_pending() == 1
+    assert Worker().run_pending() == 2  # import, then transcription
     lec = client.get(f"/api/lectures/{lec['id']}").json()
     assert lec["status"] == "ready" and lec["has_audio"], lec
     folder = next((settings.subjects_dir / "nlp").iterdir())
-    assert [p.name for p in folder.iterdir()] == ["audio.m4a"]  # uploaded copy removed
+    assert not (folder / f"source.{fmt}").exists()  # uploaded copy removed
+    assert (folder / "transcript.json").exists()
     assert abs(probe_duration(folder / "audio.m4a") - 3.0) < 0.2
     assert not list(settings.tmp_dir.iterdir())
 

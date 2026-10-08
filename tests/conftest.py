@@ -12,7 +12,12 @@ from backend.core.config import Settings, load_settings
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return load_settings(tmp_path / "data", open_browser=False, tray=False)
+    return make_settings(tmp_path / "data")
+
+
+def make_settings(data_dir: Path) -> Settings:
+    # Fake transcription engine: no Whisper model needed (see test_transcribe for the real one).
+    return load_settings(data_dir, open_browser=False, tray=False, transcription={"engine": "fake"})
 
 
 @pytest.fixture

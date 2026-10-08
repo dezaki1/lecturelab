@@ -9,7 +9,9 @@ Personal local-first study app: records Zoom lectures, transcribes, generates st
 .\start.ps1                                   # build frontend if stale, start app, open browser
 uv run lecturelab serve --no-browser --no-tray
 uv run lecturelab seed-subjects scripts\subjects_ws2026.json
-uv run pytest                                 # backend tests (no network, no real audio devices)
+uv run pytest                                 # backend tests (no network, no real audio devices,
+                                              #   fake transcription engine)
+$env:LECTURELAB_TEST_WHISPER=1; uv run pytest -k real   # opt-in: real Whisper on the fixture
 uv run ruff check . ; uv run ruff format --check .
 cd frontend; npm run lint; npm run format:check; npm run build
 cd frontend; npm run dev                      # Vite on :5173, proxies /api to :8765
@@ -33,12 +35,16 @@ backend/            Python package (import as `backend.*`), entry point backend/
   capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
                     crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray
-  pipeline/         ingest (import job), stages (per-lecture stage bookkeeping); later: transcribe...
+  pipeline/         ingest (import job), stages (stage bookkeeping + auto-queue transcription),
+                    transcribe (job: runs whisper_worker child process, CPU fallback, re-segments
+                    into sentence lines), whisper_worker (standalone child: ffmpeg decode +
+                    faster-whisper or the "fake" engine; JSON-lines progress on stdout)
   ai/ study/ search/ exports/   later milestones
 prompts/            prompt templates (M5)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
   src/components/ui shadcn-generated, don't hand-edit (excluded from lint/format)
-tests/              pytest; fixtures/ holds the sample lecture (M4+)
+tests/              pytest; fixtures/lecture.m4a + lecture.txt = 2-min TTS sample lecture
+                    (regenerate with scripts/make_fixture.ps1)
 scripts/            seed data
 ```
 
@@ -62,4 +68,7 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   TestClient over a temp data dir with the worker not started (`Worker().run_pending()` to drain).
 - Recorder threading: capture threads push into `SourceBuffer`s; one mixer loop writes. Never
   block pynput hook callbacks (hand work to the hotkey worker thread).
+- While the user's own instance is running, `uv run` can't replace .venv\Scripts\lecturelab.exe:
+  use `uv run --no-sync ...` / `uv sync --inexact --no-install-project` and don't kill their app.
+- faster-whisper gets audio as a NumPy array decoded by our ffmpeg (PyAV 19 broke its av.open).
 - Ask before adding heavy deps or downloading models (SPEC §0.8).

@@ -1,0 +1,8 @@
+Good morning everyone, and welcome back to the lecture. Today we continue with unsupervised learning, and the main topic is principal component analysis, or PCA.
+Remember from last week that k-means clustering assigns every data point to the nearest centroid. PCA solves a different problem. Instead of grouping the data, we want to find a lower dimensional representation that keeps as much of the variance as possible.
+So how do we do this? First, we center the data by subtracting the mean of every feature. Then we compute the covariance matrix. The eigenvectors of the covariance matrix are the directions of maximum variance. We call them the principal components. The corresponding eigenvalues tell us how much variance each component explains.
+Now this is important, and it will be in the exam. If you keep only the eigenvectors with the largest eigenvalues, you get the best linear projection in the least squares sense.
+A common mistake is to forget the centering step. If the data is not centered, the first component mostly points towards the mean, and that is not what we want.
+Let me give you a small example. Suppose we have two features, height and weight, and they are strongly correlated. Then the first principal component points along the diagonal, and the second component captures only a little bit of noise. So we can drop the second component and lose almost no information.
+For the exercise on Friday, please implement PCA in Python using NumPy, and compare your result with the scikit-learn implementation. The deadline for the assignment is the twentieth of October.
+That is all for today. Thank you, and see you next week.

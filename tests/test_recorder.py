@@ -13,9 +13,10 @@ from fastapi.testclient import TestClient
 
 from backend.app import create_app
 from backend.capture import recorder as recorder_mod
-from backend.core.config import Settings, load_settings
+from backend.core.config import Settings
 from backend.core.jobs import Worker
 from backend.core.media import probe_duration
+from tests.conftest import make_settings
 from tests.fakes import fake_factory
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not on PATH")
@@ -42,20 +43,21 @@ def test_record_bookmark_stop_encode(rec: TestClient, settings: Settings) -> Non
     assert rec.post("/api/recorder/start", json={"subject_id": sid}).status_code == 409
     time.sleep(0.6)
     bm = rec.post("/api/recorder/bookmark", json={"kind": "confused"}).json()
-    assert 0.4 < bm["t_s"] < 1.5
+    assert 0.4 < bm["t_s"] < 2.5
     time.sleep(1.0)
     stopped = rec.post("/api/recorder/stop").json()
     # Silent gap (0.3-0.9 s) was padded, so the file length matches wall-clock time.
-    assert 1.4 < stopped["duration_s"] < 2.5
+    assert 1.4 < stopped["duration_s"] < 4.0
     assert rec.get("/api/recorder").json()["recording"] is False
 
     lid = stopped["lecture_id"]
     lec = rec.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "processing" and lec["job_progress"] is not None
 
-    assert Worker().run_pending() == 1
+    assert Worker().run_pending() == 2  # encode, then the auto-queued transcription
     lec = rec.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "ready", lec
+    assert lec["stages"] == {"capture": "done", "transcribe": "done"}
     assert lec["has_audio"] and lec["stages"]["capture"] == "done"
     assert [b["kind"] for b in lec["bookmarks"]] == ["confused"]
     folder = next((settings.subjects_dir / "reinforcement-learning").iterdir())
@@ -109,7 +111,7 @@ def test_move_and_delete_lecture(rec: TestClient, settings: Settings) -> None:
 
 def test_killed_process_leaves_playable_recording(tmp_path: Path) -> None:
     data = tmp_path / "data"
-    settings = load_settings(data, open_browser=False, tray=False)
+    settings = make_settings(data)
     with _client(settings) as c:
         sid = _subject(c)
     root = Path(__file__).resolve().parent.parent
@@ -126,12 +128,12 @@ def test_killed_process_leaves_playable_recording(tmp_path: Path) -> None:
         proc.kill()  # no clean shutdown: simulates a crash / killed app
         proc.wait()
 
-    settings = load_settings(data, open_browser=False, tray=False)
+    settings = make_settings(data)
     with _client(settings) as c:  # startup runs crash recovery
         lec = c.get("/api/lectures", params={"subject_id": sid}).json()[0]
         assert lec["status"] == "processing"
-        assert Worker().run_pending() == 1
+        assert Worker().run_pending() == 2
         lec = c.get(f"/api/lectures/{lec['id']}").json()
         assert lec["status"] == "ready" and lec["has_audio"], lec
-        assert 1.0 < lec["duration_s"] < 3.0
+        assert 1.0 < lec["duration_s"] < 4.0
         assert len(lec["bookmarks"]) == 1

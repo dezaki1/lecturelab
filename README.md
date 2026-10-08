@@ -17,6 +17,20 @@ uv sync                         # creates .venv with Python 3.12
 .\start.ps1                     # builds the frontend on first run, starts the app, opens the browser
 ```
 
+### GPU transcription (NVIDIA, Windows)
+
+`uv sync` installs faster-whisper plus NVIDIA's cuBLAS and cuDNN 9 (CUDA 12) as Python wheels
+(~2 GB) inside `.venv`, so no system-wide CUDA Toolkit or cuDNN install is needed. The
+transcription process adds `.venv\Lib\site-packages
+vidia\*in` to its DLL search path itself.
+You only need a recent NVIDIA driver (`nvidia-smi` should work).
+
+The Whisper model (`large-v3-turbo`, ~1.6 GB) downloads to `%USERPROFILE%\LectureLab\models`
+on first use. If the GPU run fails (old driver, out of VRAM, no NVIDIA GPU) LectureLab falls
+back to the CPU automatically and shows that on the lecture page. Measured on an RTX A1000
+(4 GB): ~15x real time on GPU, ~1.6x on CPU (i7-12700H). Settings are under `[transcription]`
+in `config.toml` (e.g. `device = "cpu"`, `cpu_model = "small"`, `models_dir = "D:/models"`).
+
 Optional, to pre-create this semester's subjects:
 
 ```powershell
@@ -45,6 +59,14 @@ Drag audio or video files (mp4, m4a, mp3, wav, webm, …) anywhere onto the Lect
 use **Import** on a subject page. Pick the subject, adjust titles, and import. Only the audio is
 kept (as `audio.m4a`); your original files are left untouched. The lecture date is taken from
 the file's metadata.
+
+## Transcripts
+
+Every recording and import is transcribed automatically (Whisper, on the GPU when available).
+The lecture page shows the transcript next to the player: the current sentence is highlighted
+and followed, clicking a line plays from there, `/` searches, Space plays/pauses, ←/→ skips 5 s.
+Add technical terms to a subject's **Vocabulary** so Whisper spells them correctly. A subject's
+language can be forced (English/German) and any lecture can be re-transcribed from its page.
 
 Hotkeys and other settings can be changed in `%USERPROFILE%\LectureLab\config.toml`.
 

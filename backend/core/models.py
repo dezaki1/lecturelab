@@ -92,8 +92,27 @@ class Lecture(SQLModel, table=True):
     status: LectureStatus = LectureStatus.processing
     stages: dict[str, str] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     error: str | None = None
+    # Detected (or forced) spoken language, e.g. "en", once transcribed.
+    language: str | None = None
+    # Free-form per-lecture metadata, e.g. {"transcription": {"model", "device", "speed_x", ...}}
+    meta: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class TranscriptSegment(SQLModel, table=True):
+    """One Whisper segment. Word timings live in the lecture folder's transcript.json."""
+
+    __tablename__ = "transcript_segment"
+
+    id: int | None = Field(default=None, primary_key=True)
+    lecture_id: int = Field(foreign_key="lecture.id", index=True, ondelete="CASCADE")
+    idx: int
+    start: float
+    end: float
+    text: str
+    speaker: str | None = None
+    confidence: float | None = None
 
 
 class Bookmark(SQLModel, table=True):

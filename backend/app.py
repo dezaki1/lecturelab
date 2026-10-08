@@ -23,7 +23,7 @@ from backend.capture.recorder import (
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db
-from backend.pipeline import ingest
+from backend.pipeline import ingest, transcribe  # noqa: F401  (job handlers)
 
 log = logging.getLogger(__name__)
 

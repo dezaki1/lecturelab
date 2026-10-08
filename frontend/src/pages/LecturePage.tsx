@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CircleHelp, MessageCircleQuestion, Star, Trash2, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { LectureStatusBadge } from '@/components/LectureStatusBadge'
+import { TranscriptionPanel } from '@/components/TranscriptionPanel'
+import { TranscriptView } from '@/components/TranscriptView'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +20,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { formatDateTime, formatDuration } from '@/lib/dates'
 import type { BookmarkKind, LectureDetail } from '@/lib/types'
@@ -37,9 +40,33 @@ export function LecturePage() {
   const navigate = useNavigate()
   const audio = useRef<HTMLAudioElement>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
 
   const { data: lecture, error } = useQuery({ queryKey: ['lecture', id], queryFn: () => api.lecture(id) })
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
+  const transcribed = lecture?.stages.transcribe === 'done'
+  const { data: transcript } = useQuery({
+    queryKey: ['transcript', id, lecture?.transcription?.elapsed_s],
+    queryFn: () => api.transcript(id),
+    enabled: transcribed,
+  })
+
+  // Keyboard: Space play/pause, ←/→ seek 5 s (when not typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = audio.current
+      const tag = (e.target as HTMLElement).tagName
+      if (!el || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) || e.ctrlKey || e.metaKey) return
+      if (e.key === ' ') {
+        e.preventDefault()
+        if (el.paused) void el.play()
+        else el.pause()
+      } else if (e.key === 'ArrowLeft') el.currentTime = Math.max(0, el.currentTime - 5)
+      else if (e.key === 'ArrowRight') el.currentTime += 5
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const onSaved = (l: LectureDetail) => {
     qc.setQueryData(['lecture', id], l)
@@ -75,15 +102,15 @@ export function LecturePage() {
   if (!lecture) return null
   const subject = subjects.find((s) => s.id === lecture.subject_id)
 
-  const seek = (t: number) => {
+  const seek = (t: number, preRoll: number) => {
     const el = audio.current
     if (!el) return
-    el.currentTime = Math.max(0, t - PRE_ROLL_S)
+    el.currentTime = Math.max(0, t - preRoll)
     void el.play()
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8">
+    <div className="mx-auto max-w-4xl px-8 py-8" style={{ '--player-h': '4rem' } as React.CSSProperties}>
       <Link
         to={`/subjects/${lecture.subject_id}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -158,9 +185,17 @@ export function LecturePage() {
         </Select>
       </div>
 
-      <section className="mt-6 rounded-lg border bg-card p-4">
+      <div className="sticky top-0 z-20 -mx-8 mt-4 border-b bg-background/95 px-8 py-3 backdrop-blur">
         {lecture.has_audio ? (
-          <audio ref={audio} controls preload="metadata" className="w-full" src={api.audioUrl(lecture.id)} />
+          <audio
+            ref={audio}
+            controls
+            preload="metadata"
+            className="h-10 w-full"
+            src={api.audioUrl(lecture.id)}
+            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+            onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          />
         ) : (
           <p className="text-sm text-muted-foreground">
             {lecture.status === 'recording'
@@ -170,13 +205,36 @@ export function LecturePage() {
                 : 'No audio.'}
           </p>
         )}
-      </section>
+      </div>
 
-      <section className="mt-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Bookmarks</h2>
+      <TranscriptionPanel lecture={lecture} />
+
+      <Tabs defaultValue="transcript" className="mt-4">
+        <TabsList>
+          <TabsTrigger value="transcript">Transcript</TabsTrigger>
+          <TabsTrigger value="bookmarks">Bookmarks ({lecture.bookmarks.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="transcript" className="mt-2">
+          {transcript?.segments.length ? (
+            <TranscriptView
+              segments={transcript.segments}
+              bookmarks={lecture.bookmarks}
+              currentTime={currentTime}
+              onSeek={(t) => seek(t, 0)}
+            />
+          ) : (
+            <p className="py-6 text-sm text-muted-foreground">
+              {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
+                ? 'The transcript will appear here when transcription has finished.'
+                : 'No transcript yet.'}
+            </p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="bookmarks" className="mt-2">
           {lecture.has_audio && (
-            <div className="flex gap-1">
+            <div className="mb-2 flex gap-1">
               <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('important')}>
                 <Star /> Important here
               </Button>
@@ -185,40 +243,40 @@ export function LecturePage() {
               </Button>
             </div>
           )}
-        </div>
-        {lecture.bookmarks.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
-        ) : (
-          <ul className="mt-2 divide-y rounded-lg border bg-card">
-            {lecture.bookmarks.map((b) => {
-              const Icon = KIND_ICON[b.kind]
-              return (
-                <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-                  <Icon
-                    className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
-                  />
-                  <button
-                    className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
-                    disabled={!lecture.has_audio}
-                    onClick={() => seek(b.t_s)}
-                  >
-                    {formatDuration(b.t_s)}
-                  </button>
-                  <span className="capitalize text-muted-foreground">{b.kind}</span>
-                  {b.note && <span className="truncate">{b.note}</span>}
-                  <button
-                    className="ml-auto opacity-0 transition group-hover:opacity-100"
-                    aria-label="Remove bookmark"
-                    onClick={() => delBookmark.mutate(b.id)}
-                  >
-                    <X className="size-4 text-muted-foreground" />
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
+          {lecture.bookmarks.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
+          ) : (
+            <ul className="mt-2 divide-y rounded-lg border bg-card">
+              {lecture.bookmarks.map((b) => {
+                const Icon = KIND_ICON[b.kind]
+                return (
+                  <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
+                    <Icon
+                      className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
+                    />
+                    <button
+                      className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
+                      disabled={!lecture.has_audio}
+                      onClick={() => seek(b.t_s, PRE_ROLL_S)}
+                    >
+                      {formatDuration(b.t_s)}
+                    </button>
+                    <span className="capitalize text-muted-foreground">{b.kind}</span>
+                    {b.note && <span className="truncate">{b.note}</span>}
+                    <button
+                      className="ml-auto opacity-0 transition group-hover:opacity-100"
+                      aria-label="Remove bookmark"
+                      onClick={() => delBookmark.mutate(b.id)}
+                    >
+                      <X className="size-4 text-muted-foreground" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </TabsContent>
+      </Tabs>
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>

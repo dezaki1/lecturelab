@@ -11,6 +11,7 @@ export function LiveUpdates() {
   useEvent('lecture', (d: { id: number; subject_id: number }) => {
     qc.invalidateQueries({ queryKey: ['lectures', d.subject_id] })
     qc.invalidateQueries({ queryKey: ['lecture', d.id] })
+    qc.invalidateQueries({ queryKey: ['transcript', d.id] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })
   useEvent('job', (d: { lecture_id: number | null }) => {

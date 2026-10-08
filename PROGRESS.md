@@ -13,7 +13,15 @@
   ogg, opus, flac, aac, wma); raw-body streaming upload with progress, ffprobe validation (rejects
   files without audio), recording date from the container's creation_time or file mtime − duration,
   `import_media` job extracts mono AAC and deletes the uploaded copy after verifying duration
-- [ ] **M4 Transcription**
+- [x] **M4 Transcription**: faster-whisper `large-v3-turbo` in a child process (VRAM freed on exit),
+  CUDA int8_float16 with automatic CPU int8 fallback, VAD, word timestamps, subject vocabulary as
+  hotwords, language auto-detect / per-subject / per-run override, ffmpeg decoding, auto-queued
+  after recording/import, re-run endpoint, sentence-level lines from word timings, transcript view
+  with synced highlight, follow mode, click-to-seek, search (/), bookmark markers, low-confidence hints
+  - Measured on this laptop (114 s TTS fixture): **GPU 14–16× real time** (~6–7 min per 90-min
+    lecture + ~7 s model load), **CPU 1.6× real time** (~55 min per 90-min lecture).
+    Word accuracy vs. script: 99.1 % (`LECTURELAB_TEST_WHISPER=1 uv run pytest -k real`).
+  - Still to confirm on a real 90-minute Zoom lecture.
 - [ ] **M5 Generation**
 - [ ] **M6 Search & chat**
 - [ ] **M7 Review & practice**

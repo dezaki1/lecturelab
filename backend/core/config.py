@@ -51,6 +51,23 @@ class RecorderConfig(BaseModel):
     system_gain: float = 1.0
 
 
+class TranscriptionConfig(BaseModel):
+    # "faster-whisper" for real use; "fake" generates placeholder segments (tests, UI work).
+    engine: str = "faster-whisper"
+    model: str = "large-v3-turbo"
+    device: str = "auto"  # auto | cuda | cpu
+    cuda_compute_type: str = "int8_float16"  # fits the 4 GB RTX A1000 comfortably
+    cpu_compute_type: str = "int8"
+    cpu_model: str = "large-v3-turbo"  # fallback model; "small" is ~4x faster on CPU
+    cpu_threads: int = 0  # 0 = ctranslate2 default
+    beam_size: int = 5
+    vad: bool = True
+    # Auto-start transcription when a recording/import has been encoded.
+    auto: bool = True
+    # Where Whisper models are stored; defaults to <data_dir>/models.
+    models_dir: Path | None = None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -65,6 +82,7 @@ class Settings(BaseSettings):
     ffprobe: str = "ffprobe"
     hotkeys: HotkeyConfig = Field(default_factory=HotkeyConfig)
     recorder: RecorderConfig = Field(default_factory=RecorderConfig)
+    transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
 
     @classmethod
     def settings_customise_sources(
@@ -92,6 +110,10 @@ class Settings(BaseSettings):
     @property
     def trash_dir(self) -> Path:
         return self.data_dir / "trash"
+
+    @property
+    def models_dir(self) -> Path:
+        return self.transcription.models_dir or self.data_dir / "models"
 
     @property
     def tmp_dir(self) -> Path:
@@ -126,6 +148,13 @@ CONFIG_TEMPLATE = """\
 # aac_bitrate = "64k"
 # keep_pcm = false
 # min_free_gb = 2.0
+
+[transcription]
+# model = "large-v3-turbo"
+# device = "auto"            # auto | cuda | cpu
+# cuda_compute_type = "int8_float16"
+# cpu_model = "large-v3-turbo"   # e.g. "small" for faster CPU fallback
+# auto = true                # transcribe automatically after recording/import
 """
 
 

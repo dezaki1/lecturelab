@@ -63,6 +63,8 @@ export interface Lecture {
   stages: Record<string, string>
   error: string | null
   has_audio: boolean
+  language: string | null
+  transcription: TranscriptionStats | null
   bookmark_count: number
   job_progress: number | null
   job_message: string
@@ -90,4 +92,30 @@ export interface Level {
   rms_db: number
   peak_db: number
   active: boolean
+}
+
+export interface TranscriptionStats {
+  model: string
+  device: 'cuda' | 'cpu'
+  compute_type: string
+  elapsed_s: number
+  load_s: number
+  speed_x: number | null
+  language_probability: number
+  segments: number
+  gpu_fallback_reason: string | null
+}
+
+export interface Segment {
+  id: number
+  start: number
+  end: number
+  text: string
+  confidence: number | null
+}
+
+export interface Transcript {
+  lecture_id: number
+  language: string | null
+  segments: Segment[]
 }

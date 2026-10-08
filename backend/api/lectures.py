@@ -8,7 +8,9 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, col, func, select
 
 from backend.capture.recorder import get_recorder
+from backend.core import jobs as jobs_mod
 from backend.core.db import get_session
+from backend.core.events import bus
 from backend.core.library import abs_path, move_lecture, trash_lecture_folder
 from backend.core.models import (
     Bookmark,
@@ -19,7 +21,9 @@ from backend.core.models import (
     LectureSource,
     LectureStatus,
     Subject,
+    TranscriptSegment,
 )
+from backend.pipeline.stages import TRANSCRIBE_JOB
 
 router = APIRouter(prefix="/api/lectures", tags=["lectures"])
 
@@ -46,6 +50,8 @@ class LectureRead(BaseModel):
     stages: dict[str, str]
     error: str | None
     has_audio: bool
+    language: str | None = None
+    transcription: dict | None = None  # model, device, speed_x, ... from the last run
     bookmark_count: int = 0
     job_progress: float | None = None
     job_message: str = ""
@@ -95,6 +101,7 @@ def _to_read(
         **lecture.model_dump(),
         "number": number,
         "has_audio": bool(lecture.media_path) and abs_path(lecture.media_path).exists(),
+        "transcription": lecture.meta.get("transcription"),
         "bookmark_count": bookmark_count,
         "job_progress": job.progress if job else None,
         "job_message": job.message if job else "",
@@ -240,3 +247,55 @@ def delete_bookmark(
     session.delete(bm)
     session.commit()
     return Response(status_code=204)
+
+
+class SegmentRead(BaseModel):
+    id: int
+    start: float
+    end: float
+    text: str
+    confidence: float | None
+
+
+class TranscriptRead(BaseModel):
+    lecture_id: int
+    language: str | None
+    segments: list[SegmentRead]
+
+
+class TranscribeRequest(BaseModel):
+    language: str | None = (
+        None  # force a language for this run ("en", "de"); None = subject default
+    )
+
+
+@router.get("/{lecture_id}/transcript", response_model=TranscriptRead)
+def get_transcript(lecture_id: int, session: Session = Depends(get_session)) -> dict:
+    lecture = _get(session, lecture_id)
+    segments = session.exec(
+        select(TranscriptSegment)
+        .where(TranscriptSegment.lecture_id == lecture_id)
+        .order_by(col(TranscriptSegment.idx))
+    ).all()
+    return {"lecture_id": lecture_id, "language": lecture.language, "segments": segments}
+
+
+@router.post("/{lecture_id}/transcribe", response_model=LectureDetail, status_code=202)
+def retranscribe(
+    lecture_id: int, req: TranscribeRequest, session: Session = Depends(get_session)
+) -> dict:
+    lecture = _get(session, lecture_id)
+    if not lecture.media_path or not abs_path(lecture.media_path).exists():
+        raise HTTPException(409, "This lecture has no audio yet")
+    if _active_jobs(session, [lecture_id]):
+        raise HTTPException(409, "This lecture is already being processed")
+    lecture.stages = {**lecture.stages, "transcribe": "pending"}
+    lecture.status = LectureStatus.processing
+    lecture.error = None
+    session.add(lecture)
+    session.commit()
+    payload = {"language": req.language} if req.language else {}
+    jobs_mod.enqueue(session, TRANSCRIBE_JOB, lecture_id=lecture_id, payload=payload)
+    bus.publish("lecture", {"id": lecture_id, "subject_id": lecture.subject_id})
+    session.refresh(lecture)
+    return _detail(session, lecture)

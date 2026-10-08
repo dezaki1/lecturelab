@@ -7,6 +7,7 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  Transcript,
 } from './types'
 
 export class ApiError extends Error {
@@ -61,6 +62,9 @@ export const api = {
   deleteBookmark: (lectureId: number, id: number) =>
     request<void>('DELETE', `/api/lectures/${lectureId}/bookmarks/${id}`),
   audioUrl: (lectureId: number) => `/api/lectures/${lectureId}/audio`,
+  transcript: (lectureId: number) => request<Transcript>('GET', `/api/lectures/${lectureId}/transcript`),
+  retranscribe: (lectureId: number, language?: string) =>
+    request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean }) =>
