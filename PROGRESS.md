@@ -35,7 +35,16 @@
     Prompt caching: 1 cache write (tools + rules + transcript) and 6 cache reads per lecture.
     Verifier tested with planted errors (wrong fact, wrong eigenvalues): both flagged.
   - Still to measure on a real 90-minute lecture: cost (estimate ~$0.40-0.60) and time.
-- [ ] **M6 Search & chat**
+- [x] **M6 Search & chat**: lectures indexed as 60-90 s transcript chunks + note sections into
+  SQLite FTS5 and sqlite-vec (bge-m3 via Ollama, embeddings cached); hybrid search with reciprocal
+  rank fusion, keyword-only fallback when Ollama is down; global search (Ctrl+K); chat scoped to a
+  lecture (full transcript in cached context), a subject or everything (retrieval + follow-up
+  query rewriting), optional date filter, grounded mode, streaming over SSE, citation chips
+  ([L5 · 34:12]) that open the lecture at that moment, quick actions (make flashcards, explain
+  simpler, example, quiz me), chat history per thread
+  - Installed Ollama 0.40.1 (winget) + bge-m3. Verified on real data: German query finds the
+    English passage (semantic rank 1, no keyword match); subject chat answers cite exact moments;
+    lecture chat follow-ups read the prompt cache ($0.009 first turn, $0.0026 follow-up).
 - [ ] **M7 Review & practice**
 - [ ] **M8 Jobs & costs**
 

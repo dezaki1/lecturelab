@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { GraduationCap, Home, Moon, Plus, Settings, Sun } from 'lucide-react'
+import { GraduationCap, Home, MessageSquare, Moon, Plus, Search, Settings, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
-import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router'
+import { useEffect, useRef, useState } from 'react'
+import { NavLink, Outlet, useNavigate } from 'react-router'
 
 import { RecorderPanel } from '@/components/RecorderPanel'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +15,21 @@ export function AppShell() {
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
   const [creating, setCreating] = useState(false)
   const { resolvedTheme, setTheme } = useTheme()
+  const navigate = useNavigate()
+  const searchRef = useRef<HTMLInputElement>(null)
+  const [q, setQ] = useState('')
+
+  // Ctrl+K focuses search from anywhere.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -33,9 +49,29 @@ export function AppShell() {
 
         <RecorderPanel />
 
-        <nav className="px-2">
+        <form
+          className="relative mx-2 mb-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`)
+          }}
+        >
+          <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            ref={searchRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search lectures  (Ctrl+K)"
+            className="h-8 pl-8 text-sm"
+          />
+        </form>
+
+        <nav className="space-y-0.5 px-2">
           <NavLink to="/" end className={linkClass}>
             <Home className="size-4" /> Overview
+          </NavLink>
+          <NavLink to="/chat" className={linkClass}>
+            <MessageSquare className="size-4" /> Ask your lectures
           </NavLink>
         </nav>
 

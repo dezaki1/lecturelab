@@ -65,7 +65,7 @@ def test_import_formats(client: TestClient, settings: Settings, media, fmt: str)
     assert r.status_code == 201, r.text
     lec = r.json()
     assert lec["source"] == "import" and lec["status"] == "processing" and lec["kind"] == "UE"
-    assert Worker().run_pending() == 2  # import, then transcription
+    assert Worker().run_pending() == 3  # import, transcription, search index
     lec = client.get(f"/api/lectures/{lec['id']}").json()
     assert lec["status"] == "ready" and lec["has_audio"], lec
     folder = next((settings.subjects_dir / "nlp").iterdir())

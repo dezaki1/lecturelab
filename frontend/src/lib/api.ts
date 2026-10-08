@@ -1,6 +1,9 @@
 import type {
   Bookmark,
   BookmarkKind,
+  ChatMessage,
+  ChatThread,
+  SearchHit,
   Estimate,
   LLMSettings,
   Materials,
@@ -87,6 +90,33 @@ export const api = {
   deleteApiKey: (provider = 'anthropic') => request<unknown>('DELETE', `/api/settings/api-key/${provider}`),
   testLlm: () => request<{ ok: boolean; error?: string; model?: string }>('POST', '/api/settings/llm/test'),
 
+  search: (q: string, subjectId?: number) =>
+    request<SearchHit[]>(
+      'GET',
+      `/api/search?${new URLSearchParams({ q, ...(subjectId ? { subject_id: String(subjectId) } : {}) })}`,
+    ),
+  threads: (params: { subject_id?: number; lecture_id?: number } = {}) =>
+    request<ChatThread[]>(
+      'GET',
+      `/api/chat/threads?${new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]))}`,
+    ),
+  thread: (id: number) => request<ChatThread>('GET', `/api/chat/threads/${id}`),
+  createThread: (data: {
+    scope: 'lecture' | 'subject' | 'all'
+    subject_id?: number
+    lecture_id?: number
+    grounded?: boolean
+    date_from?: string | null
+    date_to?: string | null
+  }) => request<ChatThread>('POST', '/api/chat/threads', data),
+  updateThread: (
+    id: number,
+    data: Partial<Pick<ChatThread, 'title' | 'grounded' | 'date_from' | 'date_to'>>,
+  ) => request<ChatThread>('PATCH', `/api/chat/threads/${id}`, data),
+  deleteThread: (id: number) => request<void>('DELETE', `/api/chat/threads/${id}`),
+  flashcardsFromMessage: (id: number) =>
+    request<{ created: number }>('POST', `/api/chat/messages/${id}/flashcards`),
+
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),
@@ -125,4 +155,46 @@ export function uploadImport(
     xhr.onerror = () => reject(new ApiError(0, 'Upload failed (is LectureLab still running?)'))
     xhr.send(file)
   })
+}
+
+export type ChatStreamEvent =
+  | { type: 'user'; message: ChatMessage }
+  | {
+      type: 'sources'
+      sources: { label: string; lecture_id: number; start_s: number | null; title: string }[]
+    }
+  | { type: 'delta'; text: string }
+  | { type: 'done'; message: ChatMessage }
+  | { type: 'error'; message: string }
+
+/** POST a question and read the Server-Sent Events reply stream. */
+export async function askStream(threadId: number, content: string, onEvent: (e: ChatStreamEvent) => void) {
+  const res = await fetch(`/api/chat/threads/${threadId}/messages`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  })
+  if (!res.ok || !res.body) throw new ApiError(res.status, `Chat request failed (${res.status})`)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    let sep
+    while ((sep = buffer.indexOf('\n\n')) >= 0) {
+      const block = buffer.slice(0, sep)
+      buffer = buffer.slice(sep + 2)
+      const event = /^event: (.+)$/m.exec(block)?.[1]
+      const data = /^data: (.*)$/m.exec(block)?.[1]
+      if (!event || data == null) continue
+      const payload = JSON.parse(data)
+      if (event === 'user') onEvent({ type: 'user', message: payload })
+      else if (event === 'sources') onEvent({ type: 'sources', sources: payload })
+      else if (event === 'delta') onEvent({ type: 'delta', text: payload.text })
+      else if (event === 'done') onEvent({ type: 'done', message: payload })
+      else if (event === 'error') onEvent({ type: 'error', message: payload.message })
+    }
+  }
 }

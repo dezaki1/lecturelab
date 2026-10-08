@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Protocol
 
 from backend.ai.keys import get_key
-from backend.ai.types import LLMError, LLMRequest, LLMResult
+from backend.ai.types import ChatEvent, ChatRequest, LLMError, LLMRequest, LLMResult
 from backend.core.config import get_settings
 from backend.core.state import load_state
 
@@ -15,6 +16,7 @@ class Provider(Protocol):
 
     def model_for(self, task: str, tier: str) -> str: ...
     def complete(self, req: LLMRequest) -> LLMResult: ...
+    def chat_stream(self, req: ChatRequest) -> Iterator[ChatEvent]: ...
 
 
 def active_provider_name() -> str:

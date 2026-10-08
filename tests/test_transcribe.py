@@ -46,7 +46,7 @@ def _import_fixture(
 
 def test_pipeline_end_to_end_on_fixture(client: TestClient, settings: Settings) -> None:
     lid = _import_fixture(client, vocabulary=["PCA", "k-means"])
-    assert Worker().run_pending() == 2  # import_media -> transcribe
+    assert Worker().run_pending() == 3  # import_media -> transcribe -> index
     lec = client.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "ready" and lec["stages"]["transcribe"] == "done"
     assert lec["language"] == "en"

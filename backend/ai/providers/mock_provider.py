@@ -7,10 +7,12 @@ that cites real timestamps, so the whole pipeline (refs, rendering, verification
 from __future__ import annotations
 
 import re
+from collections.abc import Iterator
 from typing import Any
 
-from backend.ai.types import LLMRequest, LLMResult, Usage
+from backend.ai.types import ChatEvent, ChatRequest, LLMRequest, LLMResult, Usage
 
+LABEL = re.compile(r"\[((?:[A-Za-z][\w ]*? )?L\d+(?: · \d+:\d{2}(?::\d{2})?)?)\]")
 LINE = re.compile(r"^\[(\d+:\d{2}(?::\d{2})?)\] (.+)$", re.M)
 ITEM_ID = re.compile(r"^- id=(\d+)", re.M)
 
@@ -30,6 +32,24 @@ class MockProvider:
             input_tokens=len(req.instruction) // 4, output_tokens=500, cache_read_tokens=tokens
         )
         return LLMResult(parsed, self.model_for(req.task, req.tier), self.name, usage)
+
+    def chat_stream(self, req: ChatRequest) -> Iterator[ChatEvent]:
+        """Echoes the question and cites the first source it was given."""
+        material = req.context + "\n".join(m["content"] for m in req.messages)
+        labels = re.findall(r'label="([^"]+)"', material) or LABEL.findall(material)
+        scope = re.search(r"Cite this lecture as \[L(\d+) ", req.context)
+        lines = LINE.findall(req.context)
+        if scope and lines:  # lecture-scoped chat: cite the second transcript line
+            labels = [f"L{scope.group(1)} · {lines[min(1, len(lines) - 1)][0]}"]
+        question = req.messages[-1]["content"].strip().splitlines()[-1]
+        if labels:
+            answer = f"Mock answer to: {question} See [{labels[0]}]."
+        else:
+            answer = "Your lectures don't cover this. **General knowledge:** mock answer."
+        for word in answer.split(" "):
+            yield ChatEvent("text", word + " ")
+        usage = Usage(input_tokens=len(material) // 4, output_tokens=30)
+        yield ChatEvent("done", model="mock-main", usage=usage)
 
     @staticmethod
     def _ref(lines: list[tuple[str, str]], i: int) -> dict[str, str]:
@@ -181,6 +201,10 @@ class MockProvider:
                 },
             ]
         }
+
+    def _StandaloneQuery(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        q = req.instruction.split("Latest question:", 1)[-1].split("Return a short", 1)[0]
+        return {"query": q.strip()}
 
     def _Ping(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"ok": True}

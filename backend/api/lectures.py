@@ -24,6 +24,7 @@ from backend.core.models import (
     TranscriptSegment,
 )
 from backend.pipeline.stages import TRANSCRIBE_JOB
+from backend.search.index import INDEX_JOB, remove_lecture_index
 
 router = APIRouter(prefix="/api/lectures", tags=["lectures"])
 
@@ -90,6 +91,7 @@ def _active_jobs(session: Session, lecture_ids: list[int]) -> dict[int, Job]:
         select(Job).where(
             col(Job.lecture_id).in_(lecture_ids),
             col(Job.status).in_([JobStatus.queued, JobStatus.running]),
+            Job.kind != INDEX_JOB,  # background indexing doesn't block or show as processing
         )
     ).all()
     return {j.lecture_id: j for j in jobs}  # type: ignore[misc]
@@ -211,6 +213,7 @@ def delete_lecture(lecture_id: int, session: Session = Depends(get_session)) -> 
         job.status = JobStatus.cancelled
         session.add(job)
     trash_lecture_folder(lecture)
+    remove_lecture_index(session, lecture_id)
     for bm in session.exec(select(Bookmark).where(Bookmark.lecture_id == lecture_id)).all():
         session.delete(bm)
     session.delete(lecture)

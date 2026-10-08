@@ -291,3 +291,72 @@ class UsageRecord(SQLModel, table=True):
     cache_write_tokens: int = 0
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class Chunk(SQLModel, table=True):
+    """A searchable piece of a lecture: ~60-90 s of transcript or one section of the notes.
+
+    Mirrored into ``chunk_fts`` (FTS5, keyword search) and ``chunk_vec`` (sqlite-vec, semantic
+    search) with the same rowid. Phase 2 adds slide/material chunks (``material_id``/``page``).
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    material_id: int | None = Field(default=None, foreign_key="material.id", ondelete="CASCADE")
+    page: int | None = None
+    source: str = Field(index=True)  # transcript | note | (phase 2) slide | material
+    note_kind: str = ""
+    heading: str = ""
+    text: str
+    start_s: float | None = None
+    end_s: float | None = None
+    embedded: bool = False
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class EmbeddingCache(SQLModel, table=True):
+    __tablename__ = "embedding_cache"
+
+    key: str = Field(primary_key=True)  # sha256(model + text)
+    model: str
+    dim: int
+    vector: bytes
+
+
+class ChatThread(SQLModel, table=True):
+    __tablename__ = "chat_thread"
+
+    id: int | None = Field(default=None, primary_key=True)
+    scope: str = "subject"  # lecture | subject | all
+    subject_id: int | None = Field(
+        default=None, foreign_key="subject.id", index=True, ondelete="CASCADE"
+    )
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    title: str = "New chat"
+    grounded: bool = True
+    date_from: date | None = None
+    date_to: date | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class ChatMessage(SQLModel, table=True):
+    __tablename__ = "chat_message"
+
+    id: int | None = Field(default=None, primary_key=True)
+    thread_id: int = Field(foreign_key="chat_thread.id", index=True, ondelete="CASCADE")
+    role: str  # user | assistant
+    content: str
+    # [{"label": "L5 · 34:12", "lecture_id": 7, "start_s": 2052.0}, ...]
+    citations: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    model: str = ""
+    cost_usd: float = 0.0
+    error: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)

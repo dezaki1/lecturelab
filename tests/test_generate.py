@@ -47,7 +47,7 @@ def _lecture(c: TestClient, name: str = "ML") -> int:
         "id"
     ]
     lid = _import(c, sid)
-    assert Worker().run_pending() == 3  # import -> transcribe -> generate
+    assert Worker().run_pending() == 4  # import -> transcribe -> generate -> index
     return lid
 
 
@@ -55,7 +55,12 @@ def test_full_pipeline_with_mock_provider(client: TestClient) -> None:
     lid = _lecture(client)
     lec = client.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "ready", lec
-    assert lec["stages"] == {"capture": "done", "transcribe": "done", "generate": "done"}
+    assert lec["stages"] == {
+        "capture": "done",
+        "transcribe": "done",
+        "generate": "done",
+        "index": "done",
+    }
     assert lec["title"] == "Mock lecture topic"  # default title replaced by the topic title
 
     m = client.get(f"/api/lectures/{lid}/materials").json()

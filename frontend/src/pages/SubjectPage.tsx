@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Pencil, Trash2, Upload, User } from 'lucide-react'
+import { CalendarDays, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
+import { useStartChat } from '@/pages/ChatPage'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import {
   AlertDialog,
@@ -31,6 +32,7 @@ export function SubjectPage() {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { openImport } = useImport()
+  const startChat = useStartChat()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const { data: subject, error } = useQuery({
@@ -75,6 +77,14 @@ export function SubjectPage() {
           </div>
         </div>
         <div className="flex gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={startChat.isPending}
+            onClick={() => startChat.mutate({ scope: 'subject', subject_id: subject.id })}
+          >
+            <MessageSquare /> Ask
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil /> Edit
           </Button>

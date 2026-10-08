@@ -251,6 +251,10 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
         subject_id, title = lecture.subject_id, lecture.title
         if auto_generate:
             jobs.enqueue(s, GENERATE_JOB, lecture_id=lecture_id)
+        else:
+            from backend.search.index import queue_index
+
+            queue_index(s, lecture_id)
     log.info("Transcribed lecture %s: %s", lecture_id, stats)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     bus.publish("notify", {"title": "Transcript ready", "message": title, "level": "success"})

@@ -15,11 +15,29 @@ MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 _engine: Engine | None = None
 
 
+def load_extensions(dbapi_conn) -> None:  # type: ignore[no-untyped-def]
+    """sqlite-vec provides the vec0 virtual table used for vector search (M6)."""
+    import sqlite_vec
+
+    dbapi_conn.enable_load_extension(True)
+    try:
+        sqlite_vec.load(dbapi_conn)
+    finally:
+        dbapi_conn.enable_load_extension(False)
+
+
+def install_extension_loader(engine: Engine) -> None:
+    @event.listens_for(engine, "connect")
+    def _load(dbapi_conn, _record):  # type: ignore[no-untyped-def]
+        load_extensions(dbapi_conn)
+
+
 def make_engine(db_path: Path) -> Engine:
     engine = create_engine(
         f"sqlite:///{db_path.as_posix()}",
         connect_args={"check_same_thread": False, "timeout": 30},
     )
+    install_extension_loader(engine)
 
     @event.listens_for(engine, "connect")
     def _pragmas(dbapi_conn, _record):  # type: ignore[no-untyped-def]

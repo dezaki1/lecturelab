@@ -705,6 +705,10 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
         lecture.meta = {**lecture.meta, "generated_at": utcnow().isoformat()}
         s.add(lecture)
         s.commit()
+        if ok:
+            from backend.search.index import queue_index
+
+            queue_index(s, lecture_id)
         subject_id, title = lecture.subject_id, lecture.title
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     if len(errors) < len(kinds):

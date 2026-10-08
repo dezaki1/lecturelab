@@ -76,6 +76,7 @@ class LLMConfig(BaseModel):
     anthropic_cheap: str = "claude-haiku-5-5"
     main_effort: str = "medium"  # low | medium | high | xhigh | max
     cheap_effort: str = "low"
+    chat_effort: str = "low"  # chat replies: short thinking keeps them fast
     # Server-side refusal fallback for the main model (Claude API only; Haiku has none).
     anthropic_fallbacks: bool = True
     ollama_url: str = "http://127.0.0.1:11434"
@@ -101,6 +102,17 @@ class GenerationConfig(BaseModel):
     min_items: int = 3
 
 
+class SearchConfig(BaseModel):
+    # ollama | mock (tests) | none (keyword search only)
+    embed_provider: str = "ollama"
+    embed_model: str = "bge-m3"
+    embed_dim: int = 1024
+    embed_keep_alive: str = "2m"  # how long Ollama keeps the model in (V)RAM after use
+    chunk_min_s: float = 60.0
+    chunk_max_s: float = 90.0
+    chat_top_k: int = 12  # retrieved chunks per subject/all-scope chat turn
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -118,6 +130,7 @@ class Settings(BaseSettings):
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
+    search: SearchConfig = Field(default_factory=SearchConfig)
 
     @classmethod
     def settings_customise_sources(

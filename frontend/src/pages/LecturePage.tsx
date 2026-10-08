@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CircleHelp, MessageCircleQuestion, Star, Trash2, X } from 'lucide-react'
+import { ArrowLeft, CircleHelp, MessageCircleQuestion, MessageSquare, Star, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { LectureStatusBadge } from '@/components/LectureStatusBadge'
 import { SeekContext } from '@/components/Markdown'
+import { useStartChat } from '@/pages/ChatPage'
 import { GenerationPanel } from '@/components/materials/GenerationPanel'
 import { ExerciseList, FlashcardList, QuestionList } from '@/components/materials/ItemLists'
 import { NoteView } from '@/components/materials/NoteView'
@@ -45,6 +46,9 @@ export function LecturePage() {
   const audio = useRef<HTMLAudioElement>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
+  const [params, setParams] = useSearchParams()
+  const startAt = params.get('t') != null ? Number(params.get('t')) : null
+  const startChat = useStartChat()
 
   const { data: lecture, error } = useQuery({ queryKey: ['lecture', id], queryFn: () => api.lecture(id) })
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
@@ -148,6 +152,14 @@ export function LecturePage() {
           </div>
         </div>
         <Button
+          variant="outline"
+          size="sm"
+          disabled={lecture.stages.transcribe !== 'done' || startChat.isPending}
+          onClick={() => startChat.mutate({ scope: 'lecture', lecture_id: lecture.id })}
+        >
+          <MessageSquare /> Ask
+        </Button>
+        <Button
           variant="ghost"
           size="icon-sm"
           aria-label="Delete lecture"
@@ -206,6 +218,14 @@ export function LecturePage() {
             className="h-10 w-full"
             src={api.audioUrl(lecture.id)}
             onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+            onLoadedMetadata={(e) => {
+              // Opened from a search result or chat citation: jump to that moment.
+              if (startAt != null) {
+                e.currentTarget.currentTime = startAt
+                setCurrentTime(startAt)
+                setParams({}, { replace: true })
+              }
+            }}
             onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
           />
         ) : (
@@ -225,7 +245,7 @@ export function LecturePage() {
       <SeekContext.Provider value={(t) => seek(t, 0)}>
         <Tabs
           key={hasNotes ? 'material' : 'plain'}
-          defaultValue={hasNotes ? 'summary' : 'transcript'}
+          defaultValue={startAt != null || !hasNotes ? 'transcript' : 'summary'}
           className="mt-4"
         >
           <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">

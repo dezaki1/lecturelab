@@ -81,3 +81,26 @@ class LLMResult:
     provider: str
     usage: Usage = field(default_factory=Usage)
     attempts: int = 1
+
+
+@dataclass
+class ChatRequest:
+    """A free-text, streamed reply (chat).
+
+    ``system`` is stable instructions; ``context`` (optional) is large material placed after it
+    with a cache breakpoint, e.g. a whole lecture's transcript for lecture-scoped chat.
+    """
+
+    system: str
+    messages: list[dict[str, str]]  # [{"role": "user"|"assistant", "content": "..."}]
+    context: str = ""
+    tier: str = "main"
+    max_tokens: int = 16_000
+
+
+@dataclass
+class ChatEvent:
+    type: str  # "text" (a delta) | "done"
+    text: str = ""
+    model: str = ""
+    usage: Usage | None = None

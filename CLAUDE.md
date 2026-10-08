@@ -44,7 +44,10 @@ backend/            Python package (import as `backend.*`), entry point backend/
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
-  study/ search/ exports/   later milestones
+  search/           embeddings (Ollama bge-m3, cache table, mock), index (chunking + `index` job,
+                    chunk/chunk_fts/chunk_vec share rowids), retrieve (hybrid FTS5 + vec0 + RRF),
+                    chat (scoped context, retrieval, citation labels -> lecture/time)
+  study/ exports/   later milestones
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
@@ -85,4 +88,10 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   as (non-strict) tools `submit_<kind>` so the cached prefix is identical; a per-call
   `output_format` sits in the prefix and kills cache sharing, and one combined strict schema
   is rejected ("compiled grammar is too large"). Single-schema calls (verify) use output_format.
+- Virtual tables (chunk_fts, chunk_vec) live in hand-written migration SQL; env.py's
+  include_object keeps autogenerate from dropping them. sqlite-vec loads on every connection.
+- Pipeline: capture -> transcribe -> generate (if an LLM is configured) -> index. Index jobs
+  never block the busy checks (Job.kind != "index").
+- Don't write multi-line Python/TS edits through bash heredocs with backslash escapes (they get
+  mangled on this machine); use the file edit tools or a script file.
 - Ask before adding heavy deps or downloading models (SPEC §0.8).

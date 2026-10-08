@@ -217,3 +217,50 @@ export interface Estimate {
   context_tokens: number
   configured: boolean
 }
+
+export interface SearchHit {
+  chunk_id: number
+  lecture_id: number | null
+  subject_id: number
+  subject_name: string
+  lecture_number: number | null
+  lecture_title: string
+  started_at: string | null
+  source: 'transcript' | 'note'
+  note_kind: string
+  heading: string
+  snippet: string
+  start_s: number | null
+  score: number
+}
+
+export interface Citation {
+  label: string
+  lecture_id: number
+  start_s: number | null
+}
+
+export interface ChatMessage {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  citations: Citation[]
+  model: string
+  cost_usd: number
+  error: string | null
+  created_at: string
+}
+
+export interface ChatThread {
+  id: number
+  scope: 'lecture' | 'subject' | 'all'
+  subject_id: number | null
+  lecture_id: number | null
+  title: string
+  grounded: boolean
+  date_from: string | null
+  date_to: string | null
+  updated_at: string
+  scope_label: string
+  messages: ChatMessage[]
+}

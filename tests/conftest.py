@@ -25,6 +25,7 @@ def make_settings(data_dir: Path) -> Settings:
         transcription={"engine": "fake"},
         llm={"provider": "mock"},
         generation={"auto": False},
+        search={"embed_provider": "mock"},
     )
 
 

@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from typing import Any
 
 import anthropic
 import pydantic
 
-from backend.ai.types import LLMError, LLMRefusal, LLMRequest, LLMResult, Usage
+from backend.ai.types import (
+    ChatEvent,
+    ChatRequest,
+    LLMError,
+    LLMRefusal,
+    LLMRequest,
+    LLMResult,
+    Usage,
+)
 from backend.core.config import LLMConfig
 
 log = logging.getLogger(__name__)
@@ -164,3 +173,46 @@ class AnthropicProvider:
         raise LLMError(
             f"{req.task}: no valid output after {self.cfg.max_retries + 1} attempts ({last_error})"
         )
+
+    def chat_stream(self, req: ChatRequest) -> Iterator[ChatEvent]:
+        model = self.model_for("chat", req.tier)
+        system: list[dict[str, Any]] = [{"type": "text", "text": req.system}]
+        if req.context:
+            # Large, stable material (a whole lecture) after the instructions, cached so that
+            # follow-up questions in the same chat only pay for the new turn.
+            system.append(
+                {"type": "text", "text": req.context, "cache_control": {"type": "ephemeral"}}
+            )
+        kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": req.max_tokens,
+            "system": system,
+            "messages": req.messages,
+            "output_config": {"effort": self.cfg.chat_effort},
+        }
+        if self.cfg.anthropic_fallbacks and model in FALLBACK_MODELS:
+            kwargs["fallbacks"] = "default"
+            kwargs["betas"] = [FALLBACK_BETA]
+        try:
+            with self.client.beta.messages.stream(**kwargs) as stream:
+                for delta in stream.text_stream:
+                    yield ChatEvent("text", delta)
+                msg = stream.get_final_message()
+        except anthropic.AuthenticationError as e:
+            raise LLMError("The Anthropic API key was rejected. Check it in Settings.") from e
+        except anthropic.RateLimitError as e:
+            raise LLMError("Anthropic rate limit hit; try again in a minute.") from e
+        except anthropic.APIConnectionError as e:
+            raise LLMError("Could not reach the Anthropic API (offline?). Try Ollama.") from e
+        except anthropic.APIStatusError as e:
+            raise LLMError(f"Anthropic error {e.status_code}: {getattr(e, 'message', e)}") from e
+        if msg.stop_reason == "refusal":
+            yield ChatEvent("text", "\n\n_Claude declined to answer this._")
+        u = msg.usage
+        usage = Usage(
+            input_tokens=u.input_tokens or 0,
+            output_tokens=u.output_tokens or 0,
+            cache_read_tokens=u.cache_read_input_tokens or 0,
+            cache_write_tokens=u.cache_creation_input_tokens or 0,
+        )
+        yield ChatEvent("done", model=msg.model, usage=usage)

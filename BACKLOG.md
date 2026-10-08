@@ -15,3 +15,6 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Cost: use the Message Batches API (50% off) for non-urgent overnight generation.
 - Show a per-lecture cost breakdown (usage_record already stores it; M8 adds the page).
 - Card/question inline editing (Phase 2 card management).
+- Search snippets: render light Markdown/LaTeX instead of raw `**`/`$` characters.
+- Chat: optional reranking with the cheap model for subject/all scope (SPEC 10 says optional).
+- Chat: show the retrieved sources under each answer (they are streamed as a `sources` event).

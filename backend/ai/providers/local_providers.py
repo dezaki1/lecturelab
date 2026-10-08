@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Iterator
 
 import httpx2 as httpx
 import pydantic
 
-from backend.ai.types import LLMError, LLMRequest, LLMResult, Usage
+from backend.ai.types import ChatEvent, ChatRequest, LLMError, LLMRequest, LLMResult, Usage
 from backend.core.config import LLMConfig
 
 log = logging.getLogger(__name__)
@@ -72,6 +73,49 @@ class OllamaProvider:
                 continue
             return LLMResult(parsed, model, self.name, usage, attempt)
         raise LLMError(f"{req.task}: Ollama gave no valid output ({last})")
+
+
+def _chat_messages(req: ChatRequest) -> list[dict[str, str]]:
+    system = req.system + (f"\n\n{req.context}" if req.context else "")
+    return [{"role": "system", "content": system}, *req.messages]
+
+
+def _ollama_chat_stream(self: OllamaProvider, req: ChatRequest) -> Iterator[ChatEvent]:
+    model = self.model_for("chat", req.tier)
+    body = {
+        "model": model,
+        "stream": True,
+        "options": {"num_ctx": self.cfg.ollama_num_ctx, "temperature": 0.3},
+        "messages": _chat_messages(req),
+    }
+    usage = Usage()
+    try:
+        with httpx.stream(
+            "POST",
+            f"{self.cfg.ollama_url.rstrip('/')}/api/chat",
+            json=body,
+            timeout=self.cfg.timeout_s,
+        ) as r:
+            if r.status_code >= 400:
+                r.read()
+                raise LLMError(f"Ollama error {r.status_code}: {r.text[:300]}")
+            for line in r.iter_lines():
+                if not line.strip():
+                    continue
+                data = json.loads(line)
+                if data.get("message", {}).get("content"):
+                    yield ChatEvent("text", data["message"]["content"])
+                if data.get("done"):
+                    usage = Usage(
+                        input_tokens=data.get("prompt_eval_count", 0),
+                        output_tokens=data.get("eval_count", 0),
+                    )
+    except httpx.HTTPError as e:
+        raise LLMError(f"Ollama is not reachable at {self.cfg.ollama_url} ({e})") from e
+    yield ChatEvent("done", model=model, usage=usage)
+
+
+OllamaProvider.chat_stream = _ollama_chat_stream  # type: ignore[attr-defined]
 
 
 class OpenAICompatProvider:
@@ -135,3 +179,30 @@ class OpenAICompatProvider:
                 continue
             return LLMResult(parsed, model, self.name, usage, attempt)
         raise LLMError(f"{req.task}: no valid output ({last})")
+
+    def chat_stream(self, req: ChatRequest) -> Iterator[ChatEvent]:
+        model = self.model_for("chat", req.tier)
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        body = {"model": model, "stream": True, "messages": _chat_messages(req)}
+        try:
+            with httpx.stream(
+                "POST",
+                f"{self.cfg.openai_base_url.rstrip('/')}/chat/completions",
+                json=body,
+                headers=headers,
+                timeout=self.cfg.timeout_s,
+            ) as r:
+                if r.status_code >= 400:
+                    r.read()
+                    raise LLMError(f"Endpoint error {r.status_code}: {r.text[:300]}")
+                for line in r.iter_lines():
+                    if not line.startswith("data:") or line.strip() == "data: [DONE]":
+                        continue
+                    data = json.loads(line[5:])
+                    for choice in data.get("choices", []):
+                        delta = (choice.get("delta") or {}).get("content")
+                        if delta:
+                            yield ChatEvent("text", delta)
+        except httpx.HTTPError as e:
+            raise LLMError(f"Endpoint not reachable: {e}") from e
+        yield ChatEvent("done", model=model, usage=Usage())

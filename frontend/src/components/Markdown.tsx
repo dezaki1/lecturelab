@@ -7,7 +7,9 @@ import rehypeHighlight from 'rehype-highlight'
 import rehypeKatex from 'rehype-katex'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import { useNavigate } from 'react-router'
 
+import type { Citation } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** Plain text of rendered React children (for styling decisions). */
@@ -68,7 +70,35 @@ export function TimeChip({ t, children }: { t: number; children?: ReactNode }) {
   )
 }
 
-export function Markdown({ children, className }: { children: string; className?: string }) {
+/** A chat citation like [L5 · 34:12]: opens the lecture and plays from that moment. */
+function CitationChip({ citation }: { citation: Citation }) {
+  const navigate = useNavigate()
+  const t = citation.start_s != null ? `?t=${Math.floor(citation.start_s)}` : ''
+  return (
+    <button
+      type="button"
+      onClick={() => navigate(`/lectures/${citation.lecture_id}${t}`)}
+      className="mx-0.5 inline-flex items-center rounded-md bg-primary/10 px-1.5 py-px align-baseline font-mono text-[0.78em] text-primary transition hover:bg-primary/20"
+      title="Open the lecture at this moment"
+    >
+      {citation.label}
+    </button>
+  )
+}
+
+function linkCitations(md: string, citations: Citation[]): string {
+  return citations.reduce((out, c, i) => out.split(`[${c.label}]`).join(`[${c.label}](#cite=${i})`), md)
+}
+
+export function Markdown({
+  children,
+  className,
+  citations = [],
+}: {
+  children: string
+  className?: string
+  citations?: Citation[]
+}) {
   return (
     <div className={cn('prose-notes', className)}>
       <ReactMarkdown
@@ -76,6 +106,9 @@ export function Markdown({ children, className }: { children: string; className?
         rehypePlugins={[rehypeKatex, [rehypeHighlight, { detect: true, ignoreMissing: true }]]}
         components={{
           a: ({ href, children: c }) => {
+            const cite = href?.match(/^#cite=(\d+)$/)
+            if (cite && citations[Number(cite[1])])
+              return <CitationChip citation={citations[Number(cite[1])]} />
             const m = href?.match(/^#t=(\d+(?:\.\d+)?)$/)
             if (m) return <TimeChip t={Number(m[1])}>{c}</TimeChip>
             return (
@@ -96,7 +129,7 @@ export function Markdown({ children, className }: { children: string; className?
           },
         }}
       >
-        {linkTimestamps(children)}
+        {linkTimestamps(linkCitations(children, citations))}
       </ReactMarkdown>
     </div>
   )

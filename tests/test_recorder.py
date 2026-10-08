@@ -54,10 +54,10 @@ def test_record_bookmark_stop_encode(rec: TestClient, settings: Settings) -> Non
     lec = rec.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "processing" and lec["job_progress"] is not None
 
-    assert Worker().run_pending() == 2  # encode, then the auto-queued transcription
+    assert Worker().run_pending() == 3  # encode, transcription, search index
     lec = rec.get(f"/api/lectures/{lid}").json()
     assert lec["status"] == "ready", lec
-    assert lec["stages"] == {"capture": "done", "transcribe": "done"}
+    assert lec["stages"] == {"capture": "done", "transcribe": "done", "index": "done"}
     assert lec["has_audio"] and lec["stages"]["capture"] == "done"
     assert [b["kind"] for b in lec["bookmarks"]] == ["confused"]
     folder = next((settings.subjects_dir / "reinforcement-learning").iterdir())
@@ -132,7 +132,7 @@ def test_killed_process_leaves_playable_recording(tmp_path: Path) -> None:
     with _client(settings) as c:  # startup runs crash recovery
         lec = c.get("/api/lectures", params={"subject_id": sid}).json()[0]
         assert lec["status"] == "processing"
-        assert Worker().run_pending() == 2
+        assert Worker().run_pending() == 3
         lec = c.get(f"/api/lectures/{lec['id']}").json()
         assert lec["status"] == "ready" and lec["has_audio"], lec
         assert 1.0 < lec["duration_s"] < 4.0

@@ -81,6 +81,17 @@ lecture page shows a cost estimate before generating, typically a few tens of ce
 90-minute lecture with Claude Sonnet 5.5. For offline use, pick **Ollama** in Settings (install
 Ollama and `ollama pull qwen3:8b`); quality is lower.
 
+## Search and chat
+
+Press **Ctrl+K** to search all lectures (keywords and meaning, across English and German).
+**Ask your lectures** (sidebar) chats over everything or one subject; the **Ask** button on a
+lecture or subject page starts a chat scoped to it. Answers cite moments like `[L5 · 34:12]`;
+click one to jump there. With "Only from my lectures" on, the chat says when something isn't
+covered and labels any general-knowledge answer.
+
+Semantic search uses the `bge-m3` model in [Ollama](https://ollama.com) (`ollama pull bge-m3`).
+Without Ollama running, search falls back to keywords only.
+
 Hotkeys and other settings can be changed in `%USERPROFILE%\LectureLab\config.toml`.
 
 ## Development

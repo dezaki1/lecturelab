@@ -8,7 +8,9 @@ import { LiveUpdates } from '@/components/LiveUpdates'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Home } from '@/pages/Home'
+import { ChatPage } from '@/pages/ChatPage'
 import { LecturePage } from '@/pages/LecturePage'
+import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SubjectPage } from '@/pages/SubjectPage'
 
@@ -29,6 +31,9 @@ export default function App() {
                   <Route path="subjects/:id" element={<SubjectPage />} />
                   <Route path="lectures/:id" element={<LecturePage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="search" element={<SearchPage />} />
+                  <Route path="chat" element={<ChatPage />} />
+                  <Route path="chat/:id" element={<ChatPage />} />
                 </Route>
               </Routes>
             </ImportProvider>

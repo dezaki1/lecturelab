@@ -25,6 +25,7 @@ from backend.core.models import (
 )
 from backend.pipeline.generate import ALL_KINDS, estimate
 from backend.pipeline.stages import GENERATE_JOB
+from backend.search.index import INDEX_JOB, queue_index
 
 router = APIRouter(prefix="/api", tags=["materials"])
 
@@ -168,6 +169,7 @@ def post_generate(
         select(Job).where(
             Job.lecture_id == lecture_id,
             col(Job.status).in_([JobStatus.queued, JobStatus.running]),
+            Job.kind != INDEX_JOB,
         )
     ).first()
     if busy:
@@ -232,6 +234,8 @@ def edit_note(
         session.add(note)
     session.commit()
     session.refresh(note)
+    if note.lecture_id:
+        queue_index(session, note.lecture_id)
     return _note_read(session, note)
 
 

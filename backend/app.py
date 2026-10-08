@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.api import imports, lectures, materials, recorder, subjects, system
+from backend.api import chat, imports, lectures, materials, recorder, subjects, system
 from backend.api import settings as settings_api
 from backend.capture import encode  # noqa: F401  (registers the encode job handler)
 from backend.capture.recorder import (
@@ -23,8 +23,9 @@ from backend.capture.recorder import (
 )
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
-from backend.core.db import init_db
+from backend.core.db import init_db, session_scope
 from backend.pipeline import generate, ingest, transcribe  # noqa: F401  (job handlers)
+from backend.search import index as search_index
 
 log = logging.getLogger(__name__)
 
@@ -42,6 +43,9 @@ def create_app(
     rec = RecorderService(settings, source_factory)
     set_recorder(rec)
     ingest.clean_tmp()
+    with session_scope() as s:
+        if n := search_index.backfill(s):
+            log.info("Queued search indexing for %d lecture(s)", n)
     if n := recover_interrupted():
         log.warning("Recovered %d interrupted recording(s)", n)
 
@@ -63,6 +67,7 @@ def create_app(
     app.include_router(imports.router)
     app.include_router(materials.router)
     app.include_router(settings_api.router)
+    app.include_router(chat.router)
 
     _mount_frontend(app)
     return app
