@@ -27,3 +27,6 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Slides: a "share area only" crop (Zoom's shared-content region) would drop the toolbar and
   participant strip from saved images.
 - Slides: send slide images to Claude (vision) for formula-heavy slides where OCR is rough.
+- PDF placement: add bge-m3 embedding similarity for cross-language decks (German slides,
+  English speech); upload one course PDF to the subject and place pages across all lectures.
+- Cleanup: optional Sonnet for cleanup on lectures with many low-confidence lines.

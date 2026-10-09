@@ -210,6 +210,32 @@ class MockProvider:
     def _Ping(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"ok": True}
 
+    def _CleanupOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """Respell vocabulary terms that were split or mis-cased ("place holder" -> "PlaceHolder").
+
+        Also returns two fixes the job must reject: an unknown line and a full rewrite.
+        """
+        vocab = re.search(r"^Vocabulary: (.+)$", req.context, re.M)
+        terms = [t.strip() for t in vocab.group(1).split(",")] if vocab else []
+        fixes = []
+        numbered = re.findall(r"^#(\d+) \[[^\]]+\] (.*)$", req.instruction, re.M)
+        for n, text in numbered:
+            fixed = text
+            for term in terms:
+                pattern = (
+                    r"\b" + r"[\s-]?".join(re.escape(c) for c in term.replace(" ", "")) + r"\b"
+                )
+                fixed = re.sub(pattern, term, fixed, flags=re.I)
+            if fixed != text:
+                fixes.append({"line": int(n), "text": fixed, "reason": "vocabulary spelling"})
+        if numbered:
+            fixes.append({"line": 999_999, "text": "No such line.", "reason": "bogus"})
+            first = numbered[0]
+            fixes.append(
+                {"line": int(first[0]), "text": "An entirely different sentence.", "reason": "x"}
+            )
+        return {"fixes": fixes}
+
     def _VerifyOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         ids = [int(x) for x in ITEM_ID.findall(req.instruction)]
         return {

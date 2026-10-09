@@ -83,7 +83,8 @@ def delete_slide(slide_id: int, session: Session = Depends(get_session)) -> Resp
 def rerun_ocr(lecture_id: int, session: Session = Depends(get_session)) -> dict[str, bool]:
     if session.get(Lecture, lecture_id) is None:
         raise HTTPException(404, "Lecture not found")
-    for slide in session.exec(select(Slide).where(Slide.lecture_id == lecture_id)).all():
+    captured = select(Slide).where(Slide.lecture_id == lecture_id, Slide.source != "pdf")
+    for slide in session.exec(captured).all():  # PDF pages keep their text layer
         slide.ocr_text = ""
         session.add(slide)
     session.commit()

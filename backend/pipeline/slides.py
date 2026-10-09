@@ -53,6 +53,45 @@ def queue_ocr(s: Session, lecture_id: int) -> bool:
     return True
 
 
+# Slide text for the LLM ---------------------------------------------------------------------------
+SLIDE_TEXT_MAX_CHARS = 600  # per slide
+SLIDES_MAX_CHARS = 16_000  # whole section (~4k tokens)
+
+
+def primary_slides(s: Session, lecture_id: int) -> list[Slide]:
+    """The slides that stand for the lecture: pages of an added slide PDF (cleaner text) if
+    there are any, else the captured ones."""
+    rows = s.exec(
+        select(Slide).where(Slide.lecture_id == lecture_id).order_by(col(Slide.t_s))
+    ).all()
+    pdf = [r for r in rows if r.source == "pdf"]
+    return list(pdf or rows)
+
+
+def slides_text(slides: list[Slide]) -> str:
+    """One line per slide with text: "[mm:ss] (PDF p. 4) Title / bullet / bullet"."""
+    from backend.core.util import format_hms
+
+    lines: list[str] = []
+    last = ""
+    total = 0
+    for sl in slides:
+        text = " / ".join(x.strip() for x in sl.ocr_text.splitlines() if x.strip())
+        if not text or text == last:
+            continue
+        last = text
+        if len(text) > SLIDE_TEXT_MAX_CHARS:
+            text = text[:SLIDE_TEXT_MAX_CHARS].rsplit(" ", 1)[0] + " …"
+        where = f"(PDF p. {sl.page}) " if sl.source == "pdf" and sl.page else ""
+        line = f"[{format_hms(sl.t_s)}] {where}{text}"
+        total += len(line)
+        if total > SLIDES_MAX_CHARS:
+            lines.append("(more slides omitted)")
+            break
+        lines.append(line)
+    return "\n".join(lines)
+
+
 # Video imports -----------------------------------------------------------------------------------
 def find_video_slides(
     ctx: JobContext, lecture_id: int, folder: Path, src: Path, duration: float

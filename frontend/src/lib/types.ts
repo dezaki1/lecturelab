@@ -66,6 +66,8 @@ export interface Lecture {
   language: string | null
   transcription: TranscriptionStats | null
   notice: string
+  cleanup: { changed: number; model: string; prompt_version: string; at: string } | null
+  cleanup_error: string
   cost_usd: number
   bookmark_count: number
   job_progress: number | null
@@ -83,6 +85,17 @@ export interface Slide {
   source: 'screen' | 'video' | 'pdf'
   ocr_text: string
   page: number | null
+}
+
+export interface LectureDocument {
+  id: number
+  lecture_id: number | null
+  kind: string
+  title: string
+  created_at: string
+  pages: number
+  placed: number
+  processing: boolean
 }
 
 export interface SlideCaptureStatus {
@@ -141,6 +154,7 @@ export interface Segment {
   end: number
   text: string
   confidence: number | null
+  raw_text: string | null // Whisper's text when the cleanup pass changed this line
 }
 
 export interface Transcript {

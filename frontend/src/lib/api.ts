@@ -16,6 +16,7 @@ import type {
   Note,
   Lecture,
   LectureDetail,
+  LectureDocument,
   RecorderStatus,
   Slide,
   SlideSettings,
@@ -84,6 +85,15 @@ export const api = {
   deleteSlide: (slideId: number) => request<void>('DELETE', `/api/slides/${slideId}`),
   rerunSlideOcr: (lectureId: number) =>
     request<{ queued: boolean }>('POST', `/api/lectures/${lectureId}/slides/ocr`),
+  documents: (lectureId: number) => request<LectureDocument[]>('GET', `/api/lectures/${lectureId}/documents`),
+  documentFileUrl: (id: number) => `/api/documents/${id}/file`,
+  deleteDocument: (id: number) => request<void>('DELETE', `/api/documents/${id}`),
+  placeDocument: (id: number) => request<LectureDocument>('POST', `/api/documents/${id}/place`),
+  runCleanup: (lectureId: number) => request<LectureDetail>('POST', `/api/lectures/${lectureId}/cleanup`),
+  revertCleanup: (lectureId: number, segmentIds?: number[]) =>
+    request<{ reverted: number }>('POST', `/api/lectures/${lectureId}/cleanup/revert`, {
+      segment_ids: segmentIds ?? null,
+    }),
   slideSettings: () => request<SlideSettings>('GET', '/api/settings/slides'),
   putSlideSettings: (data: Partial<Pick<SlideSettings, 'enabled' | 'fallback_monitor' | 'window_titles'>>) =>
     request<SlideSettings>('PUT', '/api/settings/slides', data),
@@ -215,6 +225,19 @@ export function uploadImport(
     xhr.onerror = () => reject(new ApiError(0, 'Upload failed (is LectureLab still running?)'))
     xhr.send(file)
   })
+}
+
+/** Upload a PDF to a lecture (raw body). */
+export async function uploadDocument(lectureId: number, file: File): Promise<LectureDocument> {
+  const params = new URLSearchParams({ filename: file.name, kind: 'slides' })
+  const res = await fetch(`/api/lectures/${lectureId}/documents?${params}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/pdf' },
+    body: file,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(res.status, typeof data.detail === 'string' ? data.detail : res.statusText)
+  return data as LectureDocument
 }
 
 export type ChatStreamEvent =

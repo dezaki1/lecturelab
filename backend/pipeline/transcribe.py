@@ -17,6 +17,7 @@ from typing import Any
 
 from sqlmodel import delete
 
+from backend.ai.providers import active_provider_name
 from backend.ai.providers import is_configured as llm_configured
 from backend.core import jobs
 from backend.core.config import TranscriptionConfig, get_settings
@@ -26,6 +27,8 @@ from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import abs_path, lecture_dir
 from backend.core.media import CREATE_NO_WINDOW
 from backend.core.models import Lecture, LectureStatus, Subject, TranscriptSegment
+from backend.pipeline.cleanup import cleanup_enabled, queue_cleanup
+from backend.pipeline.documents import queue_waiting_documents
 from backend.pipeline.stages import GENERATE_JOB, TRANSCRIBE_JOB, lecture_ready, stage_failed
 
 log = logging.getLogger(__name__)
@@ -246,16 +249,24 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
         if no_speech:
             lecture.stages["generate"] = "skipped"
             lecture.meta = {**lecture.meta, "notice": "No speech detected in this recording."}
-        auto_generate = not no_speech and get_settings().generation.auto and llm_configured()
+        llm = not no_speech and llm_configured()
+        auto_generate = llm and get_settings().generation.auto
+        auto_cleanup = llm and cleanup_enabled(active_provider_name())
         if auto_generate:
             lecture.stages["generate"] = "pending"
-            lecture.status = LectureStatus.processing
-        else:
-            lecture.status = LectureStatus.ready
+        if auto_cleanup:
+            lecture.stages["cleanup"] = "pending"
+        busy = auto_generate or auto_cleanup
+        lecture.status = LectureStatus.processing if busy else LectureStatus.ready
         s.add(lecture)
         s.commit()
         subject_id, title = lecture.subject_id, lecture.title
-        if auto_generate:
+        # Slide PDFs added before the transcript existed get placed first (FIFO queue), so
+        # cleanup and generation see their text.
+        queue_waiting_documents(s, lecture_id)
+        if auto_cleanup:  # cleanup then continues with generation (or marks the lecture ready)
+            queue_cleanup(s, lecture_id, then="generate" if auto_generate else "ready")
+        elif auto_generate:
             jobs.enqueue(s, GENERATE_JOB, lecture_id=lecture_id)
         else:
             from backend.search.index import queue_index
@@ -263,5 +274,5 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
             queue_index(s, lecture_id)
     log.info("Transcribed lecture %s: %s", lecture_id, stats)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
-    if not auto_generate:  # otherwise generation announces the finished lecture
+    if not busy:  # otherwise a later step announces the finished lecture
         lecture_ready(lecture_id, title)

@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.api import (
     chat,
+    documents,
     imports,
     lectures,
     materials,
@@ -38,7 +39,13 @@ from backend.capture.slides import ScreenFactory, default_screen
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
-from backend.pipeline import generate, ingest, transcribe  # noqa: F401  (job handlers)
+from backend.pipeline import (  # noqa: F401  (job handlers)
+    cleanup,
+    generate,
+    ingest,
+    transcribe,
+)
+from backend.pipeline import documents as document_jobs  # noqa: F401
 from backend.pipeline import slides as slide_jobs  # noqa: F401
 from backend.search import index as search_index
 
@@ -88,6 +95,7 @@ def create_app(
     app.include_router(study.router)
     app.include_router(jobs_api.router)
     app.include_router(slides.router)
+    app.include_router(documents.router)
 
     _mount_frontend(app)
     return app

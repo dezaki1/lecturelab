@@ -123,6 +123,11 @@ class GenerationConfig(BaseModel):
     questions_per_10min: tuple[float, float] = (0.8, 2.5)
     exercises_per_10min: tuple[float, float] = (0.3, 1.2)
     min_items: int = 3
+    # Transcript cleanup before generation: fix misheard terms using slide text and vocabulary
+    # (cheap model). Off for local models by default: slow, and they rewrite too freely.
+    cleanup: bool = True
+    cleanup_local: bool = False
+    cleanup_lines_per_call: int = 400
 
 
 class SearchConfig(BaseModel):

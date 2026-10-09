@@ -113,6 +113,7 @@ class TranscriptSegment(SQLModel, table=True):
     text: str
     speaker: str | None = None
     confidence: float | None = None
+    raw_text: str | None = None  # Whisper's text before the cleanup pass changed it
 
 
 class Bookmark(SQLModel, table=True):
@@ -152,6 +153,7 @@ class Slide(SQLModel, table=True):
     page: int | None = None
     phash: str = ""
     window_title: str = ""
+    score: float | None = None  # PDF pages: how well the page matched the lecture (0-1)
 
 
 class Job(SQLModel, table=True):

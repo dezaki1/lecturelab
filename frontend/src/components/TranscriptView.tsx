@@ -1,10 +1,11 @@
-import { ChevronDown, ChevronUp, CircleHelp, Crosshair, Search, Star } from 'lucide-react'
+import { ChevronDown, ChevronUp, CircleHelp, Crosshair, Search, SpellCheck, Star } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { SlideThumb } from '@/components/slides'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDuration } from '@/lib/dates'
+import { diffWords } from '@/lib/wordDiff'
 import type { Bookmark, Segment, Slide } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,29 @@ export function activeIndex(segments: Segment[], t: number): number {
     } else hi = mid - 1
   }
   return ans
+}
+
+function Diff({ before, after }: { before: string; after: string }) {
+  return (
+    <>
+      {diffWords(before, after).map((p, k) =>
+        p.type === 'same' ? (
+          <span key={k}>{p.text}</span>
+        ) : p.type === 'del' ? (
+          <del key={k} className="text-red-600/80 decoration-red-500/60 dark:text-red-400/80">
+            {p.text}
+          </del>
+        ) : (
+          <ins
+            key={k}
+            className="rounded-sm bg-emerald-500/15 text-emerald-700 no-underline dark:text-emerald-300"
+          >
+            {p.text}
+          </ins>
+        ),
+      )}
+    </>
+  )
 }
 
 function highlight(text: string, query: string): ReactNode {
@@ -46,6 +70,8 @@ export function TranscriptView({
   currentTime,
   onSeek,
   onOpenSlide,
+  showChanges = false,
+  onRevert,
 }: {
   segments: Segment[]
   bookmarks: Bookmark[]
@@ -53,6 +79,8 @@ export function TranscriptView({
   currentTime: number
   onSeek: (t: number) => void
   onOpenSlide?: (index: number) => void
+  showChanges?: boolean
+  onRevert?: (segmentId: number) => void
 }) {
   const [query, setQuery] = useState('')
   const [matchPos, setMatchPos] = useState(0)
@@ -231,8 +259,26 @@ export function TranscriptView({
                       : undefined
                   }
                 >
-                  {highlight(s.text, q)}
+                  {showChanges && s.raw_text ? (
+                    <Diff before={s.raw_text} after={s.text} />
+                  ) : (
+                    highlight(s.text, q)
+                  )}
                 </p>
+                {s.raw_text && !showChanges && (
+                  <button
+                    type="button"
+                    className="mt-1 shrink-0 text-emerald-600/70 opacity-60 transition hover:opacity-100 dark:text-emerald-400/70"
+                    title={`Misheard term fixed. Transcribed as: “${s.raw_text}”. Click to undo.`}
+                    aria-label="Undo this fix"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onRevert?.(s.id)
+                    }}
+                  >
+                    <SpellCheck className="size-3.5" />
+                  </button>
+                )}
                 {marks
                   .get(i)
                   ?.map((b) =>

@@ -59,6 +59,15 @@ The app listens on `http://127.0.0.1:8765` only. Data is stored in `%USERPROFILE
   capture when slides are shown somewhere else.
 - Quit via the tray icon (**Quit**) so an in-progress recording is finalised cleanly.
 
+## Slide PDFs
+
+On a lecture's **Slides** tab, **Add PDF** attaches the slide deck (e.g. from Moodle). Each page
+is placed at the moment it was discussed, using the transcript and any captured slides; pages
+that belong to other lectures are left out, so you can add the same chapter PDF to several
+lectures. PDF pages then replace the captured screenshots in the transcript and notes (switch
+between the two on the Slides tab), and their text is used for search, chat and study material.
+PDFs without a text layer (scans) can't be placed.
+
 ## Importing recordings
 
 Drag audio or video files (mp4, m4a, mp3, wav, webm, …) anywhere onto the LectureLab window, or
@@ -67,6 +76,13 @@ kept (as `audio.m4a`) plus one picture per slide found in a video; your original
 left untouched. The lecture date is taken from the file's metadata.
 
 ## Transcripts
+
+After transcription, a quick pass with the cheap Claude model fixes misheard technical terms
+(e.g. "eigen vectors" → "eigenvectors", "numb pie" → "NumPy") using the slide text and the
+subject's vocabulary. It never rephrases. **Show changes** on the Transcript tab shows each fix
+as a diff; undo single lines or all of them, or **Check again** after adding a PDF or vocabulary.
+Costs about $0.01-0.03 per lecture. Not run automatically with local models.
+
 
 Every recording and import is transcribed automatically (Whisper, on the GPU when available).
 The lecture page shows the transcript next to the player: the current sentence is highlighted

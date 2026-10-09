@@ -44,7 +44,11 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     faster-whisper or the "fake" engine; JSON-lines progress on stdout)
                     generate (job: study material; context building, refs, versioning, dedupe,
                     verification), slides (job `slides`: OCR via ocr_worker child process
-                    (RapidOCR, CPU); slide scan of imported videos), ocr_worker
+                    (RapidOCR, CPU); slide scan of imported videos), ocr_worker,
+                    cleanup (job: cheap-model fix of misheard terms -> TranscriptSegment.raw_text
+                    keeps Whisper's line; then generate/ready/index), documents (job: slide PDFs
+                    via pypdfium2 -> page JPEGs + text -> Slide rows source "pdf"), align (TF-IDF
+                    + monotonic DP placing PDF pages; captured slides are exact anchors)
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -106,4 +110,10 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   failed OCR never fails the lecture. `ocr_text == " "` means "OCR ran, no text".
 - UI-editable settings that aren't secrets (LLM provider, slide capture) live in state.json and
   override config.toml at startup.
+- Pipeline order: capture -> [slides OCR] -> transcribe -> [slide PDFs placed] -> cleanup ->
+  generate -> index. Cleanup is skipped for local providers unless `generation.cleanup_local`;
+  tests default to `generation.cleanup = False` (conftest). A failed cleanup still continues.
+- "Primary" slides (generation context, transcript/notes thumbnails): PDF pages if the lecture
+  has any, else captured slides (`pipeline.slides.primary_slides`).
+- Test PDFs: `tests/pdfgen.make_pdf` writes real text PDFs (Pillow PDFs have no text layer).
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.

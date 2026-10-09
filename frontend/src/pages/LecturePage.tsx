@@ -10,6 +10,8 @@ import { useStartChat } from '@/pages/ChatPage'
 import { GenerationPanel } from '@/components/materials/GenerationPanel'
 import { ExerciseList, FlashcardList, QuestionList } from '@/components/materials/ItemLists'
 import { NoteView } from '@/components/materials/NoteView'
+import { CleanupBar } from '@/components/CleanupBar'
+import { SlideDocuments } from '@/components/SlideDocuments'
 import { SlidesContext, SlidesGrid, SlideViewer } from '@/components/slides'
 import { TranscriptionPanel } from '@/components/TranscriptionPanel'
 import { TranscriptView } from '@/components/TranscriptView'
@@ -48,6 +50,8 @@ export function LecturePage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [viewer, setViewer] = useState<number | null>(null)
+  const [showChanges, setShowChanges] = useState(false)
+  const [slideSource, setSlideSource] = useState<'pdf' | 'screen'>('pdf')
   const [params, setParams] = useSearchParams()
   const startAt = params.get('t') != null ? Number(params.get('t')) : null
   const startChat = useStartChat()
@@ -70,6 +74,11 @@ export function LecturePage() {
     queryFn: () => api.slides(id),
     enabled: Boolean(lecture?.slide_count),
   })
+  // With both a slide PDF and captured slides, one set is shown everywhere (PDF by default).
+  const hasPdf = slides.some((s) => s.source === 'pdf')
+  const hasCaptured = slides.some((s) => s.source !== 'pdf')
+  const source = hasPdf && hasCaptured ? slideSource : hasPdf ? 'pdf' : 'screen'
+  const shown = slides.filter((s) => (s.source === 'pdf') === (source === 'pdf'))
 
   // Keyboard: Space play/pause, ←/→ seek 5 s (when not typing).
   useEffect(() => {
@@ -112,6 +121,11 @@ export function LecturePage() {
     mutationFn: (kind: BookmarkKind) =>
       api.addBookmark(id, { t_s: Math.round((audio.current?.currentTime ?? 0) * 10) / 10, kind }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['lecture', id] }),
+  })
+  const revertLine = useMutation({
+    mutationFn: (segmentId: number) => api.revertCleanup(id, [segmentId]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['transcript', id] }),
+    onError: (e: Error) => toast.error(e.message),
   })
   const delBookmark = useMutation({
     mutationFn: (bid: number) => api.deleteBookmark(id, bid),
@@ -250,7 +264,7 @@ export function LecturePage() {
       <GenerationPanel lecture={lecture} />
 
       <SeekContext.Provider value={(t) => seek(t, 0)}>
-        <SlidesContext.Provider value={{ slides, open: setViewer }}>
+        <SlidesContext.Provider value={{ slides: shown, open: setViewer }}>
           <Tabs
             key={hasNotes ? 'material' : 'plain'}
             defaultValue={startAt != null || !hasNotes ? 'transcript' : 'summary'}
@@ -260,9 +274,7 @@ export function LecturePage() {
               <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="transcript">Transcript</TabsTrigger>
-              {lecture.slide_count > 0 && (
-                <TabsTrigger value="slides">Slides ({lecture.slide_count})</TabsTrigger>
-              )}
+              <TabsTrigger value="slides">Slides{shown.length ? ` (${shown.length})` : ''}</TabsTrigger>
               <TabsTrigger value="flashcards">Flashcards{count(materials?.flashcards)}</TabsTrigger>
               <TabsTrigger value="exercises">Exercises{count(materials?.exercises)}</TabsTrigger>
               <TabsTrigger value="questions">Exam questions{count(materials?.questions)}</TabsTrigger>
@@ -292,14 +304,24 @@ export function LecturePage() {
 
             <TabsContent value="transcript" className="mt-2">
               {transcript?.segments.length ? (
-                <TranscriptView
-                  segments={transcript.segments}
-                  bookmarks={lecture.bookmarks}
-                  slides={slides}
-                  currentTime={currentTime}
-                  onSeek={(t) => seek(t, 0)}
-                  onOpenSlide={setViewer}
-                />
+                <>
+                  <CleanupBar
+                    lecture={lecture}
+                    corrected={transcript.segments.filter((s) => s.raw_text).length}
+                    showChanges={showChanges}
+                    onShowChanges={setShowChanges}
+                  />
+                  <TranscriptView
+                    segments={transcript.segments}
+                    bookmarks={lecture.bookmarks}
+                    slides={shown}
+                    currentTime={currentTime}
+                    onSeek={(t) => seek(t, 0)}
+                    onOpenSlide={setViewer}
+                    showChanges={showChanges}
+                    onRevert={(sid) => revertLine.mutate(sid)}
+                  />
+                </>
               ) : (
                 <p className="py-6 text-sm text-muted-foreground">
                   {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
@@ -310,9 +332,22 @@ export function LecturePage() {
             </TabsContent>
 
             <TabsContent value="slides" className="mt-4">
+              <SlideDocuments lecture={lecture} />
+              {hasPdf && hasCaptured && (
+                <Tabs
+                  value={source}
+                  onValueChange={(v) => setSlideSource(v as 'pdf' | 'screen')}
+                  className="mb-3"
+                >
+                  <TabsList>
+                    <TabsTrigger value="pdf">From the PDF</TabsTrigger>
+                    <TabsTrigger value="screen">Captured from the screen</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              )}
               <SlidesGrid
                 lectureId={lecture.id}
-                slides={slides}
+                slides={shown}
                 stage={lecture.stages.slides}
                 onOpen={setViewer}
               />
@@ -368,7 +403,7 @@ export function LecturePage() {
 
       <SlideViewer
         lectureId={lecture.id}
-        slides={slides}
+        slides={shown}
         index={viewer}
         onIndex={setViewer}
         onSeek={(t) => seek(t, 0)}

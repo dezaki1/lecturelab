@@ -24,7 +24,7 @@ def make_settings(data_dir: Path) -> Settings:
         tray=False,
         transcription={"engine": "fake"},
         llm={"provider": "mock"},
-        generation={"auto": False},
+        generation={"auto": False, "cleanup": False},
         search={"embed_provider": "mock"},
         slides={"enabled": False},  # never grab the real screen; test_slides uses a fake
     )

@@ -136,6 +136,16 @@ class VerifyOut(BaseModel):
     verdicts: list[Verdict]
 
 
+class LineFix(BaseModel):
+    line: int = Field(description="The line number shown before the timestamp")
+    text: str = Field(description="The complete corrected line")
+    reason: str = Field(description='What was misheard, e.g. "eigen vectors → eigenvectors"')
+
+
+class CleanupOut(BaseModel):
+    fixes: list[LineFix] = Field(description="Only lines that needed a fix")
+
+
 OUTPUTS: dict[str, type[BaseModel]] = {
     "summary": SummaryOut,
     "notes": NotesOut,
@@ -145,4 +155,5 @@ OUTPUTS: dict[str, type[BaseModel]] = {
     "exercises": ExercisesOut,
     "questions": QuestionsOut,
     "verify": VerifyOut,
+    "cleanup": CleanupOut,
 }

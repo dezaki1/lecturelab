@@ -1,7 +1,8 @@
 """Job: generate study material for a lecture (SPEC §9).
 
 All calls share one cacheable prefix: the system prompt (global rules + subject instructions)
-and the lecture context (metadata, earlier lectures, bookmarks, timestamped transcript). The
+and the lecture context (metadata, earlier lectures, bookmarks, slide text, timestamped
+transcript). The
 first call runs alone so it writes the cache; the rest run in parallel and read it.
 
 Every item carries ``source_refs`` built from the timestamps the model cites; refs that don't
@@ -163,6 +164,12 @@ def build_context(session: Session, lecture: Lecture) -> LectureContext:
         )
         or "(none)"
     )
+    from backend.pipeline.slides import primary_slides, slides_text
+
+    slide_lines = slides_text(primary_slides(session, lecture.id))  # type: ignore[arg-type]
+    if slide_lines:
+        parts.append("\n## Slides shown (time each slide appeared; text from OCR or the PDF)")
+        parts.append(slide_lines)
     parts.append("\n## Transcript")
     parts.extend(f"[{format_hms(s.start)}] {s.text}" for s in segments)
     return LectureContext(
@@ -229,28 +236,34 @@ class Runner:
             shared_outputs=shared,
         )
         result = self.provider.complete(req)
-        cost = result.usage.cost(result.model)
-        with session_scope() as s:
-            s.add(
-                UsageRecord(
-                    lecture_id=self.ctx.lecture_id,
-                    subject_id=self.ctx.subject_id,
-                    task=task,
-                    provider=result.provider,
-                    model=result.model,
-                    input_tokens=result.usage.input_tokens,
-                    output_tokens=result.usage.output_tokens,
-                    cache_read_tokens=result.usage.cache_read_tokens,
-                    cache_write_tokens=result.usage.cache_write_tokens,
-                    cost_usd=cost,
-                )
-            )
-            lecture = s.get(Lecture, self.ctx.lecture_id)
-            if lecture is not None:
-                lecture.cost_usd = (lecture.cost_usd or 0) + cost
-                s.add(lecture)
-            s.commit()
+        record_usage(self.ctx.lecture_id, self.ctx.subject_id, task, result)
         return result
+
+
+def record_usage(lecture_id: int, subject_id: int, task: str, result: LLMResult) -> float:
+    """Store a usage record and add the cost to the lecture's total."""
+    cost = result.usage.cost(result.model)
+    with session_scope() as s:
+        s.add(
+            UsageRecord(
+                lecture_id=lecture_id,
+                subject_id=subject_id,
+                task=task,
+                provider=result.provider,
+                model=result.model,
+                input_tokens=result.usage.input_tokens,
+                output_tokens=result.usage.output_tokens,
+                cache_read_tokens=result.usage.cache_read_tokens,
+                cache_write_tokens=result.usage.cache_write_tokens,
+                cost_usd=cost,
+            )
+        )
+        lecture = s.get(Lecture, lecture_id)
+        if lecture is not None:
+            lecture.cost_usd = (lecture.cost_usd or 0) + cost
+            s.add(lecture)
+        s.commit()
+    return cost
 
 
 # Notes ----------------------------------------------------------------------------------------

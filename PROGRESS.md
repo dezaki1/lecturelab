@@ -100,7 +100,19 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
     correct incl. λ, Σ, ≥; window capture of a GPU-rendered window ~35 ms.
   - Still to verify with a real Zoom meeting (window class names `ConfMultiTabContentWndClass`
     / `ZPContentViewWndClass` are from Zoom's docs/community, not tested here): use Test capture.
-- [ ] **M10 Slide PDFs + transcript cleanup**
+- [x] **M10 Slide PDFs + transcript cleanup**: add slide PDFs to a lecture (pypdfium2: page
+  images + text layer); pages placed on the timeline by TF-IDF similarity + monotonic alignment
+  (captured slides as exact anchors, transcript for the rest, refined to the sentence; pages of
+  other lectures left out, gaps interpolated); PDF pages become the lecture's primary slides;
+  slide text (PDF or OCR) goes into the generation context (system prompt v3); transcript
+  cleanup job with the cheap model before generation (only near-identical line fixes accepted,
+  Whisper's line kept in `raw_text`), diff view, per-line and full undo, re-run; failed cleanup
+  never blocks generation
+  - Verified on the 2-min demo: 6 of 7 PDF pages placed (off-topic page dropped), anchored pages
+    at the captured slides' exact times, transcript-placed pages within ~1 s of the right
+    sentence; alignment test on the fixture script within ~5 s.
+  - Still to see on real lectures: German slides with English speech (TF-IDF needs shared
+    words; embeddings would help, see BACKLOG) and the real cost/benefit of cleanup.
 - [ ] **M11 Cards + dashboard**
 - [ ] **M12 Confused bookmarks + exam hints**
 - [ ] **M13 Subject hub**

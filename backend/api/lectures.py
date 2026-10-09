@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session, col, func, select
 
+from backend.ai.providers import is_configured
 from backend.capture.recorder import get_recorder
 from backend.core import jobs as jobs_mod
 from backend.core.db import get_session
@@ -20,10 +21,12 @@ from backend.core.models import (
     Lecture,
     LectureSource,
     LectureStatus,
+    Material,
     Slide,
     Subject,
     TranscriptSegment,
 )
+from backend.pipeline.cleanup import queue_cleanup, revert
 from backend.pipeline.stages import TRANSCRIBE_JOB
 from backend.search.index import INDEX_JOB, remove_lecture_index
 
@@ -55,6 +58,8 @@ class LectureRead(BaseModel):
     language: str | None = None
     transcription: dict | None = None  # model, device, speed_x, ... from the last run
     notice: str = ""  # e.g. "No speech detected in this recording."
+    cleanup: dict | None = None  # last cleanup run: changed lines, model, time
+    cleanup_error: str = ""
     cost_usd: float = 0.0
     bookmark_count: int = 0
     job_progress: float | None = None
@@ -109,6 +114,8 @@ def _to_read(
         "has_audio": bool(lecture.media_path) and abs_path(lecture.media_path).exists(),
         "transcription": lecture.meta.get("transcription"),
         "notice": lecture.meta.get("notice", ""),
+        "cleanup": lecture.meta.get("cleanup"),
+        "cleanup_error": lecture.meta.get("cleanup_error", ""),
         "bookmark_count": bookmark_count,
         "job_progress": job.progress if job else None,
         "job_message": job.message if job else "",
@@ -225,6 +232,9 @@ def delete_lecture(lecture_id: int, session: Session = Depends(get_session)) -> 
         session.delete(bm)
     for slide in session.exec(select(Slide).where(Slide.lecture_id == lecture_id)).all():
         session.delete(slide)  # image files went to the trash with the folder
+    session.flush()
+    for doc in session.exec(select(Material).where(Material.lecture_id == lecture_id)).all():
+        session.delete(doc)
     session.delete(lecture)
     session.commit()
     return Response(status_code=204)
@@ -269,6 +279,7 @@ class SegmentRead(BaseModel):
     end: float
     text: str
     confidence: float | None
+    raw_text: str | None = None  # set when the cleanup pass changed this line
 
 
 class TranscriptRead(BaseModel):
@@ -313,3 +324,42 @@ def retranscribe(
     bus.publish("lecture", {"id": lecture_id, "subject_id": lecture.subject_id})
     session.refresh(lecture)
     return _detail(session, lecture)
+
+
+class RevertRequest(BaseModel):
+    segment_ids: list[int] | None = None  # None = every corrected line
+
+
+@router.post("/{lecture_id}/cleanup", response_model=LectureDetail, status_code=202)
+def run_cleanup(lecture_id: int, session: Session = Depends(get_session)) -> dict:
+    """Fix misheard terms again, e.g. after adding a slide PDF or vocabulary."""
+    lecture = _get(session, lecture_id)
+    if lecture.stages.get("transcribe") != "done":
+        raise HTTPException(409, "Transcribe the lecture first")
+    if not session.exec(
+        select(TranscriptSegment.id).where(TranscriptSegment.lecture_id == lecture_id).limit(1)
+    ).first():
+        raise HTTPException(409, "No speech was detected in this recording")
+    if not is_configured():
+        raise HTTPException(409, "Add an Anthropic API key on the Settings page first")
+    if _active_jobs(session, [lecture_id]):
+        raise HTTPException(409, "This lecture is already being processed")
+    queue_cleanup(session, lecture_id, then="index")
+    bus.publish("lecture", {"id": lecture_id, "subject_id": lecture.subject_id})
+    session.refresh(lecture)
+    return _detail(session, lecture)
+
+
+@router.post("/{lecture_id}/cleanup/revert")
+def revert_cleanup(
+    lecture_id: int, req: RevertRequest, session: Session = Depends(get_session)
+) -> dict[str, int]:
+    """Put back Whisper's original text for some or all corrected lines."""
+    lecture = _get(session, lecture_id)
+    n = revert(session, req.segment_ids, lecture_id)
+    if n:
+        from backend.search.index import queue_index
+
+        queue_index(session, lecture_id)
+        bus.publish("lecture", {"id": lecture_id, "subject_id": lecture.subject_id})
+    return {"reverted": n}

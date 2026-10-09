@@ -201,12 +201,14 @@ export function SlidesGrid({
   if (!slides.length) {
     return (
       <p className="py-6 text-sm text-muted-foreground">
-        No slides. While recording, LectureLab captures the Zoom window whenever the slide changes (the slides
-        button next to the mic). Imported videos are scanned for slides automatically.
+        No slides yet. Add the lecture&apos;s slide PDF above, or record with slide capture on (the button
+        next to the mic) and LectureLab saves the Zoom window whenever the slide changes. Imported videos are
+        scanned for slides automatically.
       </p>
     )
   }
   const reading = stage === 'pending' || stage === 'running'
+  const fromPdf = slides.every((s) => s.source === 'pdf')
   return (
     <div>
       <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
@@ -219,15 +221,17 @@ export function SlidesGrid({
         ) : (
           <span>{slides.length} slides · click one to enlarge, or ← → to browse</span>
         )}
-        <Button
-          size="xs"
-          variant="ghost"
-          className="ml-auto"
-          disabled={reading || ocr.isPending}
-          onClick={() => ocr.mutate()}
-        >
-          <ScanText /> Read text again
-        </Button>
+        {!fromPdf && (
+          <Button
+            size="xs"
+            variant="ghost"
+            className="ml-auto"
+            disabled={reading || ocr.isPending}
+            onClick={() => ocr.mutate()}
+          >
+            <ScanText /> Read text again
+          </Button>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {slides.map((s, i) => (
