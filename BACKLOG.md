@@ -22,3 +22,8 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
   need a WinRT toast library).
 - Chat: optional reranking with the cheap model for subject/all scope (SPEC 10 says optional).
 - Chat: show the retrieved sources under each answer (they are streamed as a `sources` event).
+- Slides: collapse progressive builds (bullet-by-bullet reveals) into the final slide; mark
+  revisited slides (same dhash) instead of storing them again.
+- Slides: a "share area only" crop (Zoom's shared-content region) would drop the toolbar and
+  participant strip from saved images.
+- Slides: send slide images to Claude (vision) for formula-heavy slides where OCR is rough.

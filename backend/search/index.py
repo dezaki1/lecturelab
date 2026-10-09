@@ -1,7 +1,8 @@
 """Search index: chunk lectures into ``chunk`` rows mirrored into FTS5 and sqlite-vec.
 
 Transcript chunks are 60-90 s windows cut at segment boundaries; note chunks are one per
-"## " section of the generated notes (plus the summary and announcements). Indexing a lecture
+"## " section of the generated notes (plus the summary and announcements); slide chunks are
+the OCR text of one slide. Indexing a lecture
 is idempotent: its old chunks are removed first. If embeddings are unavailable (Ollama down)
 the lecture is still keyword-searchable and gets embedded on the next index run.
 """
@@ -20,7 +21,7 @@ from backend.core.config import get_settings
 from backend.core.db import session_scope
 from backend.core.events import bus
 from backend.core.jobs import JobContext, JobError, handler
-from backend.core.models import Chunk, Job, JobStatus, Lecture, Note, TranscriptSegment
+from backend.core.models import Chunk, Job, JobStatus, Lecture, Note, Slide, TranscriptSegment
 from backend.search.embeddings import EmbeddingError, embed, pack
 
 log = logging.getLogger(__name__)
@@ -102,6 +103,30 @@ def note_chunks(note: Note) -> list[dict]:
     return [c for c in out if c["text"]]
 
 
+MIN_SLIDE_TEXT = 15  # shorter OCR text (a title card, a logo) isn't worth indexing
+
+
+def slide_chunks(slides: list[Slide]) -> list[dict]:
+    """One chunk per slide with readable text; a slide lasts until the next one appears."""
+    out: list[dict] = []
+    for i, sl in enumerate(slides):
+        text = sl.ocr_text.strip()
+        if len(text) < MIN_SLIDE_TEXT or (out and out[-1]["text"] == text):
+            continue
+        end = slides[i + 1].t_s if i + 1 < len(slides) else None
+        out.append(
+            {
+                "source": "slide",
+                "heading": text.splitlines()[0][:120],
+                "text": text,
+                "start_s": sl.t_s,
+                "end_s": end,
+                "page": sl.page,
+            }
+        )
+    return out
+
+
 def remove_lecture_index(s: Session, lecture_id: int) -> None:
     ids = s.exec(select(Chunk.id).where(Chunk.lecture_id == lecture_id)).all()
     if ids:
@@ -129,7 +154,11 @@ def index_lecture(lecture_id: int) -> dict[str, Any]:
                 col(Note.kind).in_(NOTE_KINDS_INDEXED),
             )
         ).all()
+        slides = s.exec(
+            select(Slide).where(Slide.lecture_id == lecture_id).order_by(col(Slide.t_s))
+        ).all()
         raw = transcript_chunks(list(segments), cfg.chunk_min_s, cfg.chunk_max_s)
+        raw.extend(slide_chunks(list(slides)))
         for n in notes:
             raw.extend(note_chunks(n))
         remove_lecture_index(s, lecture_id)

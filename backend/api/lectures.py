@@ -20,6 +20,7 @@ from backend.core.models import (
     Lecture,
     LectureSource,
     LectureStatus,
+    Slide,
     Subject,
     TranscriptSegment,
 )
@@ -62,6 +63,7 @@ class LectureRead(BaseModel):
 
 class LectureDetail(LectureRead):
     bookmarks: list[BookmarkRead] = Field(default_factory=list)
+    slide_count: int = 0
 
 
 class LectureUpdate(BaseModel):
@@ -158,6 +160,9 @@ def _detail(session: Session, lecture: Lecture) -> dict[str, object]:
     return {
         **_to_read(lecture, _numbers(session, lecture.subject_id)[lecture.id], len(bookmarks), job),  # type: ignore[index]
         "bookmarks": [b.model_dump() for b in bookmarks],
+        "slide_count": len(
+            session.exec(select(Slide.id).where(Slide.lecture_id == lecture.id)).all()
+        ),
     }
 
 
@@ -218,6 +223,8 @@ def delete_lecture(lecture_id: int, session: Session = Depends(get_session)) -> 
     remove_lecture_index(session, lecture_id)
     for bm in session.exec(select(Bookmark).where(Bookmark.lecture_id == lecture_id)).all():
         session.delete(bm)
+    for slide in session.exec(select(Slide).where(Slide.lecture_id == lecture_id)).all():
+        session.delete(slide)  # image files went to the trash with the folder
     session.delete(lecture)
     session.commit()
     return Response(status_code=204)

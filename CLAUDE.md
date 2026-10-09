@@ -34,13 +34,17 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     library (lecture folders), state (last-used subject)
   capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
-                    crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray
+                    crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray ;
+                    slides (change detector on 64x36 thumbnails with learned video mask, slide
+                    storage, SlideGrabber thread) ; screens (ctypes: find Zoom window,
+                    PrintWindow/ImageGrab, monitors)
   pipeline/         ingest (import job), stages (stage bookkeeping + auto-queue transcription),
                     transcribe (job: runs whisper_worker child process, CPU fallback, re-segments
                     into sentence lines), whisper_worker (standalone child: ffmpeg decode +
                     faster-whisper or the "fake" engine; JSON-lines progress on stdout)
                     generate (job: study material; context building, refs, versioning, dedupe,
-                    verification)
+                    verification), slides (job `slides`: OCR via ocr_worker child process
+                    (RapidOCR, CPU); slide scan of imported videos), ocr_worker
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -96,3 +100,10 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - Don't write multi-line Python/TS edits through bash heredocs with backslash escapes (they get
   mangled on this machine); use the file edit tools or a script file.
 - Ask before adding heavy deps or downloading models (SPEC §0.8).
+- Slides: `<lecture>/slides/<ms>.jpg` + Slide rows written immediately during capture (crash-safe).
+  Tests run with `slides.enabled = False` (conftest) so nothing grabs the real screen; pass a
+  fake `screen_factory` to `create_app`. OCR is queued before transcription (FIFO queue) and a
+  failed OCR never fails the lecture. `ocr_text == " "` means "OCR ran, no text".
+- UI-editable settings that aren't secrets (LLM provider, slide capture) live in state.json and
+  override config.toml at startup.
+- GitHub: private repo dezaki1/lecturelab; push after each milestone commit.

@@ -26,6 +26,7 @@ def make_settings(data_dir: Path) -> Settings:
         llm={"provider": "mock"},
         generation={"auto": False},
         search={"embed_provider": "mock"},
+        slides={"enabled": False},  # never grab the real screen; test_slides uses a fake
     )
 
 

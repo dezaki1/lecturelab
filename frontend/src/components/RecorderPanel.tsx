@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CircleHelp, Mic, MicOff, Square, Star } from 'lucide-react'
+import { CircleHelp, Mic, MicOff, Presentation, Square, Star } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useMatch } from 'react-router'
 import { toast } from 'sonner'
@@ -19,7 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEvent } from '@/hooks/useEvents'
 import { api } from '@/lib/api'
 import { formatDuration } from '@/lib/dates'
-import type { Level, RecorderStatus } from '@/lib/types'
+import type { Level, RecorderStatus, SlideCaptureStatus } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 function prettyHotkey(combo?: string) {
@@ -53,6 +53,26 @@ function Meter({ label, level }: { label: string; level?: Level }) {
   )
 }
 
+function SlideLine({ status }: { status: SlideCaptureStatus }) {
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <Presentation className="size-3.5" />
+      {status.source ? (
+        <span>
+          {status.count} slide{status.count === 1 ? '' : 's'} · {status.source}
+        </span>
+      ) : (
+        <span
+          className="text-amber-600 dark:text-amber-400"
+          title="Open the Zoom meeting window, or pick a monitor in Settings"
+        >
+          Waiting for the Zoom window · {status.count} so far
+        </span>
+      )}
+    </div>
+  )
+}
+
 export function RecorderPanel() {
   const qc = useQueryClient()
   const { data: status } = useQuery({ queryKey: ['recorder'], queryFn: api.recorder })
@@ -62,6 +82,8 @@ export function RecorderPanel() {
 
   const [picked, setPicked] = useState<string | null>(null)
   const [mic, setMic] = useState<boolean | null>(null)
+  const [slidesOn, setSlidesOn] = useState<boolean | null>(null)
+  const [slideStatus, setSlideStatus] = useState<SlideCaptureStatus | null>(null)
   const [levels, setLevels] = useState<Record<string, Level>>({})
   const [elapsed, setElapsed] = useState(0)
   const [noticeFor, setNoticeFor] = useState<number | null>(null)
@@ -72,11 +94,14 @@ export function RecorderPanel() {
     (status?.last_subject_id ? String(status.last_subject_id) : undefined) ??
     (subjects[0] ? String(subjects[0].id) : undefined)
   const micOn = mic ?? system?.recorder.mic_default ?? false
+  const captureSlides = slidesOn ?? system?.recorder.slides_default ?? true
 
   useEvent('recorder.state', (s: RecorderStatus) => {
     qc.setQueryData(['recorder'], s)
     if (!s.recording) setLevels({})
+    setSlideStatus(s.slides ?? null)
   })
+  useEvent('recorder.slides', (d: SlideCaptureStatus) => setSlideStatus({ count: d.count, source: d.source }))
   useEvent('recorder.level', (d: { elapsed_s: number; levels: Record<string, Level> }) => {
     setLevels(d.levels)
     setElapsed(d.elapsed_s)
@@ -91,8 +116,11 @@ export function RecorderPanel() {
   }, [status?.recording, status?.elapsed_s])
 
   const start = useMutation({
-    mutationFn: (sid: number) => api.startRecording({ subject_id: sid, mic: micOn }),
-    onSuccess: (s) => qc.setQueryData(['recorder'], s),
+    mutationFn: (sid: number) => api.startRecording({ subject_id: sid, mic: micOn, slides: captureSlides }),
+    onSuccess: (s) => {
+      qc.setQueryData(['recorder'], s)
+      setSlideStatus(s.slides ?? null)
+    },
     onError: (e: Error) => toast.error(e.message),
   })
   const stop = useMutation({
@@ -140,6 +168,7 @@ export function RecorderPanel() {
           <Meter label="System" level={levels.system} />
           {status.mic && <Meter label="Mic" level={levels.mic} />}
         </div>
+        {(slideStatus ?? status.slides) && <SlideLine status={(slideStatus ?? status.slides)!} />}
         <div className="flex gap-1">
           <Button
             size="xs"
@@ -208,6 +237,15 @@ export function RecorderPanel() {
           onClick={() => setMic(!micOn)}
         >
           {micOn ? <Mic /> : <MicOff />}
+        </Button>
+        <Button
+          size="icon-sm"
+          variant={captureSlides ? 'secondary' : 'ghost'}
+          aria-label={captureSlides ? 'Slide capture on' : 'Slide capture off'}
+          title={captureSlides ? 'Captures the Zoom window when the slide changes' : 'No slide capture'}
+          onClick={() => setSlidesOn(!captureSlides)}
+        >
+          <Presentation className={captureSlides ? undefined : 'opacity-50'} />
         </Button>
       </div>
       {hk?.enabled && (

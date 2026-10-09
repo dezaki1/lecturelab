@@ -10,6 +10,7 @@ import { useStartChat } from '@/pages/ChatPage'
 import { GenerationPanel } from '@/components/materials/GenerationPanel'
 import { ExerciseList, FlashcardList, QuestionList } from '@/components/materials/ItemLists'
 import { NoteView } from '@/components/materials/NoteView'
+import { SlidesContext, SlidesGrid, SlideViewer } from '@/components/slides'
 import { TranscriptionPanel } from '@/components/TranscriptionPanel'
 import { TranscriptView } from '@/components/TranscriptView'
 import {
@@ -46,6 +47,7 @@ export function LecturePage() {
   const audio = useRef<HTMLAudioElement>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
+  const [viewer, setViewer] = useState<number | null>(null)
   const [params, setParams] = useSearchParams()
   const startAt = params.get('t') != null ? Number(params.get('t')) : null
   const startChat = useStartChat()
@@ -62,6 +64,11 @@ export function LecturePage() {
     queryKey: ['transcript', id, lecture?.transcription?.elapsed_s],
     queryFn: () => api.transcript(id),
     enabled: transcribed,
+  })
+  const { data: slides = [] } = useQuery({
+    queryKey: ['slides', id, lecture?.slide_count, lecture?.stages.slides],
+    queryFn: () => api.slides(id),
+    enabled: Boolean(lecture?.slide_count),
   })
 
   // Keyboard: Space play/pause, ←/→ seek 5 s (when not typing).
@@ -243,105 +250,129 @@ export function LecturePage() {
       <GenerationPanel lecture={lecture} />
 
       <SeekContext.Provider value={(t) => seek(t, 0)}>
-        <Tabs
-          key={hasNotes ? 'material' : 'plain'}
-          defaultValue={startAt != null || !hasNotes ? 'transcript' : 'summary'}
-          className="mt-4"
-        >
-          <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-            <TabsTrigger value="notes">Notes</TabsTrigger>
-            <TabsTrigger value="transcript">Transcript</TabsTrigger>
-            <TabsTrigger value="flashcards">Flashcards{count(materials?.flashcards)}</TabsTrigger>
-            <TabsTrigger value="exercises">Exercises{count(materials?.exercises)}</TabsTrigger>
-            <TabsTrigger value="questions">Exam questions{count(materials?.questions)}</TabsTrigger>
-            <TabsTrigger value="glossary">Glossary</TabsTrigger>
-            <TabsTrigger value="announcements">Announcements</TabsTrigger>
-            <TabsTrigger value="bookmarks">Bookmarks ({lecture.bookmarks.length})</TabsTrigger>
-          </TabsList>
+        <SlidesContext.Provider value={{ slides, open: setViewer }}>
+          <Tabs
+            key={hasNotes ? 'material' : 'plain'}
+            defaultValue={startAt != null || !hasNotes ? 'transcript' : 'summary'}
+            className="mt-4"
+          >
+            <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
+              <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="notes">Notes</TabsTrigger>
+              <TabsTrigger value="transcript">Transcript</TabsTrigger>
+              {lecture.slide_count > 0 && (
+                <TabsTrigger value="slides">Slides ({lecture.slide_count})</TabsTrigger>
+              )}
+              <TabsTrigger value="flashcards">Flashcards{count(materials?.flashcards)}</TabsTrigger>
+              <TabsTrigger value="exercises">Exercises{count(materials?.exercises)}</TabsTrigger>
+              <TabsTrigger value="questions">Exam questions{count(materials?.questions)}</TabsTrigger>
+              <TabsTrigger value="glossary">Glossary</TabsTrigger>
+              <TabsTrigger value="announcements">Announcements</TabsTrigger>
+              <TabsTrigger value="bookmarks">Bookmarks ({lecture.bookmarks.length})</TabsTrigger>
+            </TabsList>
 
-          {(['summary', 'notes', 'glossary', 'announcements'] as const).map((kind) => (
-            <TabsContent key={kind} value={kind} className="mt-4">
-              {materials ? (
-                <NoteView lectureId={lecture.id} kind={kind} note={materials.notes[kind]} />
+            {(['summary', 'notes', 'glossary', 'announcements'] as const).map((kind) => (
+              <TabsContent key={kind} value={kind} className="mt-4">
+                {materials ? (
+                  <NoteView lectureId={lecture.id} kind={kind} note={materials.notes[kind]} />
+                ) : (
+                  <p className="py-6 text-sm text-muted-foreground">Available after transcription.</p>
+                )}
+              </TabsContent>
+            ))}
+            <TabsContent value="flashcards" className="mt-4">
+              {materials && <FlashcardList lectureId={lecture.id} cards={materials.flashcards} />}
+            </TabsContent>
+            <TabsContent value="exercises" className="mt-4">
+              {materials && <ExerciseList lectureId={lecture.id} items={materials.exercises} />}
+            </TabsContent>
+            <TabsContent value="questions" className="mt-4">
+              {materials && <QuestionList lectureId={lecture.id} items={materials.questions} />}
+            </TabsContent>
+
+            <TabsContent value="transcript" className="mt-2">
+              {transcript?.segments.length ? (
+                <TranscriptView
+                  segments={transcript.segments}
+                  bookmarks={lecture.bookmarks}
+                  slides={slides}
+                  currentTime={currentTime}
+                  onSeek={(t) => seek(t, 0)}
+                  onOpenSlide={setViewer}
+                />
               ) : (
-                <p className="py-6 text-sm text-muted-foreground">Available after transcription.</p>
+                <p className="py-6 text-sm text-muted-foreground">
+                  {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
+                    ? 'The transcript will appear here when transcription has finished.'
+                    : 'No transcript yet.'}
+                </p>
               )}
             </TabsContent>
-          ))}
-          <TabsContent value="flashcards" className="mt-4">
-            {materials && <FlashcardList lectureId={lecture.id} cards={materials.flashcards} />}
-          </TabsContent>
-          <TabsContent value="exercises" className="mt-4">
-            {materials && <ExerciseList lectureId={lecture.id} items={materials.exercises} />}
-          </TabsContent>
-          <TabsContent value="questions" className="mt-4">
-            {materials && <QuestionList lectureId={lecture.id} items={materials.questions} />}
-          </TabsContent>
 
-          <TabsContent value="transcript" className="mt-2">
-            {transcript?.segments.length ? (
-              <TranscriptView
-                segments={transcript.segments}
-                bookmarks={lecture.bookmarks}
-                currentTime={currentTime}
-                onSeek={(t) => seek(t, 0)}
+            <TabsContent value="slides" className="mt-4">
+              <SlidesGrid
+                lectureId={lecture.id}
+                slides={slides}
+                stage={lecture.stages.slides}
+                onOpen={setViewer}
               />
-            ) : (
-              <p className="py-6 text-sm text-muted-foreground">
-                {lecture.stages.transcribe === 'running' || lecture.stages.transcribe === 'pending'
-                  ? 'The transcript will appear here when transcription has finished.'
-                  : 'No transcript yet.'}
-              </p>
-            )}
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="bookmarks" className="mt-2">
-            {lecture.has_audio && (
-              <div className="mb-2 flex gap-1">
-                <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('important')}>
-                  <Star /> Important here
-                </Button>
-                <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('confused')}>
-                  <CircleHelp /> Confused here
-                </Button>
-              </div>
-            )}
-            {lecture.bookmarks.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
-            ) : (
-              <ul className="mt-2 divide-y rounded-lg border bg-card">
-                {lecture.bookmarks.map((b) => {
-                  const Icon = KIND_ICON[b.kind]
-                  return (
-                    <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-                      <Icon
-                        className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
-                      />
-                      <button
-                        className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
-                        disabled={!lecture.has_audio}
-                        onClick={() => seek(b.t_s, PRE_ROLL_S)}
-                      >
-                        {formatDuration(b.t_s)}
-                      </button>
-                      <span className="capitalize text-muted-foreground">{b.kind}</span>
-                      {b.note && <span className="truncate">{b.note}</span>}
-                      <button
-                        className="ml-auto opacity-0 transition group-hover:opacity-100"
-                        aria-label="Remove bookmark"
-                        onClick={() => delBookmark.mutate(b.id)}
-                      >
-                        <X className="size-4 text-muted-foreground" />
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="bookmarks" className="mt-2">
+              {lecture.has_audio && (
+                <div className="mb-2 flex gap-1">
+                  <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('important')}>
+                    <Star /> Important here
+                  </Button>
+                  <Button size="xs" variant="outline" onClick={() => addBookmark.mutate('confused')}>
+                    <CircleHelp /> Confused here
+                  </Button>
+                </div>
+              )}
+              {lecture.bookmarks.length === 0 ? (
+                <p className="mt-2 text-sm text-muted-foreground">No bookmarks.</p>
+              ) : (
+                <ul className="mt-2 divide-y rounded-lg border bg-card">
+                  {lecture.bookmarks.map((b) => {
+                    const Icon = KIND_ICON[b.kind]
+                    return (
+                      <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
+                        <Icon
+                          className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
+                        />
+                        <button
+                          className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
+                          disabled={!lecture.has_audio}
+                          onClick={() => seek(b.t_s, PRE_ROLL_S)}
+                        >
+                          {formatDuration(b.t_s)}
+                        </button>
+                        <span className="capitalize text-muted-foreground">{b.kind}</span>
+                        {b.note && <span className="truncate">{b.note}</span>}
+                        <button
+                          className="ml-auto opacity-0 transition group-hover:opacity-100"
+                          aria-label="Remove bookmark"
+                          onClick={() => delBookmark.mutate(b.id)}
+                        >
+                          <X className="size-4 text-muted-foreground" />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </TabsContent>
+          </Tabs>
+        </SlidesContext.Provider>
       </SeekContext.Provider>
+
+      <SlideViewer
+        lectureId={lecture.id}
+        slides={slides}
+        index={viewer}
+        onIndex={setViewer}
+        onSeek={(t) => seek(t, 0)}
+      />
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <AlertDialogContent>

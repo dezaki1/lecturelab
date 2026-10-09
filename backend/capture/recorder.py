@@ -20,6 +20,7 @@ from sqlmodel import col, select
 
 from backend.capture.mixer import Mixer
 from backend.capture.session import PCM_NAME, PcmWriter, SessionInfo, repair_pcm
+from backend.capture.slides import ScreenFactory, SlideGrabber, clock_from, default_screen
 from backend.capture.sources import CaptureSource, SoundcardSource
 from backend.core import jobs
 from backend.core.config import Settings
@@ -83,12 +84,19 @@ class _Active:
     thread: threading.Thread | None = None
     disk_warned: bool = False
     stop_reason: str | None = None
+    slides: SlideGrabber | None = None
 
 
 class RecorderService:
-    def __init__(self, settings: Settings, source_factory: SourceFactory = default_sources) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        source_factory: SourceFactory = default_sources,
+        screen_factory: ScreenFactory = default_screen,
+    ) -> None:
         self.settings = settings
         self.source_factory = source_factory
+        self.screen_factory = screen_factory
         self._lock = threading.RLock()
         self._active: _Active | None = None
         self._last_levels: dict[str, Any] = {}
@@ -117,6 +125,7 @@ class RecorderService:
             "elapsed_s": round(time.monotonic() - a.t0, 1),
             "devices": a.devices,
             "bookmarks": a.session.bookmarks,
+            "slides": a.slides.status() if a.slides else None,
             "free_gb": round(free_gb, 1),
         }
 
@@ -125,6 +134,7 @@ class RecorderService:
         subject_id: int | None = None,
         *,
         mic: bool | None = None,
+        slides: bool | None = None,
         title: str | None = None,
         kind: str = "",
     ) -> dict[str, Any]:
@@ -196,6 +206,13 @@ class RecorderService:
             self._active = active
             for src in sources:
                 src.start()
+            if self.settings.slides.enabled if slides is None else slides:
+                screen = self.screen_factory(self.settings)
+                if screen is not None:
+                    active.slides = SlideGrabber(
+                        self.settings.slides, screen, lecture_id, folder, clock_from(active.t0)
+                    )
+                    active.slides.start()
             active.thread = threading.Thread(target=self._loop, args=(active,), name="recorder")
             active.thread.start()
             update_state(last_subject_id=active.subject_id)
@@ -223,6 +240,8 @@ class RecorderService:
                 a.thread.join(timeout=10)
             for src in a.sources:
                 src.stop()
+            if a.slides is not None:
+                a.slides.stop()
             self._finalize(a)
             self._active = None
         self._publish_state()

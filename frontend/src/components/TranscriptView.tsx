@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronUp, CircleHelp, Crosshair, Search, Star } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { SlideThumb } from '@/components/slides'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDuration } from '@/lib/dates'
-import type { Bookmark, Segment } from '@/lib/types'
+import type { Bookmark, Segment, Slide } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const LOW_CONFIDENCE = 0.45
@@ -41,13 +42,17 @@ function highlight(text: string, query: string): ReactNode {
 export function TranscriptView({
   segments,
   bookmarks,
+  slides = [],
   currentTime,
   onSeek,
+  onOpenSlide,
 }: {
   segments: Segment[]
   bookmarks: Bookmark[]
+  slides?: Slide[]
   currentTime: number
   onSeek: (t: number) => void
+  onOpenSlide?: (index: number) => void
 }) {
   const [query, setQuery] = useState('')
   const [matchPos, setMatchPos] = useState(0)
@@ -72,6 +77,17 @@ export function TranscriptView({
     }
     return m
   }, [bookmarks, segments])
+
+  // Each slide sits above the first line that starts after it appeared (2 s grace: the speaker
+  // often starts the sentence just before switching). Values index into `slides`.
+  const slideRows = useMemo(() => {
+    const m = new Map<number, number[]>()
+    slides.forEach((s, k) => {
+      const i = Math.min(activeIndex(segments, s.t_s - 2.001) + 1, segments.length - 1)
+      m.set(i, [...(m.get(i) ?? []), k])
+    })
+    return m
+  }, [slides, segments])
 
   const scrollTo = (i: number) => {
     programmaticScroll.current = Date.now()
@@ -169,49 +185,65 @@ export function TranscriptView({
           const isActive = i === active
           const isMatch = q && matches[Math.min(matchPos, matches.length - 1)] === i
           const low = s.confidence != null && s.confidence < LOW_CONFIDENCE
+          const rowSlides = slideRows.get(i)
           return (
-            <li
-              key={s.id}
-              ref={(el) => {
-                rowRefs.current[i] = el
-              }}
-              onClick={() => onSeek(s.start)}
-              className={cn(
-                'group flex cursor-pointer gap-3 rounded-md px-2 py-1.5 transition-colors',
-                isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
-                isMatch && 'ring-1 ring-amber-500/60',
+            <Fragment key={s.id}>
+              {rowSlides && (
+                <li className="flex flex-wrap gap-2 py-1.5 pl-[4.25rem]">
+                  {rowSlides.map((k) => (
+                    <SlideThumb
+                      key={slides[k].id}
+                      slide={slides[k]}
+                      onClick={() => onOpenSlide?.(k)}
+                      className="w-44"
+                    />
+                  ))}
+                </li>
               )}
-            >
-              <span
+              <li
+                ref={(el) => {
+                  rowRefs.current[i] = el
+                }}
+                onClick={() => onSeek(s.start)}
                 className={cn(
-                  'w-12 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums',
-                  isActive ? 'text-primary' : 'text-muted-foreground',
+                  'group flex cursor-pointer gap-3 rounded-md px-2 py-1.5 transition-colors',
+                  isActive ? 'bg-primary/10' : 'hover:bg-muted/60',
+                  isMatch && 'ring-1 ring-amber-500/60',
                 )}
               >
-                {formatDuration(s.start)}
-              </span>
-              <p
-                className={cn(
-                  'flex-1 leading-relaxed',
-                  low &&
-                    'decoration-amber-500/70 decoration-dotted underline-offset-4 [text-decoration-line:underline]',
-                )}
-                title={
-                  low ? `Low transcription confidence (${Math.round((s.confidence ?? 0) * 100)}%)` : undefined
-                }
-              >
-                {highlight(s.text, q)}
-              </p>
-              {marks
-                .get(i)
-                ?.map((b) =>
-                  b.kind === 'important' ? (
-                    <Star key={b.id} className="mt-1 size-3.5 shrink-0 fill-amber-400 text-amber-500" />
-                  ) : (
-                    <CircleHelp key={b.id} className="mt-1 size-3.5 shrink-0 text-sky-500" />
-                  ),
-                )}
-            </li>
+                <span
+                  className={cn(
+                    'w-12 shrink-0 pt-0.5 text-right font-mono text-xs tabular-nums',
+                    isActive ? 'text-primary' : 'text-muted-foreground',
+                  )}
+                >
+                  {formatDuration(s.start)}
+                </span>
+                <p
+                  className={cn(
+                    'flex-1 leading-relaxed',
+                    low &&
+                      'decoration-amber-500/70 decoration-dotted underline-offset-4 [text-decoration-line:underline]',
+                  )}
+                  title={
+                    low
+                      ? `Low transcription confidence (${Math.round((s.confidence ?? 0) * 100)}%)`
+                      : undefined
+                  }
+                >
+                  {highlight(s.text, q)}
+                </p>
+                {marks
+                  .get(i)
+                  ?.map((b) =>
+                    b.kind === 'important' ? (
+                      <Star key={b.id} className="mt-1 size-3.5 shrink-0 fill-amber-400 text-amber-500" />
+                    ) : (
+                      <CircleHelp key={b.id} className="mt-1 size-3.5 shrink-0 text-sky-500" />
+                    ),
+                  )}
+              </li>
+            </Fragment>
           )
         })}
       </ol>

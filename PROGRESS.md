@@ -83,6 +83,31 @@
 - [x] Tests run the pipeline end-to-end on the fixture with the mock provider; README covers
   setup incl. CUDA/cuDNN on Windows.
 
+## Phase 2 (study engine & richer capture)
+
+Order agreed 2026-10-09: slides first (they can't be captured after the fact), then study features.
+
+- [x] **M9 Slide capture**: during recording the Zoom meeting window (matched by window class or
+  title; else an optional fallback monitor) is grabbed every 2 s via PrintWindow (works when
+  covered); a change detector on 64x36 thumbnails learns and ignores speaker-video areas, skips
+  transitions/blank frames and keeps one JPEG per new slide (written immediately, crash-safe);
+  imported videos are scanned the same way; RapidOCR (local, CPU, child process) reads slide
+  text, queued before transcription; slide text is indexed for search/chat; Slides tab with
+  viewer (← →, play from here, delete, OCR text), thumbnails above transcript lines and next to
+  note sections; recorder panel toggle + live count; Settings card (default, fallback monitor,
+  window titles, test capture)
+  - Verified: 2-min demo video with 4 slides → 4 slides found within 2 s of each change, OCR
+    correct incl. λ, Σ, ≥; window capture of a GPU-rendered window ~35 ms.
+  - Still to verify with a real Zoom meeting (window class names `ConfMultiTabContentWndClass`
+    / `ZPContentViewWndClass` are from Zoom's docs/community, not tested here): use Test capture.
+- [ ] **M10 Slide PDFs + transcript cleanup**
+- [ ] **M11 Cards + dashboard**
+- [ ] **M12 Confused bookmarks + exam hints**
+- [ ] **M13 Subject hub**
+- [ ] **M14 Past exams + exam simulator**
+- [ ] **M15 Weak spots**
+- [ ] **M16 Exports**
+
 ## Decisions (from SPEC §13, 2026-10-08)
 
 - LLM: tiered Claude (Sonnet for notes/cards/questions/chat, Haiku for cheap passes), Ollama offline.
@@ -93,3 +118,5 @@
 - Audio capture: `soundcard` (WASAPI loopback, live default-device lookup, Windows-side resampling)
   instead of PyAudioWPatch, whose PortAudio device list is frozen at init.
 - Subjects: one per course (VL/VO/UE of the same course share a subject; lecture `kind` records which).
+- Phase 2 (2026-10-09): OCR with RapidOCR (local; rapidocr 3.9 + onnxruntime, models bundled in
+  the wheel), PDFs with pypdfium2, exam-simulator grading with Sonnet.

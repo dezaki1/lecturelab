@@ -3,6 +3,7 @@ import { CheckCircle2, KeyRound, Loader2, PlugZap, Trash2, XCircle } from 'lucid
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
+import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -148,6 +149,8 @@ export function SettingsPage() {
           </Button>
         </form>
       </section>
+
+      <SlideCaptureSettings />
 
       {system && (
         <section className="mt-6 rounded-lg border bg-card p-5 text-sm text-muted-foreground">

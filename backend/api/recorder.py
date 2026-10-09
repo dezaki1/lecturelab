@@ -14,6 +14,7 @@ router = APIRouter(prefix="/api/recorder", tags=["recorder"])
 class StartRequest(BaseModel):
     subject_id: int | None = None
     mic: bool | None = None
+    slides: bool | None = None
     title: str | None = None
     kind: str = ""
 
@@ -31,7 +32,9 @@ def status() -> dict[str, Any]:
 @router.post("/start")
 def start(req: StartRequest) -> dict[str, Any]:
     try:
-        return get_recorder().start(req.subject_id, mic=req.mic, title=req.title, kind=req.kind)
+        return get_recorder().start(
+            req.subject_id, mic=req.mic, slides=req.slides, title=req.title, kind=req.kind
+        )
     except RecorderError as e:
         raise HTTPException(409, str(e)) from e
 

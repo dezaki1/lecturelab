@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Mic, Search } from 'lucide-react'
+import { FileText, Mic, Presentation, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 
 import { formatDuration } from '@/lib/dates'
@@ -47,7 +47,13 @@ export function SearchPage() {
               className="block rounded-lg border bg-card p-4 transition hover:border-foreground/20"
             >
               <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
-                {h.source === 'note' ? <FileText className="size-3.5" /> : <Mic className="size-3.5" />}
+                {h.source === 'note' ? (
+                  <FileText className="size-3.5" />
+                ) : h.source === 'slide' ? (
+                  <Presentation className="size-3.5" />
+                ) : (
+                  <Mic className="size-3.5" />
+                )}
                 <span className="font-medium text-foreground">{h.subject_name}</span>·
                 <span>
                   L{h.lecture_number} {h.lecture_title}

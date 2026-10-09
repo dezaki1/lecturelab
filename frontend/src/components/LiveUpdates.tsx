@@ -23,6 +23,9 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
     qc.invalidateQueries({ queryKey: ['lectures'] })
   })
+  useEvent('recorder.slides', (d: { lecture_id: number }) => {
+    qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
+  })
   useEvent('recorder.bookmark', (d: { lecture_id: number }) => {
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
   })

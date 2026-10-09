@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import { useNavigate } from 'react-router'
 
+import { SlideAt } from '@/components/slides'
 import type { Citation } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -115,6 +116,16 @@ export function Markdown({
               <a href={href} target="_blank" rel="noreferrer">
                 {c}
               </a>
+            )
+          },
+          h2: ({ children: c }) => {
+            const m = /(?:\d+:)?\d{1,3}:\d{2}/.exec(nodeText(c))
+            const t = m ? parseTs(m[0]) : null
+            return (
+              <>
+                {t != null && <SlideAt t={t} />}
+                <h2>{c}</h2>
+              </>
             )
           },
           blockquote: ({ children: c }) => {

@@ -166,7 +166,10 @@ def prepare(s: Session, provider: Provider, thread: ChatThread, question: str) -
         label = h.label(with_subject)
         labels[label] = (h.lecture_id, h.start_s)  # type: ignore[assignment]
         prefixes[label.split(" · ")[0]] = h.lecture_id  # type: ignore[assignment]
-        what = f"notes: {h.heading}" if h.source == "note" else "transcript"
+        what = {
+            "note": f"notes: {h.heading}",
+            "slide": "slide text (OCR), shown on screen at this time",
+        }.get(h.source, "transcript")
         body = _timestamped_transcript(s, h) if h.source == "transcript" else h.text
         blocks.append(
             f'<source label="{label}" lecture="{h.lecture_title}" '

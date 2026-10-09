@@ -17,6 +17,9 @@ import type {
   Lecture,
   LectureDetail,
   RecorderStatus,
+  Slide,
+  SlideSettings,
+  SlideTest,
   Subject,
   SubjectInput,
   SystemInfo,
@@ -76,6 +79,15 @@ export const api = {
     request<void>('DELETE', `/api/lectures/${lectureId}/bookmarks/${id}`),
   audioUrl: (lectureId: number) => `/api/lectures/${lectureId}/audio`,
   transcript: (lectureId: number) => request<Transcript>('GET', `/api/lectures/${lectureId}/transcript`),
+  slides: (lectureId: number) => request<Slide[]>('GET', `/api/lectures/${lectureId}/slides`),
+  slideImageUrl: (slideId: number) => `/api/slides/${slideId}/image`,
+  deleteSlide: (slideId: number) => request<void>('DELETE', `/api/slides/${slideId}`),
+  rerunSlideOcr: (lectureId: number) =>
+    request<{ queued: boolean }>('POST', `/api/lectures/${lectureId}/slides/ocr`),
+  slideSettings: () => request<SlideSettings>('GET', '/api/settings/slides'),
+  putSlideSettings: (data: Partial<Pick<SlideSettings, 'enabled' | 'fallback_monitor' | 'window_titles'>>) =>
+    request<SlideSettings>('PUT', '/api/settings/slides', data),
+  testSlideCapture: () => request<SlideTest>('POST', '/api/settings/slides/test'),
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
@@ -166,7 +178,7 @@ export const api = {
   generatePending: () => request<{ queued: number }>('POST', '/api/generate/pending'),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
-  startRecording: (data: { subject_id: number; mic: boolean }) =>
+  startRecording: (data: { subject_id: number; mic: boolean; slides: boolean }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),
   stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
   bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),

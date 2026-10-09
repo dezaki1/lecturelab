@@ -36,7 +36,7 @@ export interface SystemInfo {
   data_dir: string
   free_gb: number
   hotkeys: { start_stop: string; important: string; confused: string; enabled: boolean }
-  recorder: { mic_default: boolean }
+  recorder: { mic_default: boolean; slides_default: boolean }
 }
 
 export type BookmarkKind = 'important' | 'confused' | 'question'
@@ -74,7 +74,33 @@ export interface Lecture {
 
 export interface LectureDetail extends Lecture {
   bookmarks: Bookmark[]
+  slide_count: number
 }
+
+export interface Slide {
+  id: number
+  t_s: number
+  source: 'screen' | 'video' | 'pdf'
+  ocr_text: string
+  page: number | null
+}
+
+export interface SlideCaptureStatus {
+  count: number
+  source: string // "" = nothing to capture right now
+}
+
+export interface SlideSettings {
+  enabled: boolean
+  fallback_monitor: number | null
+  window_titles: string[]
+  interval_s: number
+  monitors: { index: number; label: string }[]
+}
+
+export type SlideTest =
+  | { found: true; source: string; window_title: string; size: [number, number]; preview: string }
+  | { found: false; message: string; windows: string[] }
 
 export interface RecorderStatus {
   recording: boolean
@@ -88,6 +114,7 @@ export interface RecorderStatus {
   elapsed_s?: number
   devices?: Record<string, string>
   bookmarks?: { t_s: number; kind: BookmarkKind; note: string }[]
+  slides?: SlideCaptureStatus | null
 }
 
 export interface Level {
@@ -227,7 +254,7 @@ export interface SearchHit {
   lecture_number: number | null
   lecture_title: string
   started_at: string | null
-  source: 'transcript' | 'note'
+  source: 'transcript' | 'note' | 'slide'
   note_kind: string
   heading: string
   snippet: string

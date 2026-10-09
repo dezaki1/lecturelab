@@ -17,6 +17,7 @@ from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import lecture_dir
 from backend.core.media import AUDIO_NAME, MediaInfo, check_duration, encode_audio, probe
 from backend.core.models import Lecture
+from backend.pipeline.slides import find_video_slides
 from backend.pipeline.stages import capture_done, stage_failed
 
 log = logging.getLogger(__name__)
@@ -84,6 +85,12 @@ def _import(ctx: JobContext) -> None:
         lambda f: ctx.progress(f, "Extracting audio"),
     )
     actual = check_duration(out, info.duration)
+    if info.has_video and get_settings().slides.from_video:
+        try:
+            n = find_video_slides(ctx, ctx.lecture_id, folder, src, info.duration)  # type: ignore[arg-type]
+            log.info("Found %d slides in %s", n, src.name)
+        except Exception:  # slides are a bonus; the import itself succeeded
+            log.exception("Finding slides in %s failed", src.name)
     src.unlink()
     # No notification here; "Lecture ready" comes when the pipeline has finished.
     capture_done(ctx.lecture_id, out, actual, "")  # type: ignore[arg-type]

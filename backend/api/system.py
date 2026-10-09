@@ -26,7 +26,7 @@ def system_info() -> dict[str, object]:
         "data_dir": str(s.data_dir),
         "free_gb": round(usage.free / 1e9, 1),
         "hotkeys": s.hotkeys.model_dump(),
-        "recorder": {"mic_default": s.recorder.mic_default},
+        "recorder": {"mic_default": s.recorder.mic_default, "slides_default": s.slides.enabled},
     }
 
 

@@ -33,6 +33,10 @@ def capture_done(lecture_id: int, audio: Path, duration: float | None, notify_ti
         s.add(lecture)
         s.commit()
         subject_id, title = lecture.subject_id, lecture.title
+        # Slides first: OCR is quick and its text helps generation and search later.
+        from backend.pipeline.slides import queue_ocr
+
+        queue_ocr(s, lecture_id)
         if auto:
             jobs.enqueue(s, TRANSCRIBE_JOB, lecture_id=lecture_id)
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})

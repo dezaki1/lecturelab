@@ -17,6 +17,7 @@ from backend.api import (
     lectures,
     materials,
     recorder,
+    slides,
     study,
     subjects,
     system,
@@ -33,10 +34,12 @@ from backend.capture.recorder import (
     recover_interrupted,
     set_recorder,
 )
+from backend.capture.slides import ScreenFactory, default_screen
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
 from backend.pipeline import generate, ingest, transcribe  # noqa: F401  (job handlers)
+from backend.pipeline import slides as slide_jobs  # noqa: F401
 from backend.search import index as search_index
 
 log = logging.getLogger(__name__)
@@ -49,10 +52,12 @@ def create_app(
     *,
     start_worker: bool = True,
     source_factory: SourceFactory = default_sources,
+    screen_factory: ScreenFactory = default_screen,
 ) -> FastAPI:
     set_settings(settings)
+    slides.apply_saved_settings(settings)
     init_db(settings.db_path)
-    rec = RecorderService(settings, source_factory)
+    rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
     ingest.clean_tmp()
     with session_scope() as s:
@@ -82,6 +87,7 @@ def create_app(
     app.include_router(chat.router)
     app.include_router(study.router)
     app.include_router(jobs_api.router)
+    app.include_router(slides.router)
 
     _mount_frontend(app)
     return app

@@ -51,6 +51,25 @@ class RecorderConfig(BaseModel):
     system_gain: float = 1.0
 
 
+class SlidesConfig(BaseModel):
+    """Slide capture while recording (Zoom window, else a chosen monitor) and from videos."""
+
+    enabled: bool = True  # default for new recordings; the recorder panel can toggle it
+    interval_s: float = 2.0
+    # The largest visible window matching a class name or title is captured.
+    window_classes: list[str] = Field(
+        default_factory=lambda: ["ConfMultiTabContentWndClass", "ZPContentViewWndClass"]
+    )
+    window_titles: list[str] = Field(default_factory=lambda: ["Zoom Meeting", "Zoom Webinar"])
+    fallback_monitor: int | None = None  # 1-based; None = only capture the Zoom window
+    # Fraction of the slide content (non-background, non-video cells) that must change.
+    change_threshold: float = 0.15
+    max_width: int = 1920
+    jpeg_quality: int = 85
+    from_video: bool = True  # find slides in imported videos
+    ocr: bool = True
+
+
 class TranscriptionConfig(BaseModel):
     # "faster-whisper" for real use; "fake" generates placeholder segments (tests, UI work).
     engine: str = "faster-whisper"
@@ -137,6 +156,7 @@ class Settings(BaseSettings):
     ffprobe: str = "ffprobe"
     hotkeys: HotkeyConfig = Field(default_factory=HotkeyConfig)
     recorder: RecorderConfig = Field(default_factory=RecorderConfig)
+    slides: SlidesConfig = Field(default_factory=SlidesConfig)
     transcription: TranscriptionConfig = Field(default_factory=TranscriptionConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     generation: GenerationConfig = Field(default_factory=GenerationConfig)

@@ -50,14 +50,21 @@ The app listens on `http://127.0.0.1:8765` only. Data is stored in `%USERPROFILE
 - Audio is written to disk every few seconds. If the app or PC crashes, the recording up to that
   point is recovered automatically the next time you start LectureLab.
 - When you stop, the recording is encoded to AAC (`audio.m4a`, ~30 MB per 90 min).
+- **Slides**: while recording, LectureLab looks at the Zoom meeting window every 2 s and saves a
+  picture whenever the slide changes (speaker videos are ignored; it works even when other
+  windows cover Zoom). Toggle it with the slides button next to the mic. Slide text is read
+  locally (RapidOCR) and becomes searchable; slides appear in the **Slides** tab, above the
+  transcript lines and next to the matching note sections. Use **Settings → Slide capture →
+  Test capture** during a Zoom meeting to check it finds the window, or pick a monitor to
+  capture when slides are shown somewhere else.
 - Quit via the tray icon (**Quit**) so an in-progress recording is finalised cleanly.
 
 ## Importing recordings
 
 Drag audio or video files (mp4, m4a, mp3, wav, webm, …) anywhere onto the LectureLab window, or
 use **Import** on a subject page. Pick the subject, adjust titles, and import. Only the audio is
-kept (as `audio.m4a`); your original files are left untouched. The lecture date is taken from
-the file's metadata.
+kept (as `audio.m4a`) plus one picture per slide found in a video; your original files are
+left untouched. The lecture date is taken from the file's metadata.
 
 ## Transcripts
 
@@ -129,5 +136,5 @@ See [CLAUDE.md](CLAUDE.md) for the folder map and conventions.
 
 ## Privacy
 
-Recordings never leave your machine. The server binds to `127.0.0.1`. Only LLM API calls go out,
-and none when Ollama is selected. Recording lectures may need the lecturer's permission.
+Recordings and slide pictures never leave your machine. The server binds to `127.0.0.1`. Only
+LLM API calls go out, and none when Ollama is selected. Recording lectures may need the lecturer's permission.
