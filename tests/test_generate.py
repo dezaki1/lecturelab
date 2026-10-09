@@ -81,7 +81,8 @@ def test_full_pipeline_with_mock_provider(client: TestClient) -> None:
         assert item["verified"] == "ok"  # verification pass ran
     with session_scope() as s:
         tasks = sorted(r.task for r in s.exec(select(UsageRecord)).all())
-    assert tasks.count("verify") == 3 and "notes" in tasks and len(tasks) == 10
+    assert tasks.count("verify") == 3 and "notes" in tasks and "hints" in tasks
+    assert len(tasks) == 11  # 7 sections + hints + 3 verify; no confused bookmarks to explain
 
 
 def test_recording_without_speech_skips_generation(client: TestClient, monkeypatch) -> None:
@@ -339,7 +340,8 @@ def test_shared_tool_mode_keeps_prefix_identical() -> None:
         )  # fmt: skip
         assert isinstance(r.parsed, sc.OUTPUTS[task])
     a, b = calls
-    assert "output_format" not in a and a["tools"] == b["tools"] and len(a["tools"]) == 7
+    assert "output_format" not in a and a["tools"] == b["tools"]
+    assert len(a["tools"]) == len(gen.SHARED_OUTPUTS) == 9
     assert [t["name"] for t in a["tools"]] == sorted(t["name"] for t in a["tools"])
     assert (
         a["system"] == b["system"]

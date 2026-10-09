@@ -125,6 +125,47 @@ class Bookmark(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
 
+class ExamHint(SQLModel, table=True):
+    """A moment the lecturer flagged as important ("this will be in the exam", repetition).
+
+    ``source`` "rule" = keyword match at transcription (works offline); "llm" = confirmed and
+    summarised during generation, which replaces the rule hints of that lecture.
+    """
+
+    __tablename__ = "exam_hint"
+
+    id: int | None = Field(default=None, primary_key=True)
+    lecture_id: int = Field(foreign_key="lecture.id", index=True, ondelete="CASCADE")
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    start_s: float
+    end_s: float
+    kind: str = "important"  # exam | important | repeated
+    topic: str = ""  # what to know, one line
+    quote: str = ""  # the lecturer's words
+    source: str = "rule"  # rule | llm
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Explanation(SQLModel, table=True):
+    """ "Explain this part" for a confused/question bookmark: simpler explanation, example,
+    check question."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    bookmark_id: int = Field(foreign_key="bookmark.id", unique=True, ondelete="CASCADE")
+    lecture_id: int = Field(foreign_key="lecture.id", index=True, ondelete="CASCADE")
+    title: str = ""
+    explanation_md: str = ""
+    example_md: str = ""
+    check_question: str = ""
+    check_answer: str = ""
+    source_refs: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    model: str = ""
+    prompt_version: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class Material(SQLModel, table=True):
     """Uploaded files: slide PDFs, past exams, handwritten notes (Phase 2)."""
 

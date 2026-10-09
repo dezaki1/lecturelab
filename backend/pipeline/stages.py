@@ -29,7 +29,7 @@ def capture_done(lecture_id: int, audio: Path, duration: float | None, notify_ti
         lecture.status = LectureStatus.processing if auto else LectureStatus.ready
         lecture.error = None
         if auto:
-            lecture.stages["transcribe"] = "pending"
+            lecture.stages = {**lecture.stages, "transcribe": "pending"}
         s.add(lecture)
         s.commit()
         subject_id, title = lecture.subject_id, lecture.title

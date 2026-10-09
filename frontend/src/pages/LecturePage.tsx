@@ -9,6 +9,7 @@ import { SeekContext } from '@/components/Markdown'
 import { useStartChat } from '@/pages/ChatPage'
 import { GenerationPanel } from '@/components/materials/GenerationPanel'
 import { ExerciseList, FlashcardList, QuestionList } from '@/components/materials/ItemLists'
+import { ExplanationPanel, HintList } from '@/components/materials/Hints'
 import { NoteView } from '@/components/materials/NoteView'
 import { CleanupBar } from '@/components/CleanupBar'
 import { SlideDocuments } from '@/components/SlideDocuments'
@@ -272,6 +273,7 @@ export function LecturePage() {
           >
             <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="hints">Exam hints{count(materials?.hints)}</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="transcript">Transcript</TabsTrigger>
               <TabsTrigger value="slides">Slides{shown.length ? ` (${shown.length})` : ''}</TabsTrigger>
@@ -292,6 +294,13 @@ export function LecturePage() {
                 )}
               </TabsContent>
             ))}
+            <TabsContent value="hints" className="mt-4">
+              {materials ? (
+                <HintList lectureId={lecture.id} hints={materials.hints} />
+              ) : (
+                <p className="py-6 text-sm text-muted-foreground">Available after transcription.</p>
+              )}
+            </TabsContent>
             <TabsContent value="flashcards" className="mt-4">
               {materials && <FlashcardList lectureId={lecture.id} cards={materials.flashcards} />}
             </TabsContent>
@@ -320,6 +329,7 @@ export function LecturePage() {
                     onOpenSlide={setViewer}
                     showChanges={showChanges}
                     onRevert={(sid) => revertLine.mutate(sid)}
+                    hints={materials?.hints}
                   />
                 </>
               ) : (
@@ -370,27 +380,40 @@ export function LecturePage() {
                 <ul className="mt-2 divide-y rounded-lg border bg-card">
                   {lecture.bookmarks.map((b) => {
                     const Icon = KIND_ICON[b.kind]
+                    const explainable = b.kind === 'confused' || b.kind === 'question'
                     return (
-                      <li key={b.id} className="group flex items-center gap-3 px-4 py-2 text-sm">
-                        <Icon
-                          className={b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'}
-                        />
-                        <button
-                          className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
-                          disabled={!lecture.has_audio}
-                          onClick={() => seek(b.t_s, PRE_ROLL_S)}
-                        >
-                          {formatDuration(b.t_s)}
-                        </button>
-                        <span className="capitalize text-muted-foreground">{b.kind}</span>
-                        {b.note && <span className="truncate">{b.note}</span>}
-                        <button
-                          className="ml-auto opacity-0 transition group-hover:opacity-100"
-                          aria-label="Remove bookmark"
-                          onClick={() => delBookmark.mutate(b.id)}
-                        >
-                          <X className="size-4 text-muted-foreground" />
-                        </button>
+                      <li key={b.id} className="px-4 py-2">
+                        <div className="group flex items-center gap-3 text-sm">
+                          <Icon
+                            className={
+                              b.kind === 'important' ? 'size-4 text-amber-500' : 'size-4 text-sky-500'
+                            }
+                          />
+                          <button
+                            className="font-mono text-primary underline-offset-2 hover:underline disabled:no-underline disabled:opacity-60"
+                            disabled={!lecture.has_audio}
+                            onClick={() => seek(b.t_s, PRE_ROLL_S)}
+                          >
+                            {formatDuration(b.t_s)}
+                          </button>
+                          <span className="capitalize text-muted-foreground">{b.kind}</span>
+                          {b.note && <span className="truncate">{b.note}</span>}
+                          <button
+                            className="ml-auto opacity-0 transition group-hover:opacity-100"
+                            aria-label="Remove bookmark"
+                            onClick={() => delBookmark.mutate(b.id)}
+                          >
+                            <X className="size-4 text-muted-foreground" />
+                          </button>
+                        </div>
+                        {explainable && (
+                          <ExplanationPanel
+                            lectureId={lecture.id}
+                            explanation={materials?.explanations.find((e) => e.bookmark_id === b.id)}
+                            generating={['pending', 'running'].includes(lecture.stages.generate ?? '')}
+                            canGenerate={transcribed && lecture.status !== 'processing'}
+                          />
+                        )}
                       </li>
                     )
                   })}

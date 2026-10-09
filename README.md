@@ -124,6 +124,19 @@ adds the others' lecture links and tags, and keeps the review progress of the mo
 back to the lecture moment on every card; importing again updates the same notes) or a CSV.
 Anki starts exported cards as new; review progress stays in LectureLab.
 
+## Exam hints and confused moments
+
+When the lecturer says something like "this will be in the exam", "remember this" or "das ist
+wichtig", or keeps coming back to a point, LectureLab marks it: a ★ in the transcript, an
+**Exam hints** tab per lecture, and an exam-prep list of all hints on each subject page. The
+notes mark these points ★ and cards and exam questions cover them first. (A keyword search finds
+them right after transcription, even offline; generating study material checks them and adds a
+one-line "what to know".)
+
+Every **confused** or **question** bookmark gets an *Explain this part* section on the Bookmarks
+tab: a simpler explanation, a small example and a check question, which you can keep as a
+flashcard. Bookmarks added later get one with **Explain this part**.
+
 ## Review and practice
 
 **Review** (sidebar, with a badge for cards due) runs a daily spaced-repetition session across

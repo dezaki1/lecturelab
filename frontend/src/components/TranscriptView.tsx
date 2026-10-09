@@ -1,12 +1,13 @@
 import { ChevronDown, ChevronUp, CircleHelp, Crosshair, Search, SpellCheck, Star } from 'lucide-react'
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
+import { HintIcon } from '@/components/materials/Hints'
 import { SlideThumb } from '@/components/slides'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { formatDuration } from '@/lib/dates'
 import { diffWords } from '@/lib/wordDiff'
-import type { Bookmark, Segment, Slide } from '@/lib/types'
+import type { Bookmark, ExamHint, Segment, Slide } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const LOW_CONFIDENCE = 0.45
@@ -72,6 +73,7 @@ export function TranscriptView({
   onOpenSlide,
   showChanges = false,
   onRevert,
+  hints = [],
 }: {
   segments: Segment[]
   bookmarks: Bookmark[]
@@ -81,6 +83,7 @@ export function TranscriptView({
   onOpenSlide?: (index: number) => void
   showChanges?: boolean
   onRevert?: (segmentId: number) => void
+  hints?: ExamHint[]
 }) {
   const [query, setQuery] = useState('')
   const [matchPos, setMatchPos] = useState(0)
@@ -116,6 +119,16 @@ export function TranscriptView({
     })
     return m
   }, [slides, segments])
+
+  // The lecturer's exam hints, on the line where each starts.
+  const hintRows = useMemo(() => {
+    const m = new Map<number, ExamHint[]>()
+    for (const h of hints) {
+      const i = Math.max(0, activeIndex(segments, h.start_s + 0.01))
+      m.set(i, [...(m.get(i) ?? []), h])
+    }
+    return m
+  }, [hints, segments])
 
   const scrollTo = (i: number) => {
     programmaticScroll.current = Date.now()
@@ -279,6 +292,15 @@ export function TranscriptView({
                     <SpellCheck className="size-3.5" />
                   </button>
                 )}
+                {hintRows.get(i)?.map((h) => (
+                  <span
+                    key={`h${h.id}`}
+                    title={`Lecturer flagged (${h.kind}): ${h.topic || h.quote}`}
+                    className="mt-1"
+                  >
+                    <HintIcon kind={h.kind} />
+                  </span>
+                ))}
                 {marks
                   .get(i)
                   ?.map((b) =>

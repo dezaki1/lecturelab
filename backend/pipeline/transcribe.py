@@ -29,6 +29,7 @@ from backend.core.media import CREATE_NO_WINDOW
 from backend.core.models import Lecture, LectureStatus, Subject, TranscriptSegment
 from backend.pipeline.cleanup import cleanup_enabled, queue_cleanup
 from backend.pipeline.documents import queue_waiting_documents
+from backend.pipeline.hints import store_rule_hints
 from backend.pipeline.stages import GENERATE_JOB, TRANSCRIBE_JOB, lecture_ready, stage_failed
 
 log = logging.getLogger(__name__)
@@ -244,18 +245,19 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
         lecture.meta = {**lecture.meta, "transcription": stats}
         lecture.stages = {**lecture.stages, "transcribe": "done"}
         lecture.error = None
+        store_rule_hints(s, lecture)
         # A recording without speech (e.g. a quick test) has nothing to generate from.
         no_speech = not lines
         if no_speech:
-            lecture.stages["generate"] = "skipped"
+            lecture.stages = {**lecture.stages, "generate": "skipped"}
             lecture.meta = {**lecture.meta, "notice": "No speech detected in this recording."}
         llm = not no_speech and llm_configured()
         auto_generate = llm and get_settings().generation.auto
         auto_cleanup = llm and cleanup_enabled(active_provider_name())
         if auto_generate:
-            lecture.stages["generate"] = "pending"
+            lecture.stages = {**lecture.stages, "generate": "pending"}
         if auto_cleanup:
-            lecture.stages["cleanup"] = "pending"
+            lecture.stages = {**lecture.stages, "cleanup": "pending"}
         busy = auto_generate or auto_cleanup
         lecture.status = LectureStatus.processing if busy else LectureStatus.ready
         s.add(lecture)

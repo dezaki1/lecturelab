@@ -123,7 +123,17 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   (new/young/mature), mastery (mean FSRS retrievability) and practice score
   - Also: index.html is now served with `Cache-Control: no-cache` (a cached copy showed the
     previous build after an update).
-- [ ] **M12 Confused bookmarks + exam hints**
+- [x] **M12 Confused bookmarks + exam hints**: keyword exam-hint detector (EN + DE, exam vs
+  emphasis, merged spans) at transcription + backfill for old lectures; generation's new first
+  call "hints" confirms them, finds repeated points and writes a topic line (replacing keyword
+  hints); the hint list is appended after the cache breakpoint to the notes/summary/glossary/
+  announcements/cards/exercises/questions instructions; Exam hints tab, ★ in the transcript,
+  subject-wide hint list; "explanations" call for confused/question bookmarks (simpler
+  explanation, example, check question, refs), on demand for new bookmarks, check question can
+  become a flashcard
+  - Also fixed: in-place JSON mutations of lecture.stages were lost after an autoflush (now
+    reassigned); materials refresh on lecture events; regenerating a single section no longer
+    sends "Lecture ready".
 - [ ] **M13 Subject hub**
 - [ ] **M14 Past exams + exam simulator**
 - [ ] **M15 Weak spots**

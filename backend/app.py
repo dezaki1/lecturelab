@@ -48,6 +48,7 @@ from backend.pipeline import (  # noqa: F401  (job handlers)
 )
 from backend.pipeline import documents as document_jobs  # noqa: F401
 from backend.pipeline import slides as slide_jobs  # noqa: F401
+from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
 
 log = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ def create_app(
     with session_scope() as s:
         if n := search_index.backfill(s):
             log.info("Queued search indexing for %d lecture(s)", n)
+        if n := hint_backfill(s):
+            log.info("Scanned %d lecture(s) for exam hints", n)
     if n := recover_interrupted():
         log.warning("Recovered %d interrupted recording(s)", n)
 

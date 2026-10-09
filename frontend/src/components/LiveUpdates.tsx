@@ -12,6 +12,8 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['lectures', d.subject_id] })
     qc.invalidateQueries({ queryKey: ['lecture', d.id] })
     qc.invalidateQueries({ queryKey: ['transcript', d.id] })
+    qc.invalidateQueries({ queryKey: ['materials', d.id] })
+    qc.invalidateQueries({ queryKey: ['subject-hints', d.subject_id] })
     qc.invalidateQueries({ queryKey: ['review-summary'] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })

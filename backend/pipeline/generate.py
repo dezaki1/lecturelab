@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, delete, func, select
 
 from backend.ai import schemas as sc
 from backend.ai.prompts import load_prompt
@@ -34,6 +34,9 @@ from backend.core.events import bus
 from backend.core.jobs import JobContext, JobError, handler
 from backend.core.models import (
     Bookmark,
+    BookmarkKind,
+    ExamHint,
+    Explanation,
     Flashcard,
     Lecture,
     LectureStatus,
@@ -45,13 +48,16 @@ from backend.core.models import (
     utcnow,
 )
 from backend.core.util import format_hms
+from backend.pipeline.hints import candidates_text, hints_block, lecture_hints
 from backend.pipeline.stages import GENERATE_JOB, lecture_ready
 
 log = logging.getLogger(__name__)
 
 NOTE_KINDS = ("summary", "notes", "glossary", "announcements")
 ITEM_KINDS = ("flashcards", "exercises", "questions")
-ALL_KINDS = (*NOTE_KINDS, *ITEM_KINDS)
+# "hints" runs first: it writes the prompt cache and the later calls get its result.
+ALL_KINDS = ("hints", *NOTE_KINDS, *ITEM_KINDS, "explanations")
+HINT_AWARE = (*NOTE_KINDS, *ITEM_KINDS)
 SHARED_OUTPUTS = {k: sc.OUTPUTS[k] for k in ALL_KINDS}
 LANGUAGE_NAMES = {"en": "English", "de": "German"}
 TS = re.compile(r"^(?:(\d+):)?(\d{1,3}):(\d{2})$")
@@ -226,6 +232,9 @@ class Runner:
         # All main-tier generation calls for a lecture send the same set of output schemas, so
         # they share one cached prefix (see LLMRequest.shared_outputs).
         shared = SHARED_OUTPUTS if tier == "main" and task in SHARED_OUTPUTS else None
+        if task in HINT_AWARE:  # after the cache breakpoint, so the shared prefix is unchanged
+            with session_scope() as s:
+                instruction += hints_block(lecture_hints(s, self.ctx.lecture_id))
         req = LLMRequest(
             task=task,
             system=self.ctx.system,
@@ -405,6 +414,103 @@ def _extra(instructions: str) -> str:
         if instructions.strip()
         else ""
     )
+
+
+# Exam hints & explanations --------------------------------------------------------------------
+HINT_KINDS = ("exam", "important", "repeated")
+BOOKMARK_LOOKBACK_S = 90.0
+BOOKMARK_AFTER_S = 20.0
+
+
+def gen_hints(r: Runner, instructions: str) -> str:
+    ctx = r.ctx
+    with session_scope() as s:
+        candidates = candidates_text(lecture_hints(s, ctx.lecture_id))
+    prompt = load_prompt("hints")
+    result = r.call(
+        "hints", prompt.render(candidates=candidates) + _extra(instructions), sc.HintsOut
+    )
+    rows = []
+    for h in result.parsed.hints:
+        refs = to_refs(ctx.lecture_id, [sc.Ref(start=h.start, end=h.end)], ctx.duration)
+        if not refs:
+            continue
+        kind = h.kind.strip().lower()
+        rows.append(
+            ExamHint(
+                lecture_id=ctx.lecture_id,
+                subject_id=ctx.subject_id,
+                start_s=refs[0]["start_s"],
+                end_s=max(refs[0]["end_s"], refs[0]["start_s"]),
+                kind=kind if kind in HINT_KINDS else "important",
+                topic=h.topic.strip(),
+                quote=h.quote.strip(),
+                source="llm",
+            )
+        )
+    with session_scope() as s:
+        s.exec(delete(ExamHint).where(ExamHint.lecture_id == ctx.lecture_id))  # type: ignore[call-overload]
+        for row in sorted(rows, key=lambda x: x.start_s):
+            s.add(row)
+        s.commit()
+    return "hints"
+
+
+def gen_explanations(r: Runner, instructions: str) -> str:
+    """Explain-this-part for confused/question bookmarks. Bookmarks that already have an
+    explanation are skipped unless all have one (then this regenerates them all)."""
+    ctx = r.ctx
+    with session_scope() as s:
+        marks = s.exec(
+            select(Bookmark)
+            .where(
+                Bookmark.lecture_id == ctx.lecture_id,
+                col(Bookmark.kind).in_([BookmarkKind.confused, BookmarkKind.question]),
+            )
+            .order_by(col(Bookmark.t_s))
+        ).all()
+        done = set(
+            s.exec(
+                select(Explanation.bookmark_id).where(Explanation.lecture_id == ctx.lecture_id)
+            ).all()
+        )
+        todo = [b for b in marks if b.id not in done] or list(marks)
+        items = [(b.id, b.t_s, b.kind.value, b.note) for b in todo]
+    if not items:
+        return "explanations"
+    blocks = []
+    for bid, t, kind, note in items:
+        lo, hi = t - BOOKMARK_LOOKBACK_S, t + BOOKMARK_AFTER_S
+        excerpt_txt = " ".join(f"[{format_hms(a)}] {x}" for a, _, x in ctx.lines if lo <= a <= hi)
+        head = f"- id={bid} [{format_hms(t)}] {kind}" + (f': "{note}"' if note else "")
+        blocks.append(f"{head}\n  Excerpt: {excerpt_txt or '(no speech here)'}")
+    prompt = load_prompt("explanations")
+    result = r.call(
+        "explanations",
+        prompt.render(bookmarks="\n".join(blocks)) + _extra(instructions),
+        sc.ExplanationsOut,
+    )
+    wanted = {bid for bid, *_ in items}
+    tag = f"{prompt.tag}+{load_prompt('system').tag}"
+    with session_scope() as s:
+        for e in result.parsed.explanations:
+            if e.bookmark_id not in wanted:
+                continue
+            row = s.exec(
+                select(Explanation).where(Explanation.bookmark_id == e.bookmark_id)
+            ).first() or Explanation(bookmark_id=e.bookmark_id, lecture_id=ctx.lecture_id)
+            row.title = e.title.strip()
+            row.explanation_md = e.explanation.strip()
+            row.example_md = e.example.strip()
+            row.check_question = e.check_question.strip()
+            row.check_answer = e.check_answer.strip()
+            row.source_refs = to_refs(ctx.lecture_id, e.refs, ctx.duration)
+            row.model = result.model
+            row.prompt_version = tag
+            row.created_at = utcnow()
+            s.add(row)
+        s.commit()
+    return "explanations"
 
 
 # Cards & questions ----------------------------------------------------------------------------
@@ -646,6 +752,7 @@ def verify_items(
 @handler(GENERATE_JOB)
 def generate(ctx_job: JobContext) -> None:
     kinds = [k for k in (ctx_job.payload.get("kinds") or ALL_KINDS) if k in ALL_KINDS]
+    kinds.sort(key=ALL_KINDS.index)  # hints first: later calls use them
     instructions = ctx_job.payload.get("instructions") or ""
     lecture_id = ctx_job.lecture_id
     assert lecture_id is not None
@@ -678,6 +785,10 @@ def generate(ctx_job: JobContext) -> None:
     runner = Runner(ctx, provider)
 
     def run(kind: str) -> str:
+        if kind == "hints":
+            return gen_hints(runner, instructions)
+        if kind == "explanations":
+            return gen_explanations(runner, instructions)
         if kind in NOTE_KINDS:
             return gen_note(runner, kind, instructions)
         if kind == "flashcards":
@@ -732,7 +843,9 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
         subject_id, title = lecture.subject_id, lecture.title
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     if len(errors) < len(kinds):
-        lecture_ready(lecture_id, title)
+        # Only a full generation announces the lecture; regenerating one section is quiet.
+        if set(kinds) == set(ALL_KINDS):
+            lecture_ready(lecture_id, title)
     else:
         bus.publish(
             "notify",

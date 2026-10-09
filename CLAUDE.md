@@ -48,7 +48,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     cleanup (job: cheap-model fix of misheard terms -> TranscriptSegment.raw_text
                     keeps Whisper's line; then generate/ready/index), documents (job: slide PDFs
                     via pypdfium2 -> page JPEGs + text -> Slide rows source "pdf"), align (TF-IDF
-                    + monotonic DP placing PDF pages; captured slides are exact anchors)
+                    + monotonic DP placing PDF pages; captured slides are exact anchors),
+                    hints (keyword exam-hint detector EN/DE at transcription; hint list
+                    appended to section instructions after the cache breakpoint)
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -112,6 +114,11 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   failed OCR never fails the lecture. `ocr_text == " "` means "OCR ran, no text".
 - UI-editable settings that aren't secrets (LLM provider, slide capture) live in state.json and
   override config.toml at startup.
+- Generation kinds run in ALL_KINDS order: "hints" first (alone; it writes the prompt cache and
+  later calls read its result), then the 7 sections + "explanations" (confused/question
+  bookmarks) in parallel. All 9 output schemas are the shared tool set.
+- JSON columns (stages, meta, ...) don't track in-place mutation: always reassign
+  (`lecture.stages = {**lecture.stages, k: v}`); an autoflush in between loses in-place edits.
 - Pipeline order: capture -> [slides OCR] -> transcribe -> [slide PDFs placed] -> cleanup ->
   generate -> index. Cleanup is skipped for local providers unless `generation.cleanup_local`;
   tests default to `generation.cleanup = False` (conftest). A failed cleanup still continues.

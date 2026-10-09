@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
+import { SubjectHints } from '@/components/materials/Hints'
 import { useStartChat } from '@/pages/ChatPage'
 import { SubjectDialog } from '@/components/SubjectDialog'
 import {
@@ -139,6 +140,8 @@ export function SubjectPage() {
         </div>
         <LectureList subjectId={subject.id} />
       </section>
+
+      <SubjectHints subjectId={subject.id} />
 
       <SubjectDialog open={editing} onOpenChange={setEditing} subject={subject} />
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

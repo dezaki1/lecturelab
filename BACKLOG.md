@@ -32,4 +32,6 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Cleanup: optional Sonnet for cleanup on lectures with many low-confidence lines.
 - Cards: remember "not duplicates" decisions; AnkiConnect live sync instead of file export;
   optionally export FSRS state into Anki's scheduling.
+- Exam hints: let the student add/remove hints by hand; weight hints by how often across the
+  semester a topic was flagged.
 - Dashboard: per-lecture weak cards ("most forgotten this week") linking into a filtered review.

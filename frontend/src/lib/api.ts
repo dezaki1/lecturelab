@@ -18,6 +18,8 @@ import type {
   LectureDetail,
   LectureDocument,
   RecorderStatus,
+  SubjectHint,
+  Card,
   CardQuery,
   CardRow,
   Dashboard,
@@ -112,6 +114,8 @@ export const api = {
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
+  subjectHints: (subjectId: number) => request<SubjectHint[]>('GET', `/api/subjects/${subjectId}/hints`),
+  explanationToCard: (id: number) => request<Card>('POST', `/api/explanations/${id}/flashcard`),
   materials: (lectureId: number) => request<Materials>('GET', `/api/lectures/${lectureId}/materials`),
   estimate: (lectureId: number) => request<Estimate>('GET', `/api/lectures/${lectureId}/generate/estimate`),
   generate: (lectureId: number, kinds?: string[], instructions = '') =>

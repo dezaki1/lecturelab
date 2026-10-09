@@ -14,6 +14,8 @@ from backend.core import jobs
 from backend.core.db import get_session
 from backend.core.events import bus
 from backend.core.models import (
+    ExamHint,
+    Explanation,
     Flashcard,
     Job,
     JobStatus,
@@ -25,8 +27,10 @@ from backend.core.models import (
     utcnow,
 )
 from backend.pipeline.generate import ALL_KINDS, estimate
+from backend.pipeline.hints import lecture_hints
 from backend.pipeline.stages import GENERATE_JOB
 from backend.search.index import INDEX_JOB, queue_index
+from backend.search.retrieve import lecture_numbers
 
 router = APIRouter(prefix="/api", tags=["materials"])
 
@@ -92,11 +96,42 @@ class QuestionRead(BaseModel):
     verify_note: str
 
 
+class HintRead(BaseModel):
+    id: int
+    lecture_id: int
+    start_s: float
+    end_s: float
+    kind: str
+    topic: str
+    quote: str
+    source: str
+
+
+class ExplanationRead(BaseModel):
+    id: int
+    bookmark_id: int
+    title: str
+    explanation_md: str
+    example_md: str
+    check_question: str
+    check_answer: str
+    source_refs: list[dict[str, Any]]
+    model: str
+    created_at: datetime
+
+
 class Materials(BaseModel):
     notes: dict[str, NoteRead]
     flashcards: list[CardRead]
     exercises: list[QuestionRead]
     questions: list[QuestionRead]
+    hints: list[HintRead] = Field(default_factory=list)
+    explanations: list[ExplanationRead] = Field(default_factory=list)
+
+
+class SubjectHint(HintRead):
+    lecture_number: int
+    lecture_title: str
 
 
 class GenerateRequest(BaseModel):
@@ -140,12 +175,71 @@ def get_materials(lecture_id: int, session: Session = Depends(get_session)) -> d
         .where(Question.lecture_id == lecture_id, col(Question.is_current))
         .order_by(col(Question.id))
     ).all()
+    explanations = session.exec(
+        select(Explanation).where(Explanation.lecture_id == lecture_id)
+    ).all()
     return {
         "notes": {n.kind: _note_read(session, n) for n in notes},
         "flashcards": cards,
         "exercises": [q for q in questions if q.kind == "exercise"],
         "questions": [q for q in questions if q.kind == "exam"],
+        "hints": lecture_hints(session, lecture_id),
+        "explanations": explanations,
     }
+
+
+@router.get("/subjects/{subject_id}/hints", response_model=list[SubjectHint])
+def subject_hints(subject_id: int, session: Session = Depends(get_session)) -> list[dict]:
+    """Every exam hint of a subject, by lecture: the exam-prep checklist."""
+    hints = session.exec(
+        select(ExamHint).where(ExamHint.subject_id == subject_id).order_by(col(ExamHint.start_s))
+    ).all()
+    lectures = {
+        lec.id: lec
+        for lec in session.exec(select(Lecture).where(Lecture.subject_id == subject_id)).all()
+    }
+    numbers = lecture_numbers(session, {subject_id})
+    rows = [
+        {
+            **h.model_dump(),
+            "lecture_number": numbers.get(h.lecture_id, 0),
+            "lecture_title": lectures[h.lecture_id].title if h.lecture_id in lectures else "",
+        }
+        for h in hints
+    ]
+    return sorted(rows, key=lambda r: (r["lecture_number"], r["start_s"]))
+
+
+@router.post("/explanations/{explanation_id}/flashcard", response_model=CardRead, status_code=201)
+def explanation_to_card(explanation_id: int, session: Session = Depends(get_session)) -> Flashcard:
+    """Keep the check question of an explanation as a flashcard."""
+    e = session.get(Explanation, explanation_id)
+    if e is None:
+        raise HTTPException(404, "Explanation not found")
+    lecture = _lecture(session, e.lecture_id)
+    existing = session.exec(
+        select(Flashcard).where(
+            Flashcard.lecture_id == e.lecture_id,
+            Flashcard.front == e.check_question,
+            col(Flashcard.is_current),
+        )
+    ).first()
+    if existing is not None:
+        return existing
+    card = Flashcard(
+        subject_id=lecture.subject_id,
+        lecture_id=lecture.id,
+        front=e.check_question,
+        back=e.check_answer,
+        tags=["confused"],
+        source_refs=e.source_refs,
+        edited_by_me=True,  # made by the student: regeneration keeps it
+        model=e.model,
+    )
+    session.add(card)
+    session.commit()
+    session.refresh(card)
+    return card
 
 
 @router.get("/lectures/{lecture_id}/generate/estimate")

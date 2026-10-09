@@ -232,11 +232,42 @@ export interface QuestionItem {
   verify_note: string
 }
 
+export interface ExamHint {
+  id: number
+  lecture_id: number
+  start_s: number
+  end_s: number
+  kind: 'exam' | 'important' | 'repeated'
+  topic: string
+  quote: string
+  source: 'rule' | 'llm'
+}
+
+export interface SubjectHint extends ExamHint {
+  lecture_number: number
+  lecture_title: string
+}
+
+export interface Explanation {
+  id: number
+  bookmark_id: number
+  title: string
+  explanation_md: string
+  example_md: string
+  check_question: string
+  check_answer: string
+  source_refs: SourceRef[]
+  model: string
+  created_at: string
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]
   exercises: QuestionItem[]
   questions: QuestionItem[]
+  hints: ExamHint[]
+  explanations: Explanation[]
 }
 
 export interface LLMSettings {

@@ -136,6 +136,36 @@ class VerifyOut(BaseModel):
     verdicts: list[Verdict]
 
 
+class HintOut(BaseModel):
+    start: str = Field(description="mm:ss copied from the transcript where the hint begins")
+    end: str = Field(description="mm:ss where the flagged explanation ends")
+    kind: str = Field(
+        description='"exam" if the lecturer refers to the exam or grading, "important" for other '
+        'explicit emphasis ("remember this", "das ist wichtig"), "repeated" for a point the '
+        "lecturer comes back to several times"
+    )
+    topic: str = Field(description="What the student must know, as one short line")
+    quote: str = Field(description="The lecturer's words that signal it (short, verbatim)")
+
+
+class HintsOut(BaseModel):
+    hints: list[HintOut]
+
+
+class ExplanationOut(BaseModel):
+    bookmark_id: int = Field(description="The id of the bookmark being explained")
+    title: str = Field(description="What the confusing passage is about, a few words")
+    explanation: str = Field(description="Simpler explanation in Markdown (LaTeX allowed)")
+    example: str = Field(description="A small concrete example in Markdown")
+    check_question: str = Field(description="One question that checks understanding")
+    check_answer: str = Field(description="Its short model answer")
+    refs: list[Ref]
+
+
+class ExplanationsOut(BaseModel):
+    explanations: list[ExplanationOut]
+
+
 class LineFix(BaseModel):
     line: int = Field(description="The line number shown before the timestamp")
     text: str = Field(description="The complete corrected line")
@@ -147,6 +177,7 @@ class CleanupOut(BaseModel):
 
 
 OUTPUTS: dict[str, type[BaseModel]] = {
+    "hints": HintsOut,
     "summary": SummaryOut,
     "notes": NotesOut,
     "glossary": GlossaryOut,
@@ -154,6 +185,7 @@ OUTPUTS: dict[str, type[BaseModel]] = {
     "flashcards": FlashcardsOut,
     "exercises": ExercisesOut,
     "questions": QuestionsOut,
+    "explanations": ExplanationsOut,
     "verify": VerifyOut,
     "cleanup": CleanupOut,
 }

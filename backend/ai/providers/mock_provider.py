@@ -210,6 +210,41 @@ class MockProvider:
     def _Ping(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         return {"ok": True}
 
+    def _HintsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """Confirms the keyword candidates, else flags the middle line as repeated."""
+        found = re.findall(r'^- \[(\d+:\d{2}(?::\d{2})?)\] "(.*)"$', req.instruction, re.M)
+        if found:
+            return {
+                "hints": [
+                    {"start": t, "end": t, "kind": "exam", "topic": f"Know: {q[:40]}", "quote": q}
+                    for t, q in found
+                ]
+            }
+        i = len(lines) // 2
+        ref = self._ref(lines, i)
+        return {
+            "hints": [
+                {**ref, "kind": "repeated", "topic": lines[i][1][:60], "quote": lines[i][1][:40]}
+            ]
+        }
+
+    def _ExplanationsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        ids = re.findall(r"^- id=(\d+) \[(\d+:\d{2}(?::\d{2})?)\]", req.instruction, re.M)
+        return {
+            "explanations": [
+                {
+                    "bookmark_id": int(i),
+                    "title": f"The passage at {t}",
+                    "explanation": f"In simpler words: what was said around [{t}].",
+                    "example": "For example, $x = 2$.",
+                    "check_question": "What was the main point?",
+                    "check_answer": "The mock answer.",
+                    "refs": [{"start": t, "end": t}],
+                }
+                for i, t in ids
+            ]
+        }
+
     def _CleanupOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         """Respell vocabulary terms that were split or mis-cased ("place holder" -> "PlaceHolder").
 
