@@ -53,6 +53,7 @@ class LectureRead(BaseModel):
     has_audio: bool
     language: str | None = None
     transcription: dict | None = None  # model, device, speed_x, ... from the last run
+    notice: str = ""  # e.g. "No speech detected in this recording."
     cost_usd: float = 0.0
     bookmark_count: int = 0
     job_progress: float | None = None
@@ -105,6 +106,7 @@ def _to_read(
         "number": number,
         "has_audio": bool(lecture.media_path) and abs_path(lecture.media_path).exists(),
         "transcription": lecture.meta.get("transcription"),
+        "notice": lecture.meta.get("notice", ""),
         "bookmark_count": bookmark_count,
         "job_progress": job.progress if job else None,
         "job_message": job.message if job else "",

@@ -21,6 +21,7 @@ from backend.core.models import (
     LectureStatus,
     Note,
     Question,
+    TranscriptSegment,
     utcnow,
 )
 from backend.pipeline.generate import ALL_KINDS, estimate
@@ -160,6 +161,11 @@ def post_generate(
     lecture = _lecture(session, lecture_id)
     if lecture.stages.get("transcribe") != "done":
         raise HTTPException(409, "Transcribe the lecture first")
+    has_speech = session.exec(
+        select(TranscriptSegment.id).where(TranscriptSegment.lecture_id == lecture_id).limit(1)
+    ).first()
+    if has_speech is None:
+        raise HTTPException(409, "No speech was detected in this recording")
     if not is_configured():
         raise HTTPException(409, "Add an Anthropic API key on the Settings page first")
     kinds = req.kinds or list(ALL_KINDS)

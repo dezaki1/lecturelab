@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { KeyRound, Loader2, Sparkles, TriangleAlert } from 'lucide-react'
+import { KeyRound, Loader2, MicOff, Sparkles, TriangleAlert } from 'lucide-react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 
@@ -15,7 +15,7 @@ export function GenerationPanel({ lecture }: { lecture: LectureDetail }) {
   const { data: est } = useQuery({
     queryKey: ['estimate', lecture.id],
     queryFn: () => api.estimate(lecture.id),
-    enabled: transcribed && stage !== 'done' && stage !== 'running' && stage !== 'pending',
+    enabled: transcribed && !['done', 'running', 'pending', 'skipped'].includes(stage ?? ''),
   })
   const run = useMutation({
     mutationFn: () => api.generate(lecture.id),
@@ -35,6 +35,15 @@ export function GenerationPanel({ lecture }: { lecture: LectureDetail }) {
         <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
           <div className="h-full bg-primary transition-[width]" style={{ width: `${Math.max(pct, 3)}%` }} />
         </div>
+      </div>
+    )
+  }
+
+  if (stage === 'skipped') {
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5 text-sm text-muted-foreground">
+        <MicOff className="size-4" />
+        <span>{lecture.notice || 'No study material for this recording.'}</span>
       </div>
     )
   }

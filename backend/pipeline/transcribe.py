@@ -234,13 +234,19 @@ def store_transcript(lecture_id: int, data: dict[str, Any], fallback_reason: str
         if lecture is None:
             return
         s.exec(delete(TranscriptSegment).where(TranscriptSegment.lecture_id == lecture_id))  # type: ignore[arg-type]
-        for i, line in enumerate(resegment(data["segments"])):
+        lines = resegment(data["segments"])
+        for i, line in enumerate(lines):
             s.add(TranscriptSegment(lecture_id=lecture_id, idx=i, **line))
         lecture.language = data.get("language")
         lecture.meta = {**lecture.meta, "transcription": stats}
         lecture.stages = {**lecture.stages, "transcribe": "done"}
         lecture.error = None
-        auto_generate = get_settings().generation.auto and llm_configured()
+        # A recording without speech (e.g. a quick test) has nothing to generate from.
+        no_speech = not lines
+        if no_speech:
+            lecture.stages["generate"] = "skipped"
+            lecture.meta = {**lecture.meta, "notice": "No speech detected in this recording."}
+        auto_generate = not no_speech and get_settings().generation.auto and llm_configured()
         if auto_generate:
             lecture.stages["generate"] = "pending"
             lecture.status = LectureStatus.processing

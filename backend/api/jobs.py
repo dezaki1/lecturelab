@@ -14,7 +14,16 @@ from backend.ai.types import PRICING
 from backend.core import jobs
 from backend.core.db import get_session
 from backend.core.events import bus
-from backend.core.models import Job, JobStatus, Lecture, LectureStatus, Subject, UsageRecord, utcnow
+from backend.core.models import (
+    Job,
+    JobStatus,
+    Lecture,
+    LectureStatus,
+    Subject,
+    TranscriptSegment,
+    UsageRecord,
+    utcnow,
+)
 from backend.pipeline.generate import ALL_KINDS, estimate
 from backend.pipeline.stages import GENERATE_JOB
 from backend.search.retrieve import lecture_numbers
@@ -224,10 +233,12 @@ def usage_summary(days: int = 30, session: Session = Depends(get_session)) -> di
 # Batch generation ------------------------------------------------------------------------------
 def _pending_generation(session: Session) -> list[Lecture]:
     out = []
+    with_speech = set(session.exec(select(TranscriptSegment.lecture_id).distinct()).all())
     for lec in session.exec(select(Lecture).order_by(col(Lecture.started_at))).all():
-        if lec.stages.get("transcribe") == "done" and lec.stages.get("generate") in (
-            None,
-            "failed",
+        if (
+            lec.stages.get("transcribe") == "done"
+            and lec.stages.get("generate") in (None, "failed")
+            and lec.id in with_speech  # recordings without speech have nothing to study
         ):
             out.append(lec)
     return out

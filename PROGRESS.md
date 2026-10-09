@@ -21,7 +21,7 @@
   - Measured on this laptop (114 s TTS fixture): **GPU 14–16× real time** (~6–7 min per 90-min
     lecture + ~7 s model load), **CPU 1.6× real time** (~55 min per 90-min lecture).
     Word accuracy vs. script: 99.1 % (`LECTURELAB_TEST_WHISPER=1 uv run pytest -k real`).
-  - Still to confirm on a real 90-minute Zoom lecture.
+  - Real lecture (69 min, imported): **GPU 18.4× real time**, 3.8 min including model load.
 - [x] **M5 Generation**: summary, study notes, glossary, announcements, flashcards, exercises, exam
   questions (prompts/*.md, versioned) via structured outputs validated with Pydantic + retries;
   shared prompt-cached prefix (system + lecture context); refs from cited timestamps on every item;
@@ -34,7 +34,8 @@
     fixture: all 7 sections correct (exercise arithmetic checked by hand), 27-31 s, **$0.09**.
     Prompt caching: 1 cache write (tools + rules + transcript) and 6 cache reads per lecture.
     Verifier tested with planted errors (wrong fact, wrong eigenvalues): both flagged.
-  - Still to measure on a real 90-minute lecture: cost (estimate ~$0.40-0.60) and time.
+  - Real lecture (69 min): **$0.24** for all seven sections incl. verification (≈ $0.31 per
+    90 min), 1 cache write of 16k tokens and 6 cache reads.
 - [x] **M6 Search & chat**: lectures indexed as 60-90 s transcript chunks + note sections into
   SQLite FTS5 and sqlite-vec (bge-m3 via Ollama, embeddings cached); hybrid search with reciprocal
   rank fusion, keyword-only fallback when Ollama is down; global search (Ctrl+K); chat scoped to a
@@ -63,8 +64,10 @@
 - [~] One hotkey records a 90-minute lecture; killing the app leaves a playable recording.
   Hotkeys, recording and crash recovery verified (kill test in the suite); a full 90-minute
   Zoom lecture not yet recorded.
-- [~] 90-minute lecture transcribes on the GPU; CPU fallback works. Measured on the fixture:
-  GPU ~15x real time, CPU 1.6x (fallback tested); real 90-minute timing still to report.
+- [x] Lecture transcribes on the GPU; CPU fallback works. Real 69-minute lecture: GPU 18.4x
+  real time (3.8 min); fixture: CPU 1.6x (fallback tested). Pipeline confirmed end to end by
+  the user (2026-10-09). Recordings without speech finish as "No speech detected" instead of
+  queuing a generation that fails.
 - [x] All seven output types generated; every note section, card and question links to a
   timestamp that seeks the audio.
 - [x] Chat answers cite sources; grounded mode says when something isn't in the material.

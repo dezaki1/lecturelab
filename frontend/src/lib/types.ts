@@ -65,6 +65,7 @@ export interface Lecture {
   has_audio: boolean
   language: string | null
   transcription: TranscriptionStats | null
+  notice: string
   cost_usd: number
   bookmark_count: number
   job_progress: number | null

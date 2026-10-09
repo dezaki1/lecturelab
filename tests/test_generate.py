@@ -84,6 +84,21 @@ def test_full_pipeline_with_mock_provider(client: TestClient) -> None:
     assert tasks.count("verify") == 3 and "notes" in tasks and len(tasks) == 10
 
 
+def test_recording_without_speech_skips_generation(client: TestClient, monkeypatch) -> None:
+    from backend.pipeline import transcribe
+
+    monkeypatch.setattr(transcribe, "resegment", lambda segments: [])
+    sid = client.post("/api/subjects", json={"name": "Silent"}).json()["id"]
+    lid = _import(client, sid)
+    assert Worker().run_pending() == 3  # import -> transcribe -> index, no generate job
+    lec = client.get(f"/api/lectures/{lid}").json()
+    assert lec["status"] == "ready"
+    assert lec["stages"]["generate"] == "skipped"
+    assert lec["notice"] == "No speech detected in this recording."
+    r = client.post(f"/api/lectures/{lid}/generate", json={})
+    assert r.status_code == 409 and "No speech" in r.json()["detail"]
+
+
 def test_regenerate_keeps_edits_as_versions(client: TestClient) -> None:
     lid = _lecture(client)
     note = client.get(f"/api/lectures/{lid}/materials").json()["notes"]["notes"]
