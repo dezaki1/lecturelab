@@ -13,6 +13,7 @@ import {
   Settings,
   Sun,
   Target,
+  Timer,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
@@ -109,6 +110,9 @@ export function AppShell() {
           </NavLink>
           <NavLink to="/practice" className={linkClass}>
             <Target className="size-4" /> Practice
+          </NavLink>
+          <NavLink to="/exams" className={linkClass}>
+            <Timer className="size-4" /> Exam simulator
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             <MessageSquare className="size-4" /> Ask your lectures

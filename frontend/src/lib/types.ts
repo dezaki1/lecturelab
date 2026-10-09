@@ -96,6 +96,21 @@ export interface LectureDocument {
   pages: number
   placed: number
   processing: boolean
+  analysing: boolean
+  past_exam: PastExamSummary | null
+}
+
+export interface PastExamSummary {
+  title: string
+  date: string
+  duration_min: number
+  total_points: number
+  aids: string
+  format: string
+  style: string[]
+  topics: { name: string; points: number }[]
+  questions: number
+  ocr: boolean
 }
 
 export interface SlideCaptureStatus {
@@ -273,6 +288,7 @@ export interface HubTopic {
   questions: number
   practice: number | null
   card_ids: number[]
+  question_ids: number[]
 }
 
 export interface ConceptMapData {
@@ -534,4 +550,90 @@ export interface Usage {
     subject: string
     duration_s: number | null
   })[]
+}
+
+export type ExamStatus = 'building' | 'ready' | 'running' | 'grading' | 'graded' | 'failed'
+
+export interface ExamSummary {
+  id: number
+  subject_id: number
+  subject_name: string
+  subject_color: string
+  title: string
+  status: ExamStatus
+  duration_min: number
+  topics: string[]
+  types: string[]
+  difficulty: string
+  source: 'generate' | 'bank'
+  started_at: string | null
+  deadline: string | null
+  submitted_at: string | null
+  graded_at: string | null
+  score: number | null
+  max_points: number
+  feedback_md: string
+  error: string | null
+  model: string
+  cost_usd: number
+  created_at: string
+  items: number
+  remaining_s: number | null
+}
+
+export interface ExamQuestion {
+  type: string
+  title: string
+  bloom: string
+  difficulty: string
+  points: number
+  prompt: string
+  topic: string
+  emphasized: boolean
+  options: { text: string; correct?: boolean; explanation?: string }[]
+  // only after submitting:
+  answer?: string
+  explanation?: string
+  rubric?: { criterion: string; points: number }[]
+  solution_steps?: string[]
+  expected_output?: string
+  sources?: { label: string; lecture_id: number; start_s: number }[]
+}
+
+export interface ExamItem {
+  id: number
+  idx: number
+  question: ExamQuestion
+  answer_text: string
+  selected: number[]
+  flagged: boolean
+  max_points: number
+  score?: number | null
+  rubric_awarded?: { points: number; comment: string }[]
+  feedback?: string
+  graded_by?: '' | 'auto' | 'ai' | 'empty'
+}
+
+export interface ExamDetail extends Omit<ExamSummary, 'items'> {
+  items: ExamItem[]
+  item_count: number
+}
+
+export interface ExamOptions {
+  topics: { name: string; exam_relevant: boolean; mastery: number | null; questions: number }[]
+  past_exams: { title: string; duration_min: number; total_points: number }[]
+  suggested_duration: number
+  points_per_min: number
+  bank: Record<string, number>
+  llm_configured: boolean
+}
+
+export interface ExamInput {
+  subject_id: number
+  duration_min: number
+  topics: string[]
+  types: string[]
+  difficulty: string
+  source: 'generate' | 'bank'
+  title?: string
 }

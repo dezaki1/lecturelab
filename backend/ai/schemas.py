@@ -218,6 +218,80 @@ class CleanupOut(BaseModel):
     fixes: list[LineFix] = Field(description="Only lines that needed a fix")
 
 
+QuestionType = Literal["mcq", "multi", "tf", "short", "long", "calculation", "code"]
+
+
+class PastExamTopic(BaseModel):
+    name: str = Field(description="Topic as a course topic name, a few words")
+    points: float = Field(description="Points of the exam on this topic; 0 if not printed")
+
+
+class PastExamQuestion(BaseModel):
+    number: str = Field(description='As printed, e.g. "3b"')
+    type: QuestionType
+    points: float = Field(description="0 if not printed")
+    topic: str
+    prompt: str = Field(
+        description="The task as written (shorten long setups, keep formulas in LaTeX)"
+    )
+
+
+class PastExamOut(BaseModel):
+    title: str = Field(description='e.g. "Final exam WS 2024/25"; "Past exam" if unknown')
+    date: str = Field(description="Date or semester as printed; empty if unknown")
+    duration_min: int = Field(description="Working time in minutes; 0 if not printed")
+    total_points: float = Field(description="0 if not printed")
+    aids: str = Field(description="Allowed aids (calculator, cheat sheet...); empty if unknown")
+    format: str = Field(
+        description="2-4 sentences: structure, number of tasks, how answers are expected"
+    )
+    style: list[str] = Field(
+        description="Observations a question writer should copy: wording, depth, theory vs. "
+        "calculation, recurring task patterns"
+    )
+    topics: list[PastExamTopic]
+    questions: list[PastExamQuestion]
+
+
+class SimRef(BaseModel):
+    lecture: int = Field(description="Lecture number, e.g. 3 for L3")
+    start: str = Field(description="Timestamp where the supporting passage starts, e.g. 12:34")
+    end: str = Field(description="Timestamp where it ends")
+
+
+class SimQuestionOut(QuestionOut):
+    topic: str = Field(description="The course topic this question tests")
+    refs: list[SimRef]  # type: ignore[assignment]
+
+
+class SimExamOut(BaseModel):
+    title: str = Field(description="Short exam title, e.g. the topics covered")
+    questions: list[SimQuestionOut]
+
+
+class RubricGrade(BaseModel):
+    index: int = Field(description="Index of the rubric criterion, as listed")
+    points: float = Field(description="Points awarded for this criterion (0 to its maximum)")
+    comment: str = Field(description="Why, in one short sentence")
+
+
+class ItemGrade(BaseModel):
+    item_id: int
+    rubric: list[RubricGrade] = Field(description="One entry per rubric criterion")
+    score: float = Field(description="Total points awarded for the answer")
+    feedback: str = Field(
+        description="Markdown, addressed to the student: what was right, what was missing or "
+        "wrong, and how to fix it"
+    )
+
+
+class ExamGradeOut(BaseModel):
+    items: list[ItemGrade]
+    overall: str = Field(
+        description="Markdown: overall verdict, strengths, and what to revise before the exam"
+    )
+
+
 OUTPUTS: dict[str, type[BaseModel]] = {
     "hints": HintsOut,
     "summary": SummaryOut,
@@ -230,4 +304,7 @@ OUTPUTS: dict[str, type[BaseModel]] = {
     "explanations": ExplanationsOut,
     "verify": VerifyOut,
     "cleanup": CleanupOut,
+    "past_exam": PastExamOut,
+    "exam_build": SimExamOut,
+    "exam_grade": ExamGradeOut,
 }

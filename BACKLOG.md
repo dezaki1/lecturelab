@@ -37,3 +37,7 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Exam hints: let the student add/remove hints by hand; weight hints by how often across the
   semester a topic was flagged.
 - Dashboard: per-lecture weak cards ("most forgotten this week") linking into a filtered review.
+- Past exams: practise the past exam's own tasks (they have no model answers; Claude could
+  write them); "sit a past exam" in the simulator with its real duration.
+- Exam simulator: per-question timing; a "retake the questions I got wrong" button; send
+  handwritten answers (tablet photo) for grading via vision; let the student dispute a grade.

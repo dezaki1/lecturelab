@@ -20,6 +20,14 @@ export function LiveUpdates() {
   useEvent('subject_hub', (d: { subject_id: number }) =>
     qc.invalidateQueries({ queryKey: ['hub', d.subject_id] }),
   )
+  useEvent('subject_documents', (d: { subject_id: number }) => {
+    qc.invalidateQueries({ queryKey: ['subject-documents', d.subject_id] })
+    qc.invalidateQueries({ queryKey: ['exam-options', d.subject_id] })
+  })
+  useEvent('exam', (d: { id: number }) => {
+    qc.invalidateQueries({ queryKey: ['exam', d.id] })
+    qc.invalidateQueries({ queryKey: ['exams'] })
+  })
   useEvent('settings', () => qc.invalidateQueries({ queryKey: ['llm-settings'] }))
   useEvent('review', () => qc.invalidateQueries({ queryKey: ['review-summary'] }))
   useEvent('job', (d: { lecture_id: number | null }) => {

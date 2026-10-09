@@ -62,6 +62,9 @@ LABELS = {
     "cleanup": "Transcript check",
     "slides": "Reading slides",
     "document": "Reading PDF",
+    "past_exam": "Analysing past exam",
+    "exam_build": "Writing exam",
+    "exam_grade": "Grading exam",
 }
 # Kinds that announce their own failures (generation reports which sections failed).
 SELF_NOTIFYING = {"generate"}

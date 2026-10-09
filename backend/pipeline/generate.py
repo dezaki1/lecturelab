@@ -235,6 +235,10 @@ class Runner:
         if task in HINT_AWARE:  # after the cache breakpoint, so the shared prefix is unchanged
             with session_scope() as s:
                 instruction += hints_block(lecture_hints(s, self.ctx.lecture_id))
+                if task == "questions":
+                    from backend.pipeline.past_exams import style_block
+
+                    instruction += style_block(s, self.ctx.subject_id)
         req = LLMRequest(
             task=task,
             system=self.ctx.system,

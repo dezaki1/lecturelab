@@ -23,6 +23,7 @@ from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import abs_path, lecture_dir, rel_path
 from backend.core.models import Job, JobStatus, Lecture, Material, Slide, TranscriptSegment
 from backend.pipeline.align import place_pages
+from backend.pipeline.past_exams import PAST_EXAM_KIND, ocr_pages, queue_analysis
 
 log = logging.getLogger(__name__)
 
@@ -128,6 +129,11 @@ def process_document(ctx: JobContext) -> None:
         texts = page_texts(pdf_path)
     except Exception as e:
         raise JobError(f"Could not read the PDF: {e}") from e
+    ocr = False
+    if kind == PAST_EXAM_KIND and not any(t.strip() for t in texts):
+        # Old exams are often scans without a text layer.
+        texts = ocr_pages(pdf_path, pages_dir_for(pdf_path), len(texts), ctx)
+        ocr = True
     with session_scope() as s:
         material = s.get(Material, material_id)
         if material is None:
@@ -135,8 +141,13 @@ def process_document(ctx: JobContext) -> None:
         material.extracted_text = "\n\n".join(
             f"[page {i}]\n{t}" for i, t in enumerate(texts, start=1)
         )
+        if ocr:
+            material.data = {**material.data, "ocr": True}
         s.add(material)
         s.commit()
+        if kind == PAST_EXAM_KIND:
+            queue_analysis(s, material_id)
+            bus.publish("subject_documents", {"subject_id": material.subject_id})
 
     if kind != "slides" or lecture is None:
         return

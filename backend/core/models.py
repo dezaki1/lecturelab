@@ -178,6 +178,8 @@ class Material(SQLModel, table=True):
     title: str = ""
     file_path: str  # relative to data_dir
     extracted_text: str = ""
+    # Past exams: {"analysis": {...PastExamOut}, "ocr": true} once read (``pipeline.past_exams``)
+    data: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -437,3 +439,62 @@ class Attempt(SQLModel, table=True):
     max_points: float = 0.0
     duration_ms: int | None = None
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class ExamStatus(StrEnum):
+    building = "building"  # questions being written (job ``exam_build``)
+    ready = "ready"  # not started yet
+    running = "running"  # the clock is ticking
+    grading = "grading"  # submitted; open answers being graded (job ``exam_grade``)
+    graded = "graded"
+    failed = "failed"  # building or grading failed; ``error`` says why, the job can be retried
+
+
+class Exam(SQLModel, table=True):
+    """A simulated exam (``study.exam``): built, sat under a time limit, graded by the AI."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True, ondelete="CASCADE")
+    title: str = ""
+    status: ExamStatus = ExamStatus.building
+    # {"topics": [...], "types": [...], "difficulty": "...", "source": "generate" | "bank"}
+    config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    duration_min: int = 60
+    started_at: datetime | None = None
+    deadline: datetime | None = None
+    submitted_at: datetime | None = None
+    graded_at: datetime | None = None
+    score: float | None = None
+    max_points: float = 0.0
+    feedback_md: str = ""
+    error: str | None = None
+    model: str = ""
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class ExamItem(SQLModel, table=True):
+    """One question of a simulated exam with the student's answer and its grade.
+
+    ``question`` is a snapshot of the question at build time, so the exam history survives
+    edits, regeneration and deletion of the bank question.
+    """
+
+    __tablename__ = "exam_item"
+
+    id: int | None = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exam.id", index=True, ondelete="CASCADE")
+    idx: int
+    question_id: int | None = Field(default=None, foreign_key="question.id", ondelete="SET NULL")
+    question: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    answer_text: str = ""
+    selected: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    flagged: bool = False
+    score: float | None = None
+    max_points: float = 0.0
+    # Per rubric item: [{"points": 1.5, "comment": "..."}], same order as the question's rubric
+    rubric_awarded: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    feedback: str = ""
+    graded_by: str = ""  # auto | ai | empty

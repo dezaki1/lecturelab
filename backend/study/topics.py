@@ -170,6 +170,7 @@ def topics_with_mastery(
                 if got and sum(b for _, b in got)
                 else None,
                 "card_ids": sorted(cards),
+                "question_ids": sorted(questions),
             }
         )
     return out

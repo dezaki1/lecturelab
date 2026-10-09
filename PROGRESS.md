@@ -143,7 +143,23 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   page tabs (Lectures, Course overview, Topics, Concept map, Glossary, Exam hints, Materials)
   - Concept map drawn with @dagrejs/dagre + SVG instead of Mermaid (SPEC default): ~16 KB
     gzipped on demand vs. ~120 MB of Mermaid deps, and nodes link to their lectures.
-- [ ] **M14 Past exams + exam simulator**
+- [x] **M14 Past exams + exam simulator**: past exam PDFs on the subject's Materials tab
+  (scanned pages OCR'd with RapidOCR), analysed by the main model into format, duration,
+  points, aids, style notes, topic weighting and the task list (`Material.data["analysis"]`,
+  re-runnable); a style block (formats, style notes, topic weights, up to 12 example tasks) is
+  appended after the cache breakpoint to the lecture "questions" call and to simulated exams.
+  Exam simulator: topics (from the course overview), duration, question types, difficulty;
+  "write new" (main model from the chosen topics' note sections + exam hints, questions stored
+  as kind "sim", sized by the past exams' points per minute) or "question bank" (instant,
+  unseen/weakest first); timed sitting with server-side deadline, autosave, flags, auto hand-in
+  (also when the tab was closed); choice questions marked at once, open answers graded by the
+  main model per rubric criterion (clamped to the rubric, skipped items re-asked once, failure
+  keeps the answers and can be retried); results with score, approximate Austrian grade, score
+  per topic, per-criterion comments, model answer and source chips; history; graded items
+  stored as Attempts (feed practice stats and M15)
+  - Built and tested in a Linux cloud container (mock provider, real OCR); not yet run against
+    real Claude, so the prompts (`past_exam`, `exam_build`, `exam_grade` v1) still need a real
+    run with one of your old exams.
 - [ ] **M15 Weak spots**
 - [ ] **M16 Exports**
 

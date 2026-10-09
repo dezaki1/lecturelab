@@ -24,10 +24,12 @@ from backend.pipeline.documents import (
     safe_name,
     unique_path,
 )
+from backend.pipeline.past_exams import PAST_EXAM_KIND, has_text, is_analysing, queue_analysis
+from backend.pipeline.past_exams import summary as past_exam_summary
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
-KINDS = ("slides", "notes", "other")
+KINDS = ("slides", "notes", "past_exam", "other")
 MAX_BYTES = 200 * 1024 * 1024
 
 
@@ -40,6 +42,8 @@ class DocumentRead(BaseModel):
     pages: int  # 0 until the PDF has been read
     placed: int  # slide pages placed on the lecture timeline
     processing: bool
+    analysing: bool = False  # past exams: format/style analysis queued or running
+    past_exam: dict[str, Any] | None = None  # past exams: the analysis summary
 
 
 def _read(s: Session, m: Material) -> dict[str, Any]:
@@ -49,6 +53,8 @@ def _read(s: Session, m: Material) -> dict[str, Any]:
         "pages": m.extracted_text.count("[page "),
         "placed": placed,
         "processing": is_processing(s, m.id),  # type: ignore[arg-type]
+        "analysing": m.kind == PAST_EXAM_KIND and is_analysing(s, m.id),  # type: ignore[arg-type]
+        "past_exam": past_exam_summary(m) if m.kind == PAST_EXAM_KIND else None,
     }
 
 
@@ -158,6 +164,23 @@ def replace_document(document_id: int, session: Session = Depends(get_session)) 
         raise HTTPException(404, "Document not found")
     if not is_processing(session, document_id):
         queue_document(session, document_id, m.lecture_id)
+    return _read(session, m)
+
+
+@router.post("/documents/{document_id}/analyse", response_model=DocumentRead, status_code=202)
+def analyse_document(document_id: int, session: Session = Depends(get_session)) -> dict:
+    """Past exams: analyse the format and style again (e.g. after a failure or a better model)."""
+    m = session.get(Material, document_id)
+    if m is None:
+        raise HTTPException(404, "Document not found")
+    if m.kind != PAST_EXAM_KIND:
+        raise HTTPException(422, "Only past exams are analysed")
+    if is_processing(session, document_id) or is_analysing(session, document_id):
+        raise HTTPException(409, "This PDF is still being processed")
+    if not has_text(m.extracted_text):
+        raise HTTPException(409, "No text could be read from this PDF")
+    if not queue_analysis(session, document_id):
+        raise HTTPException(409, "Add an Anthropic API key on the Settings page first")
     return _read(session, m)
 
 

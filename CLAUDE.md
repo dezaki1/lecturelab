@@ -52,7 +52,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     hints (keyword exam-hint detector EN/DE at transcription; hint list
                     appended to section instructions after the cache breakpoint),
                     subject_hub (job: course overview/topics/concept map from per-lecture notes,
-                    stored as subject-level Note kind "course"; queued after each generation)
+                    stored as subject-level Note kind "course"; queued after each generation),
+                    past_exams (job `past_exam`: Material kind "past_exam" -> format/style
+                    analysis in Material.data; style_block for questions + simulator)
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -60,6 +62,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     chunk/chunk_fts/chunk_vec share rowids), retrieve (hybrid FTS5 + vec0 + RRF),
                     chat (scoped context, retrieval, citation labels -> lecture/time)
   study/            review (FSRS scheduling, queue, undo, stats), practice (grading, picking),
+                    exam (simulator: jobs `exam_build` / `exam_grade`, timed sitting, Exam +
+                    ExamItem with a question snapshot, graded items become Attempts),
                     cards (browse/filter, bulk actions, duplicate groups, merge), dashboard
                     (retention, activity, forecast, mastery = mean FSRS retrievability per subject),
                     topics (hub read side: cumulative glossary, topic -> note sections -> time
@@ -129,6 +133,8 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - "Primary" slides (generation context, transcript/notes thumbnails): PDF pages if the lecture
   has any, else captured slides (`pipeline.slides.primary_slides`).
 - Test PDFs: `tests/pdfgen.make_pdf` writes real text PDFs (Pillow PDFs have no text layer).
+- Question kinds: "exam" and "exercise" come with a lecture's material; "sim" questions are
+  written by the exam simulator and stay out of practice and the lecture pages.
 - Frontend graphs: concept map = @dagrejs/dagre layout (lazy-loaded) + own SVG, not Mermaid
   (Mermaid is ~120 MB of deps; our data is already structured and nodes need links).
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.

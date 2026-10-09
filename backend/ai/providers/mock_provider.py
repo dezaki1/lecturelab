@@ -312,3 +312,100 @@ class MockProvider:
                 for i in ids
             ]
         }
+
+    def _PastExamOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """Each "N. text (P points)" line of the exam text becomes a question."""
+        tasks = re.findall(r"^(\d+)[.)] (.+?)(?: \((\d+) points?\))?$", req.context, re.M)
+        questions = [
+            {
+                "number": n,
+                "type": "calculation" if "compute" in text.lower() else "short",
+                "points": float(p or 0),
+                "topic": "PCA" if "pca" in text.lower() else "Basics",
+                "prompt": text,
+            }
+            for n, text, p in tasks
+        ]
+        minutes = re.search(r"(\d+) minutes", req.context)
+        return {
+            "title": "Final exam WS 2024/25",
+            "date": "2025-01-30",
+            "duration_min": int(minutes.group(1)) if minutes else 0,
+            "total_points": sum(q["points"] for q in questions),
+            "aids": "calculator",
+            "format": f"{len(questions)} tasks, answers written on the paper.",
+            "style": ["Short scenario before each task", "Small integer numbers"],
+            "topics": [
+                {"name": t, "points": sum(q["points"] for q in questions if q["topic"] == t)}
+                for t in sorted({q["topic"] for q in questions})
+            ],
+            "questions": questions,
+        }
+
+    def _SimExamOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """One mcq and one long question per note section, citing the section's first ref."""
+        sections = re.findall(
+            r"^### (?:★ )?(.+?) \(L(\d+) (\d+:\d{2}(?::\d{2})?)-(\d+:\d{2}(?::\d{2})?)",
+            req.context,
+            re.M,
+        )
+        questions = []
+        for head, n, start, end in sections:
+            ref = {"lecture": int(n), "start": start, "end": end}
+            base = {"bloom": "apply", "difficulty": "medium", "emphasized": False, "topic": head}
+            questions.append(
+                {
+                    **base,
+                    "type": "mcq",
+                    "points": 2,
+                    "prompt": f"Which statement about {head} is true?",
+                    "options": [
+                        {"text": "The right one", "correct": True, "explanation": "Yes."},
+                        {"text": "A wrong one", "correct": False, "explanation": "No."},
+                    ],
+                    "answer": "The right one",
+                    "explanation": "See the notes.",
+                    "rubric": [{"criterion": "Correct option", "points": 2}],
+                    "refs": [ref],
+                }
+            )
+            questions.append(
+                {
+                    **base,
+                    "type": "long",
+                    "points": 4,
+                    "prompt": f"Explain {head} in your own words.",
+                    "options": [],
+                    "answer": f"{head} means ...",
+                    "explanation": "",
+                    "rubric": [
+                        {"criterion": "Defines it", "points": 2},
+                        {"criterion": "Gives an example", "points": 2},
+                    ],
+                    "refs": [ref],
+                }
+            )
+        return {"title": "Mock exam", "questions": questions}
+
+    def _ExamGradeOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """Full points on the first criterion, half on the rest; ignores "SKIP" answers."""
+        items = []
+        for block in req.context.split("### Item id=")[1:]:
+            item_id = int(block.split(" ", 1)[0])
+            if "SKIP" in block:
+                continue
+            crit = [float(p) for p in re.findall(r"^\d+\. \(([\d.]+) pts\)", block, re.M)]
+            rubric = [
+                {"index": k, "points": p if k == 0 else p / 2, "comment": "ok"}
+                for k, p in enumerate(crit)
+            ]
+            rubric.append({"index": 99, "points": 50, "comment": "bogus criterion"})
+            items.append(
+                {
+                    "item_id": item_id,
+                    "rubric": rubric,
+                    "score": 999,
+                    "feedback": "You got the main idea.",
+                }
+            )
+        return {"items": items, "overall": "Solid work; revise the details."}

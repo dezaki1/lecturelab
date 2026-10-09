@@ -11,6 +11,11 @@ import type {
   ReviewSummary,
   SearchHit,
   Estimate,
+  ExamDetail,
+  ExamInput,
+  ExamItem,
+  ExamOptions,
+  ExamSummary,
   LLMSettings,
   Materials,
   Note,
@@ -224,6 +229,22 @@ export const api = {
     ),
   generatePending: () => request<{ queued: number }>('POST', '/api/generate/pending'),
 
+  examOptions: (subjectId: number) =>
+    request<ExamOptions>('GET', `/api/exams/options?subject_id=${subjectId}`),
+  exams: (subjectId?: number) => request<ExamSummary[]>('GET', `/api/exams?${qs({ subject_id: subjectId })}`),
+  exam: (id: number) => request<ExamDetail>('GET', `/api/exams/${id}`),
+  createExam: (data: ExamInput) => request<ExamDetail>('POST', '/api/exams', data),
+  startExam: (id: number) => request<ExamDetail>('POST', `/api/exams/${id}/start`),
+  saveExamAnswer: (
+    id: number,
+    itemId: number,
+    data: Partial<Pick<ExamItem, 'answer_text' | 'selected' | 'flagged'>>,
+  ) => request<{ id: number; remaining_s: number | null }>('PATCH', `/api/exams/${id}/items/${itemId}`, data),
+  submitExam: (id: number) => request<ExamDetail>('POST', `/api/exams/${id}/submit`),
+  retryExam: (id: number) => request<ExamSummary>('POST', `/api/exams/${id}/retry`),
+  deleteExam: (id: number) => request<void>('DELETE', `/api/exams/${id}`),
+  analyseDocument: (id: number) => request<LectureDocument>('POST', `/api/documents/${id}/analyse`),
+
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
   startRecording: (data: { subject_id: number; mic: boolean; slides: boolean }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),
@@ -265,8 +286,12 @@ export function uploadImport(
 }
 
 /** Upload a PDF to a subject (not tied to a lecture). */
-export async function uploadSubjectDocument(subjectId: number, file: File): Promise<LectureDocument> {
-  const params = new URLSearchParams({ filename: file.name, kind: 'other' })
+export async function uploadSubjectDocument(
+  subjectId: number,
+  file: File,
+  kind: 'other' | 'past_exam' = 'other',
+): Promise<LectureDocument> {
+  const params = new URLSearchParams({ filename: file.name, kind })
   const res = await fetch(`/api/subjects/${subjectId}/documents?${params}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/pdf' },

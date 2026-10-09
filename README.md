@@ -121,7 +121,8 @@ Each subject page has tabs next to the lecture list:
   **mastery** per topic (recall of the topic's flashcards today), sortable "weakest first".
 - **Concept map**: the key ideas and how they relate; click a concept to open its lecture.
 - **Glossary**: every term of every lecture in one searchable list, with the German term.
-- **Exam hints** and **Materials** (all PDFs of the subject; add scripts or exercise sheets here).
+- **Exam hints** and **Materials** (all PDFs of the subject; add scripts or exercise sheets here,
+  and **past exams**, see below).
 
 ## Cards and the dashboard
 
@@ -157,6 +158,25 @@ all subjects (FSRS): Space shows the answer, 1-4 rates it (Again/Hard/Good/Easy)
 New cards are introduced 30 per day by default (`[study] new_cards_per_day` in config.toml).
 **Practice** quizzes you on the generated exam questions or exercises; multiple choice is graded
 automatically, open questions by ticking the rubric points you got.
+
+## Past exams and the exam simulator
+
+**Add past exam** on a subject's Materials tab takes an old exam PDF (scans work: pages without
+a text layer are read with the local OCR). Claude describes its format, working time, points,
+style and topic weighting; from then on the subject's exam questions are written to match it,
+and the exam simulator sizes its exams like the real one.
+
+**Exam simulator** (sidebar): pick a subject, topics (none = the whole course), duration,
+question types (none = like the past exams) and difficulty. **Write a new exam** has Claude write
+fresh questions from your notes of those topics (about a minute); **Use my question bank** picks
+from the questions generated with your lectures, unseen and weakest first (instant, offline).
+The clock starts with **Start** and keeps running if you close the tab; answers save as you type,
+you can flag questions, and the exam is handed in automatically when time is up. Multiple choice
+is marked at once; Claude grades open answers against each question's rubric with partial
+credit, comments per criterion and feedback, and each question links to the lecture moment it
+is based on. Results (score, an approximate Austrian grade, score per topic) stay in the history
+and count towards your practice stats. Rough cost with Claude Sonnet: a few tens of cents to
+write and grade a 90-minute exam.
 
 ## Jobs, notifications and costs
 
