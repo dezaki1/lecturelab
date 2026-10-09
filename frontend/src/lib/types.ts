@@ -320,6 +320,60 @@ export interface ReviewSummary extends ReviewCounts {
   by_subject: { subject_id: number; name: string; color: string; due: number; new: number }[]
 }
 
+export type CardState = 'new' | 'learning' | 'review' | 'relearning' | 'suspended'
+
+export interface CardRow extends Card {
+  subject_id: number
+  lecture_id: number | null
+  state: CardState
+  reps: number
+  lapses: number
+  stability: number | null
+  due: string | null
+  suspended: boolean
+  lecture_number: number | null
+  lecture_title: string
+  subject_name: string
+  subject_color: string
+  created_at: string
+}
+
+export interface CardQuery {
+  subject_id?: number
+  lecture_id?: number
+  state?: string
+  q?: string
+  sort?: 'lecture' | 'due' | 'newest' | 'lapses'
+  offset?: number
+  limit?: number
+}
+
+export interface SubjectProgress {
+  subject_id: number
+  name: string
+  color: string
+  exam_date: string | null
+  days_left: number | null
+  lectures: number
+  lectures_ready: number
+  cards: number
+  new: number
+  young: number
+  mature: number
+  suspended: number
+  due: number
+  mastery: number | null
+  practice: { attempts: number; score: number; max: number }
+}
+
+export interface Dashboard extends ReviewSummary {
+  retention: { rate: number | null; reviews: number }
+  activity: { date: string; reviews: number; again: number }[]
+  forecast: { date: string; due: number }[]
+  subjects: SubjectProgress[]
+  desired_retention: number
+}
+
 export interface ReviewNext {
   card: Card | null
   remaining: ReviewCounts

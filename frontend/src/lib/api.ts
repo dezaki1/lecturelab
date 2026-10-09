@@ -18,6 +18,9 @@ import type {
   LectureDetail,
   LectureDocument,
   RecorderStatus,
+  CardQuery,
+  CardRow,
+  Dashboard,
   Slide,
   SlideSettings,
   SlideTest,
@@ -33,6 +36,14 @@ export class ApiError extends Error {
     super(message)
     this.status = status
   }
+}
+
+/** Query string from defined, non-empty values. */
+function qs(p: object): string {
+  const out = new URLSearchParams()
+  for (const [k, v] of Object.entries(p as Record<string, unknown>))
+    if (v !== undefined && v !== null && v !== '') out.set(k, String(v))
+  return out.toString()
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -152,8 +163,24 @@ export const api = {
     request<unknown>('POST', `/api/review/${id}`, { rating, duration_ms }),
   reviewUndo: () => request<{ card_id: number }>('POST', '/api/review/undo'),
   reviewExtraNew: (count = 10) => request<unknown>('POST', '/api/review/extra-new', { count }),
-  updateCard: (id: number, data: { front?: string; back?: string; suspended?: boolean }) =>
-    request<unknown>('PATCH', `/api/flashcards/${id}`, data),
+  updateCard: (
+    id: number,
+    data: { front?: string; back?: string; tags?: string[]; type?: string; suspended?: boolean },
+  ) => request<unknown>('PATCH', `/api/flashcards/${id}`, data),
+  cards: (p: CardQuery) => request<{ total: number; items: CardRow[] }>('GET', `/api/cards?${qs(p)}`),
+  bulkCards: (ids: number[], action: 'suspend' | 'unsuspend' | 'delete' | 'forget') =>
+    request<{ changed: number }>('POST', '/api/cards/bulk', { ids, action }),
+  duplicates: (subjectId?: number) =>
+    request<CardRow[][]>('GET', `/api/cards/duplicates?${qs({ subject_id: subjectId })}`),
+  mergeCards: (keepId: number, mergeIds: number[]) =>
+    request<CardRow>('POST', '/api/cards/merge', { keep_id: keepId, merge_ids: mergeIds }),
+  exportCardsUrl: (format: 'apkg' | 'csv', p: CardQuery & { ids?: number[] }) => {
+    const { ids, ...rest } = p
+    const params = new URLSearchParams(qs({ format, ...rest }))
+    ids?.forEach((id) => params.append('ids', String(id)))
+    return `/api/cards/export?${params}`
+  },
+  dashboard: () => request<Dashboard>('GET', '/api/dashboard'),
   practiceQuestions: (params: Record<string, string | number | undefined>) =>
     request<PracticeItem[]>(
       'GET',

@@ -30,3 +30,6 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - PDF placement: add bge-m3 embedding similarity for cross-language decks (German slides,
   English speech); upload one course PDF to the subject and place pages across all lectures.
 - Cleanup: optional Sonnet for cleanup on lectures with many low-confidence lines.
+- Cards: remember "not duplicates" decisions; AnkiConnect live sync instead of file export;
+  optionally export FSRS state into Anki's scheduling.
+- Dashboard: per-lecture weak cards ("most forgotten this week") linking into a filtered review.

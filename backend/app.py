@@ -12,6 +12,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.api import (
+    cards,
     chat,
     documents,
     imports,
@@ -96,6 +97,7 @@ def create_app(
     app.include_router(jobs_api.router)
     app.include_router(slides.router)
     app.include_router(documents.router)
+    app.include_router(cards.router)
 
     _mount_frontend(app)
     return app
@@ -116,4 +118,6 @@ def _mount_frontend(app: FastAPI) -> None:
         file = (FRONTEND_DIST / path).resolve()
         if path and file.is_file() and FRONTEND_DIST in file.parents:
             return FileResponse(file)
-        return FileResponse(FRONTEND_DIST / "index.html")
+        # Revalidate every time: a cached index.html would point at the previous build's
+        # assets after an update (the hashed /assets files themselves can be cached).
+        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})

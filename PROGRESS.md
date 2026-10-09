@@ -113,7 +113,16 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
     sentence; alignment test on the fixture script within ~5 s.
   - Still to see on real lectures: German slides with English speech (TF-IDF needs shared
     words; embeddings would help, see BACKLOG) and the real cost/benefit of cleanup.
-- [ ] **M11 Cards + dashboard**
+- [x] **M11 Cards + dashboard**: card browser (subject/state/search filters, sort by due or
+  most forgotten, paging), edit text/type/tags, suspend/unsuspend/reset/delete singly or in bulk;
+  duplicate groups within a subject (difflib with cheap upper bounds first) and merge (sources
+  and tags united, most-practised schedule kept, review logs moved over); export to Anki .apkg
+  (genanki, own note types with a Source link back to the lecture, stable GUIDs, subdeck per
+  lecture, Markdown/math converted for MathJax) and CSV; dashboard with today's work, streak,
+  30-day true retention, next exam, 30-day activity, 7-day forecast, per-subject cards
+  (new/young/mature), mastery (mean FSRS retrievability) and practice score
+  - Also: index.html is now served with `Cache-Control: no-cache` (a cached copy showed the
+    previous build after an update).
 - [ ] **M12 Confused bookmarks + exam hints**
 - [ ] **M13 Subject hub**
 - [ ] **M14 Past exams + exam simulator**

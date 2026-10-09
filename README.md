@@ -110,6 +110,20 @@ slow (~40 min for a 2-minute test lecture) and noticeably less accurate. Use off
 chat and as a fallback, and let Claude generate the study material. `[llm] ollama_model` in config.toml can point to a smaller model (e.g.
 `qwen3:4b`, which fits in 4 GB of VRAM) for speed.
 
+## Cards and the dashboard
+
+**Overview** shows what to review today, your streak, 30-day retention, the next exam, review
+activity, a 7-day forecast and, per subject, cards (new / learning / mature) and **mastery**:
+how much of the deck you would recall today (FSRS recall probability, unseen cards count as 0).
+
+**Cards** lists every flashcard with filters (subject, state, search, sort by most forgotten),
+editing (text, type, tags), suspend, reset and delete, also for many cards at once.
+**Duplicates** finds near-identical cards within a subject; merging keeps the card you pick,
+adds the others' lecture links and tags, and keeps the review progress of the most-practised one.
+**Export** writes an Anki deck (`.apkg`, one subdeck per lecture, math rendered by Anki, a link
+back to the lecture moment on every card; importing again updates the same notes) or a CSV.
+Anki starts exported cards as new; review progress stays in LectureLab.
+
 ## Review and practice
 
 **Review** (sidebar, with a badge for cards due) runs a daily spaced-repetition session across

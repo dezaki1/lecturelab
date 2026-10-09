@@ -5,6 +5,7 @@ import {
   ListChecks,
   Home,
   Layers,
+  Library,
   MessageSquare,
   Moon,
   Plus,
@@ -102,6 +103,9 @@ export function AppShell() {
                 {toReview}
               </span>
             )}
+          </NavLink>
+          <NavLink to="/cards" className={linkClass}>
+            <Library className="size-4" /> Cards
           </NavLink>
           <NavLink to="/practice" className={linkClass}>
             <Target className="size-4" /> Practice

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
@@ -284,6 +284,8 @@ def delete_question(question_id: int, session: Session = Depends(get_session)) -
 class CardUpdate(BaseModel):
     front: str | None = Field(default=None, min_length=1)
     back: str | None = None
+    tags: list[str] | None = None
+    type: Literal["basic", "cloze", "reversed"] | None = None
     suspended: bool | None = None
 
 
@@ -295,9 +297,11 @@ def update_card(
     if card is None:
         raise HTTPException(404, "Card not found")
     changes = data.model_dump(exclude_unset=True)
+    if "tags" in changes:
+        changes["tags"] = sorted({t.strip() for t in changes["tags"] or [] if t.strip()})
     for k, v in changes.items():
         setattr(card, k, v.strip() if isinstance(v, str) else v)
-    if "front" in changes or "back" in changes:
+    if changes.keys() & {"front", "back", "tags", "type"}:
         card.edited_by_me = True  # survives regeneration
     session.add(card)
     session.commit()

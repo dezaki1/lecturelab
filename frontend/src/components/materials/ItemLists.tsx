@@ -11,7 +11,7 @@ import type { Card, QuestionItem } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 /** "{{c1::answer}}" -> "[…]" (hidden) or "**answer**" (revealed). */
-function cloze(text: string, reveal: boolean) {
+export function cloze(text: string, reveal: boolean) {
   return text.replace(/\{\{c\d+::(.+?)(?:::(.+?))?\}\}/g, (_, ans: string, hint?: string) =>
     reveal ? `**${ans}**` : `[${hint ?? '…'}]`.replace('[', '\\[').replace(']', '\\]'),
   )
