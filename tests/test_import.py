@@ -3,6 +3,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -89,7 +90,9 @@ def test_import_falls_back_to_last_modified(client: TestClient, media) -> None:
         client, sid, media["mp3"], last_modified_ms=1_790_935_203_000, title="Intro"
     ).json()
     assert lec["title"] == "Intro"
-    assert lec["started_at"].startswith("2026-10-02T10:00:00")
+    started = datetime.fromisoformat(lec["started_at"])
+    # ffmpeg builds disagree on MP3 duration by a few tens of ms (encoder padding)
+    assert abs((started - datetime(2026, 10, 2, 10, 0, 0, tzinfo=UTC)).total_seconds()) < 0.5
 
 
 def test_import_rejections(client: TestClient, media, tmp_path: Path) -> None:

@@ -24,11 +24,8 @@ pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg n
 def slide(title: str, *lines: str, size: tuple[int, int] = (1280, 720)) -> Image.Image:
     img = Image.new("RGB", size, "white")
     d = ImageDraw.Draw(img)
-    try:
-        big = ImageFont.truetype("arial.ttf", 56)
-        small = ImageFont.truetype("arial.ttf", 34)
-    except OSError:
-        big = small = ImageFont.load_default(40)
+    # Pillow's bundled font, so the slides look the same on every machine
+    big, small = ImageFont.load_default(56), ImageFont.load_default(34)
     d.text((60, 50), title, fill="black", font=big)
     for i, line in enumerate(lines):
         d.text((60, 180 + 60 * i), line, fill="black", font=small)
