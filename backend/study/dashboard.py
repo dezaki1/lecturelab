@@ -29,7 +29,7 @@ from backend.study.review import counts, local_day_start, now_utc, stats
 MATURE_DAYS = 21.0
 
 
-def _retrievability(sch: Scheduler, card: Flashcard, now: datetime) -> float:
+def retrievability(sch: Scheduler, card: Flashcard, now: datetime) -> float:
     if card.due is None or not card.fsrs or card.fsrs.get("stability") is None:
         return 0.0
     try:
@@ -110,7 +110,7 @@ def _subject_rows(s: Session, now: datetime) -> list[dict[str, Any]]:
             select(Flashcard).where(Flashcard.subject_id == sub.id, col(Flashcard.is_current))
         ).all()
         active = [c for c in cards if not c.suspended]
-        recall = [_retrievability(sch, c, now) for c in active]
+        recall = [retrievability(sch, c, now) for c in active]
         stab = [c.fsrs.get("stability") or 0 for c in active if c.due is not None]
         lectures = s.exec(select(Lecture.status).where(Lecture.subject_id == sub.id)).all()
         n, score, mx = practice.get(sub.id, (0, 0.0, 0.0))  # type: ignore[arg-type]

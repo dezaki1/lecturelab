@@ -166,6 +166,48 @@ class ExplanationsOut(BaseModel):
     explanations: list[ExplanationOut]
 
 
+class TopicPlace(BaseModel):
+    lecture: int = Field(description="Lecture number, e.g. 3 for L3")
+    sections: list[str] = Field(
+        description="Headings of that lecture's note sections covering the topic, copied exactly"
+    )
+
+
+class HubTopic(BaseModel):
+    name: str = Field(description="Short topic name; keep names of existing topics unchanged")
+    summary: str = Field(description="One line: what this topic is about")
+    places: list[TopicPlace]
+    exam_relevant: bool = Field(description="True if the lecturer flagged it for the exam")
+
+
+class LectureRecap(BaseModel):
+    lecture: int
+    recap: str = Field(description="2-3 sentences: what this lecture added to the course")
+
+
+class ConceptNode(BaseModel):
+    id: str = Field(description="Short identifier, letters/digits/underscores")
+    label: str = Field(description="Concept name as shown in the map")
+    lecture: int = Field(description="Lecture number where the concept is introduced")
+
+
+class ConceptEdge(BaseModel):
+    source: str = Field(description="id of the source concept")
+    target: str = Field(description="id of the target concept")
+    label: str = Field(description='Relation, a few words, e.g. "is solved by", "generalises"')
+
+
+class SubjectHubOut(BaseModel):
+    overview: str = Field(
+        description="Markdown, 1-3 paragraphs: the course so far, its thread and how the "
+        "lectures build on each other"
+    )
+    recaps: list[LectureRecap]
+    topics: list[HubTopic]
+    concepts: list[ConceptNode]
+    relations: list[ConceptEdge]
+
+
 class LineFix(BaseModel):
     line: int = Field(description="The line number shown before the timestamp")
     text: str = Field(description="The complete corrected line")

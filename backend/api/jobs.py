@@ -37,7 +37,7 @@ def _job_read(
     job: Job, lectures: dict[int, Lecture], subjects: dict[int, Subject]
 ) -> dict[str, Any]:
     lec = lectures.get(job.lecture_id) if job.lecture_id else None
-    sub = subjects.get(lec.subject_id) if lec else None
+    sub = subjects.get(lec.subject_id) if lec else subjects.get(job.payload.get("subject_id", 0))
     end = job.finished_at or (utcnow() if job.started_at else None)
     return {
         **job.model_dump(exclude={"payload"}),

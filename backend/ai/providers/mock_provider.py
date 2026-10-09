@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from itertools import pairwise
 from typing import Any
 
 from backend.ai.types import ChatEvent, ChatRequest, LLMRequest, LLMResult, Usage
@@ -226,6 +227,34 @@ class MockProvider:
             "hints": [
                 {**ref, "kind": "repeated", "topic": lines[i][1][:60], "quote": lines[i][1][:40]}
             ]
+        }
+
+    def _SubjectHubOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """One topic per note section heading, one concept per lecture, chained in order."""
+        lectures = re.findall(r'^## L(\d+) "(.*)"', req.context, re.M)
+        sections = re.findall(r"^Note sections: (.*)$", req.context, re.M)
+        topics, concepts = [], []
+        for (n, title), secs in zip(lectures, sections, strict=False):
+            for head in [h.strip().lstrip("★ ") for h in secs.split("|") if h.strip()]:
+                topics.append(
+                    {
+                        "name": head,
+                        "summary": f"{head} from L{n}",
+                        "places": [{"lecture": int(n), "sections": [head]}],
+                        "exam_relevant": head.startswith("Topic 1"),
+                    }
+                )
+            concepts.append({"id": f"c{n}", "label": title, "lecture": int(n)})
+        relations = [
+            {"source": a["id"], "target": b["id"], "label": "leads to"}
+            for a, b in pairwise(concepts)
+        ]
+        return {
+            "overview": f"Mock overview of {len(lectures)} lecture(s).",
+            "recaps": [{"lecture": int(n), "recap": f"Recap of {t}."} for n, t in lectures],
+            "topics": topics,
+            "concepts": concepts,
+            "relations": relations,
         }
 
     def _ExplanationsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]

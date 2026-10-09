@@ -249,7 +249,7 @@ class Runner:
         return result
 
 
-def record_usage(lecture_id: int, subject_id: int, task: str, result: LLMResult) -> float:
+def record_usage(lecture_id: int | None, subject_id: int, task: str, result: LLMResult) -> float:
     """Store a usage record and add the cost to the lecture's total."""
     cost = result.usage.cost(result.model)
     with session_scope() as s:
@@ -267,7 +267,7 @@ def record_usage(lecture_id: int, subject_id: int, task: str, result: LLMResult)
                 cost_usd=cost,
             )
         )
-        lecture = s.get(Lecture, lecture_id)
+        lecture = s.get(Lecture, lecture_id) if lecture_id is not None else None
         if lecture is not None:
             lecture.cost_usd = (lecture.cost_usd or 0) + cost
             s.add(lecture)
@@ -837,9 +837,12 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
         s.add(lecture)
         s.commit()
         if ok:
+            from backend.pipeline.subject_hub import queue_subject_update
             from backend.search.index import queue_index
 
             queue_index(s, lecture_id)
+            if set(kinds) & {"summary", "notes", "glossary", "hints"}:
+                queue_subject_update(s, lecture.subject_id)
         subject_id, title = lecture.subject_id, lecture.title
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     if len(errors) < len(kinds):

@@ -50,7 +50,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     via pypdfium2 -> page JPEGs + text -> Slide rows source "pdf"), align (TF-IDF
                     + monotonic DP placing PDF pages; captured slides are exact anchors),
                     hints (keyword exam-hint detector EN/DE at transcription; hint list
-                    appended to section instructions after the cache breakpoint)
+                    appended to section instructions after the cache breakpoint),
+                    subject_hub (job: course overview/topics/concept map from per-lecture notes,
+                    stored as subject-level Note kind "course"; queued after each generation)
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -59,7 +61,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     chat (scoped context, retrieval, citation labels -> lecture/time)
   study/            review (FSRS scheduling, queue, undo, stats), practice (grading, picking),
                     cards (browse/filter, bulk actions, duplicate groups, merge), dashboard
-                    (retention, activity, forecast, mastery = mean FSRS retrievability per subject)
+                    (retention, activity, forecast, mastery = mean FSRS retrievability per subject),
+                    topics (hub read side: cumulative glossary, topic -> note sections -> time
+                    ranges -> cards/questions -> mastery, concept map)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV)
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
@@ -125,4 +129,6 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - "Primary" slides (generation context, transcript/notes thumbnails): PDF pages if the lecture
   has any, else captured slides (`pipeline.slides.primary_slides`).
 - Test PDFs: `tests/pdfgen.make_pdf` writes real text PDFs (Pillow PDFs have no text layer).
+- Frontend graphs: concept map = @dagrejs/dagre layout (lazy-loaded) + own SVG, not Mermaid
+  (Mermaid is ~120 MB of deps; our data is already structured and nodes need links).
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.

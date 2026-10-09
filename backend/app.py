@@ -15,6 +15,7 @@ from backend.api import (
     cards,
     chat,
     documents,
+    hub,
     imports,
     lectures,
     materials,
@@ -48,6 +49,7 @@ from backend.pipeline import (  # noqa: F401  (job handlers)
 )
 from backend.pipeline import documents as document_jobs  # noqa: F401
 from backend.pipeline import slides as slide_jobs  # noqa: F401
+from backend.pipeline import subject_hub as hub_jobs  # noqa: F401
 from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
 
@@ -101,6 +103,7 @@ def create_app(
     app.include_router(slides.router)
     app.include_router(documents.router)
     app.include_router(cards.router)
+    app.include_router(hub.router)
 
     _mount_frontend(app)
     return app

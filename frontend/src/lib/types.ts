@@ -261,6 +261,54 @@ export interface Explanation {
   created_at: string
 }
 
+export interface HubTopic {
+  name: string
+  summary: string
+  exam_relevant: boolean
+  places: { lecture_id: number; number: number; title: string; start_s: number; sections: string[] }[]
+  cards: number
+  new: number
+  due: number
+  mastery: number | null
+  questions: number
+  practice: number | null
+  card_ids: number[]
+}
+
+export interface ConceptMapData {
+  nodes: { id: string; label: string; lecture: number; lecture_id: number | null }[]
+  edges: { source: string; target: string; label: string }[]
+}
+
+export interface GlossaryEntry {
+  term: string
+  german: string
+  definition: string
+  lectures: { lecture_id: number; number: number; title: string; t_s: number | null }[]
+}
+
+export interface Hub {
+  overview: {
+    content_md: string
+    version: number
+    model: string
+    created_at: string
+    lectures_covered: number
+  } | null
+  topics: HubTopic[]
+  concept_map: ConceptMapData
+  glossary: GlossaryEntry[]
+  lectures_with_notes: number
+  outdated: boolean
+  updating: boolean
+  can_update: boolean
+}
+
+export interface SubjectDocument extends LectureDocument {
+  lecture_number: number | null
+  lecture_title: string
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]

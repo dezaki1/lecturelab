@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CalendarDays, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
+import { ConceptMap } from '@/components/hub/ConceptMap'
+import {
+  GlossaryPanel,
+  HubStatus,
+  MaterialsPanel,
+  OverviewPanel,
+  TopicsPanel,
+} from '@/components/hub/HubPanels'
 import { SubjectHints } from '@/components/materials/Hints'
 import { useStartChat } from '@/pages/ChatPage'
 import { SubjectDialog } from '@/components/SubjectDialog'
@@ -21,6 +29,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
 import { daysUntil, formatDate } from '@/lib/dates'
 
@@ -40,6 +49,9 @@ export function SubjectPage() {
     queryKey: ['subject', id],
     queryFn: () => api.subject(id),
   })
+  const { data: hub } = useQuery({ queryKey: ['hub', id], queryFn: () => api.hub(id) })
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') ?? 'lectures'
 
   const del = useMutation({
     mutationFn: () => api.deleteSubject(id),
@@ -120,28 +132,63 @@ export function SubjectPage() {
         </section>
       )}
 
-      <section className="mt-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Lectures</h2>
-          <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
-            <Upload /> Import
-          </Button>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            accept={IMPORT_ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              openImport(Array.from(e.target.files ?? []), subject.id)
-              e.target.value = ''
-            }}
-          />
-        </div>
-        <LectureList subjectId={subject.id} />
-      </section>
-
-      <SubjectHints subjectId={subject.id} />
+      <Tabs value={tab} onValueChange={(v) => setParams({ tab: v }, { replace: true })} className="mt-8">
+        <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
+          <TabsTrigger value="lectures">Lectures</TabsTrigger>
+          <TabsTrigger value="overview">Course overview</TabsTrigger>
+          <TabsTrigger value="topics">
+            Topics{hub?.topics.length ? ` (${hub.topics.length})` : ''}
+          </TabsTrigger>
+          <TabsTrigger value="map">Concept map</TabsTrigger>
+          <TabsTrigger value="glossary">
+            Glossary{hub?.glossary.length ? ` (${hub.glossary.length})` : ''}
+          </TabsTrigger>
+          <TabsTrigger value="hints">Exam hints</TabsTrigger>
+          <TabsTrigger value="materials">Materials</TabsTrigger>
+        </TabsList>
+        <TabsContent value="lectures" className="mt-4">
+          <div className="flex items-center justify-end">
+            <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
+              <Upload /> Import
+            </Button>
+            <input
+              ref={fileInput}
+              type="file"
+              multiple
+              accept={IMPORT_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                openImport(Array.from(e.target.files ?? []), subject.id)
+                e.target.value = ''
+              }}
+            />
+          </div>
+          <LectureList subjectId={subject.id} />
+        </TabsContent>
+        <TabsContent value="overview" className="mt-4">
+          {hub && <OverviewPanel subjectId={subject.id} hub={hub} />}
+        </TabsContent>
+        <TabsContent value="topics" className="mt-4">
+          {hub && <TopicsPanel subjectId={subject.id} hub={hub} />}
+        </TabsContent>
+        <TabsContent value="map" className="mt-4">
+          {hub && (
+            <>
+              <HubStatus subjectId={subject.id} hub={hub} />
+              <ConceptMap data={hub.concept_map} />
+            </>
+          )}
+        </TabsContent>
+        <TabsContent value="glossary" className="mt-4">
+          {hub && <GlossaryPanel glossary={hub.glossary} />}
+        </TabsContent>
+        <TabsContent value="hints" className="mt-4">
+          <SubjectHints subjectId={subject.id} />
+        </TabsContent>
+        <TabsContent value="materials" className="mt-4">
+          <MaterialsPanel subjectId={subject.id} />
+        </TabsContent>
+      </Tabs>
 
       <SubjectDialog open={editing} onOpenChange={setEditing} subject={subject} />
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

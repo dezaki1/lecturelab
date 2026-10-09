@@ -10,11 +10,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlmodel import Session, col, func, select
 
+from backend.core.config import get_settings
 from backend.core.db import get_session
 from backend.core.events import bus
 from backend.core.library import abs_path, rel_path
-from backend.core.models import Lecture, Material, Slide
+from backend.core.models import Lecture, Material, Slide, Subject
 from backend.pipeline.documents import (
+    DOCS_DIR,
     delete_document,
     docs_dir,
     is_processing,
@@ -73,13 +75,7 @@ async def upload_document(
         raise HTTPException(404, "Lecture not found")
     if kind not in KINDS:
         raise HTTPException(422, f"kind must be one of {KINDS}")
-    if not filename.lower().endswith(".pdf"):
-        raise HTTPException(415, "Only PDF files can be added here")
-    data = await request.body()
-    if len(data) > MAX_BYTES:
-        raise HTTPException(413, "PDF is larger than 200 MB")
-    if not data.startswith(b"%PDF"):
-        raise HTTPException(415, "This file is not a PDF")
+    data = await _pdf_body(filename, request)
     path = unique_path(docs_dir(lecture), safe_name(filename))
     path.write_bytes(data)
     material = Material(
@@ -95,6 +91,49 @@ async def upload_document(
     queue_document(session, material.id, lecture_id)  # type: ignore[arg-type]
     bus.publish("lecture", {"id": lecture_id, "subject_id": lecture.subject_id})
     return _read(session, material)
+
+
+@router.post("/subjects/{subject_id}/documents", response_model=DocumentRead, status_code=201)
+async def upload_subject_document(
+    subject_id: int,
+    filename: str,
+    request: Request,
+    kind: str = "other",
+    session: Session = Depends(get_session),
+) -> dict:
+    """A PDF for the whole subject (script, exercise sheet...): text extracted, not placed."""
+    subject = session.get(Subject, subject_id)
+    if subject is None:
+        raise HTTPException(404, "Subject not found")
+    if kind not in KINDS:
+        raise HTTPException(422, f"kind must be one of {KINDS}")
+    data = await _pdf_body(filename, request)
+    folder = get_settings().subjects_dir / subject.slug / DOCS_DIR
+    folder.mkdir(parents=True, exist_ok=True)
+    path = unique_path(folder, safe_name(filename))
+    path.write_bytes(data)
+    material = Material(
+        subject_id=subject_id,
+        kind=kind,
+        title=filename.rsplit(".", 1)[0][:200],
+        file_path=rel_path(path),
+    )
+    session.add(material)
+    session.commit()
+    session.refresh(material)
+    queue_document(session, material.id, None)  # type: ignore[arg-type]
+    return _read(session, material)
+
+
+async def _pdf_body(filename: str, request: Request) -> bytes:
+    if not filename.lower().endswith(".pdf"):
+        raise HTTPException(415, "Only PDF files can be added here")
+    data = await request.body()
+    if len(data) > MAX_BYTES:
+        raise HTTPException(413, "PDF is larger than 200 MB")
+    if not data.startswith(b"%PDF"):
+        raise HTTPException(415, "This file is not a PDF")
+    return data
 
 
 @router.get("/documents/{document_id}/file")

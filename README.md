@@ -110,6 +110,19 @@ slow (~40 min for a 2-minute test lecture) and noticeably less accurate. Use off
 chat and as a fallback, and let Claude generate the study material. `[llm] ollama_model` in config.toml can point to a smaller model (e.g.
 `qwen3:4b`, which fits in 4 GB of VRAM) for speed.
 
+## Subject hub
+
+Each subject page has tabs next to the lecture list:
+
+- **Course overview**: the course so far and a recap per lecture, updated automatically after
+  each lecture gets its study material (about $0.05-0.10 per update with Claude; **Update** to
+  run it by hand).
+- **Topics**: the course's topics with the lectures and note sections that teach them and your
+  **mastery** per topic (recall of the topic's flashcards today), sortable "weakest first".
+- **Concept map**: the key ideas and how they relate; click a concept to open its lecture.
+- **Glossary**: every term of every lecture in one searchable list, with the German term.
+- **Exam hints** and **Materials** (all PDFs of the subject; add scripts or exercise sheets here).
+
 ## Cards and the dashboard
 
 **Overview** shows what to review today, your streak, 30-day retention, the next exam, review

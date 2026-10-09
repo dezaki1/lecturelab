@@ -128,6 +128,10 @@ class GenerationConfig(BaseModel):
     cleanup: bool = True
     cleanup_local: bool = False
     cleanup_lines_per_call: int = 400
+    # Course overview (subject hub) after each generated lecture. Off for local models by
+    # default: it reads all lectures' notes, which takes a long time on a small GPU.
+    subject_hub: bool = True
+    subject_hub_local: bool = False
 
 
 class SearchConfig(BaseModel):

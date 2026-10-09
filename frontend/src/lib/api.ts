@@ -19,6 +19,8 @@ import type {
   LectureDocument,
   RecorderStatus,
   SubjectHint,
+  Hub,
+  SubjectDocument,
   Card,
   CardQuery,
   CardRow,
@@ -114,6 +116,10 @@ export const api = {
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
+  hub: (subjectId: number) => request<Hub>('GET', `/api/subjects/${subjectId}/hub`),
+  refreshHub: (subjectId: number) => request<{ queued: boolean }>('POST', `/api/subjects/${subjectId}/hub`),
+  subjectDocuments: (subjectId: number) =>
+    request<SubjectDocument[]>('GET', `/api/subjects/${subjectId}/documents`),
   subjectHints: (subjectId: number) => request<SubjectHint[]>('GET', `/api/subjects/${subjectId}/hints`),
   explanationToCard: (id: number) => request<Card>('POST', `/api/explanations/${id}/flashcard`),
   materials: (lectureId: number) => request<Materials>('GET', `/api/lectures/${lectureId}/materials`),
@@ -256,6 +262,19 @@ export function uploadImport(
     xhr.onerror = () => reject(new ApiError(0, 'Upload failed (is LectureLab still running?)'))
     xhr.send(file)
   })
+}
+
+/** Upload a PDF to a subject (not tied to a lecture). */
+export async function uploadSubjectDocument(subjectId: number, file: File): Promise<LectureDocument> {
+  const params = new URLSearchParams({ filename: file.name, kind: 'other' })
+  const res = await fetch(`/api/subjects/${subjectId}/documents?${params}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/pdf' },
+    body: file,
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new ApiError(res.status, typeof data.detail === 'string' ? data.detail : res.statusText)
+  return data as LectureDocument
 }
 
 /** Upload a PDF to a lecture (raw body). */

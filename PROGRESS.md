@@ -134,7 +134,15 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   - Also fixed: in-place JSON mutations of lecture.stages were lost after an autoflush (now
     reassigned); materials refresh on lecture events; regenerating a single section no longer
     sends "Lecture ready".
-- [ ] **M13 Subject hub**
+- [x] **M13 Subject hub**: course overview job (built from per-lecture TL;DR, note headings,
+  glossary terms and exam hints, not transcripts; queued once per subject after each
+  generation, skipped for local models by default; versioned subject-level Note): overview +
+  per-lecture recaps, topics (with the note sections teaching them; names kept stable across
+  updates), concept map (nodes/relations); topic mastery from cards whose sources fall in the
+  topics' section time ranges; cumulative glossary merged by term; subject-level PDFs; subject
+  page tabs (Lectures, Course overview, Topics, Concept map, Glossary, Exam hints, Materials)
+  - Concept map drawn with @dagrejs/dagre + SVG instead of Mermaid (SPEC default): ~16 KB
+    gzipped on demand vs. ~120 MB of Mermaid deps, and nodes link to their lectures.
 - [ ] **M14 Past exams + exam simulator**
 - [ ] **M15 Weak spots**
 - [ ] **M16 Exports**

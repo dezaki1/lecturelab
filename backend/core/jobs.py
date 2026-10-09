@@ -58,6 +58,10 @@ LABELS = {
     "transcribe": "Transcription",
     "generate": "Study material",
     "index": "Search indexing",
+    "subject_hub": "Course overview",
+    "cleanup": "Transcript check",
+    "slides": "Reading slides",
+    "document": "Reading PDF",
 }
 # Kinds that announce their own failures (generation reports which sections failed).
 SELF_NOTIFYING = {"generate"}

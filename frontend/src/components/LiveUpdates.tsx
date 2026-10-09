@@ -17,10 +17,14 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['review-summary'] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })
+  useEvent('subject_hub', (d: { subject_id: number }) =>
+    qc.invalidateQueries({ queryKey: ['hub', d.subject_id] }),
+  )
   useEvent('settings', () => qc.invalidateQueries({ queryKey: ['llm-settings'] }))
   useEvent('review', () => qc.invalidateQueries({ queryKey: ['review-summary'] }))
   useEvent('job', (d: { lecture_id: number | null }) => {
     qc.invalidateQueries({ queryKey: ['job-counts'] })
+    qc.invalidateQueries({ queryKey: ['hub'] }) // "updating" state of course overviews
     if (d.lecture_id == null) return
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
     qc.invalidateQueries({ queryKey: ['lectures'] })
