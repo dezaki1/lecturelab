@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlmodel import Session, col, func, select
 
@@ -114,6 +114,7 @@ def practice_questions(
     kind: str = "exam",
     mode: str = "mixed",
     limit: int = 10,
+    ids: list[int] | None = Query(None),
     session: Session = Depends(get_session),
 ) -> list[dict[str, Any]]:
     if kind not in ("exam", "exercise") or mode not in ("mixed", "weakest"):
@@ -125,6 +126,7 @@ def practice_questions(
         kind=kind,
         mode=mode,
         limit=min(limit, 50),
+        ids=ids,
     )
     rows = {
         q.id: q

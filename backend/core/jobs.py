@@ -67,6 +67,7 @@ LABELS = {
     "past_exam": "Analysing past exam",
     "exam_build": "Preparing exam",
     "exam_grade": "Grading exam",
+    "weak_practice": "Practice for weak topics",
 }
 # Kinds that announce their own failures (generation reports which sections failed).
 SELF_NOTIFYING = {"generate"}

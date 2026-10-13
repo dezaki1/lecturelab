@@ -158,7 +158,15 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   - Also fixed (found during a live recording): only the first recording per app session
     captured audio (COM initialised in the first capture thread only); quitting hung on open
     browser tabs while the job worker kept starting jobs.
-- [ ] **M15 Weak spots**
+- [x] **M15 Weak spots**: per-topic strength (hub topics, or lectures without a hub) from the
+  last 60 days: week-ahead FSRS memory of reviewed cards (not instant retrievability, which is
+  ~100% right after any review), review recall (share not rated Again, from 3 reviews) and
+  answer scores from practice and exams; weak / ok / untested with the forgotten cards and
+  lost-point answers; subject Weak spots tab and dashboard card; "Practice my weak topics"
+  job writes new questions aimed at those mistakes (main model, past-exam style) as a
+  PracticeSet opened on the Practice page
+  - Verified in the browser on dev data: forgotten reviews -> weak topic -> practice set of 6
+    new questions -> Practice page.
 - [ ] **M16 Exports**
 
 ## Decisions (from SPEC §13, 2026-10-08)

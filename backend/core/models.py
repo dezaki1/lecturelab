@@ -443,6 +443,20 @@ class Attempt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow, index=True)
 
 
+class PracticeSet(SQLModel, table=True):
+    """New questions written for the student's weak topics (M15), practised on the Practice page."""
+
+    __tablename__ = "practice_set"
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    topics: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    question_ids: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    status: str = "building"  # building | ready | failed
+    error: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class Exam(SQLModel, table=True):
     """A simulated exam: built from the question bank (plus new questions), taken under a time
     limit, graded (choice questions automatically, open ones by the main model)."""

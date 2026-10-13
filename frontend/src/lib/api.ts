@@ -18,6 +18,8 @@ import type {
   LectureDetail,
   LectureDocument,
   RecorderStatus,
+  PracticeSet,
+  WeakTopic,
   ExamConfig,
   ExamDetail,
   ExamProfile,
@@ -120,6 +122,30 @@ export const api = {
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
+  weakSpots: (subjectId: number) =>
+    request<{ topics: WeakTopic[]; window_days: number; weak_below: number }>(
+      'GET',
+      `/api/subjects/${subjectId}/weak-spots`,
+    ),
+  weakOverview: () =>
+    request<
+      {
+        subject_id: number
+        subject: string
+        color: string
+        name: string
+        strength: number
+        exam_relevant: boolean
+      }[]
+    >('GET', '/api/weak-spots'),
+  createPracticeSet: (subjectId: number, body: { topics: string[]; n: number }) =>
+    request<PracticeSet>('POST', `/api/subjects/${subjectId}/practice-sets`, body),
+  practiceSet: (id: number) => request<PracticeSet>('GET', `/api/practice-sets/${id}`),
+  practiceSetQuestions: (ids: number[]) =>
+    request<PracticeItem[]>(
+      'GET',
+      `/api/practice/questions?${ids.map((i) => `ids=${i}`).join('&')}&limit=50`,
+    ),
   examProfile: (subjectId: number) => request<ExamProfile>('GET', `/api/subjects/${subjectId}/exam-profile`),
   createExam: (subjectId: number, cfg: ExamConfig) =>
     request<ExamSummary>('POST', `/api/subjects/${subjectId}/exams`, cfg),

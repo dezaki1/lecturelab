@@ -125,6 +125,16 @@ with partial credit, feedback per answer, links to the lecture moment and topics
 Each is analysed once (questions, types, points, topics, style), and both the simulator and the
 lectures' generated exam questions then match their format, style and topic weighting.
 
+## Weak spots
+
+Each subject has a **Weak spots** tab (and the Overview shows the weakest topics overall). A
+topic's strength combines how well you will still remember its cards in a week, how often you
+forgot them in reviews, and your scores on its practice and exam questions over the last 60
+days; topics you haven't practised are "untested", not weak. Open **What went wrong** to see
+the cards you keep forgetting and the answers that lost points. **Practice my weak topics**
+writes new questions aimed at exactly those mistakes (about $0.03-0.06 with Claude) and opens
+them on the Practice page.
+
 ## Subject hub
 
 Each subject page has tabs next to the lecture list:

@@ -17,6 +17,7 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['review-summary'] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })
+  useEvent('practice_set', (d: { id: number }) => qc.invalidateQueries({ queryKey: ['practice-set', d.id] }))
   useEvent('exam', (d: { id: number }) => {
     qc.invalidateQueries({ queryKey: ['exam', d.id] })
     qc.invalidateQueries({ queryKey: ['exams'] })
@@ -28,7 +29,11 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['hub', d.subject_id] }),
   )
   useEvent('settings', () => qc.invalidateQueries({ queryKey: ['llm-settings'] }))
-  useEvent('review', () => qc.invalidateQueries({ queryKey: ['review-summary'] }))
+  useEvent('review', () => {
+    qc.invalidateQueries({ queryKey: ['review-summary'] })
+    qc.invalidateQueries({ queryKey: ['weak-spots'] })
+    qc.invalidateQueries({ queryKey: ['weak-overview'] })
+  })
   useEvent('job', (d: { lecture_id: number | null }) => {
     qc.invalidateQueries({ queryKey: ['job-counts'] })
     qc.invalidateQueries({ queryKey: ['hub'] }) // "updating" state of course overviews

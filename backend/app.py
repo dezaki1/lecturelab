@@ -25,6 +25,7 @@ from backend.api import (
     study,
     subjects,
     system,
+    weak,
 )
 from backend.api import (
     jobs as jobs_api,
@@ -54,6 +55,7 @@ from backend.pipeline import subject_hub as hub_jobs  # noqa: F401
 from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
 from backend.study import exams as exam_jobs  # noqa: F401
+from backend.study import weak as weak_jobs  # noqa: F401
 
 log = logging.getLogger(__name__)
 
@@ -107,6 +109,7 @@ def create_app(
     app.include_router(cards.router)
     app.include_router(hub.router)
     app.include_router(exams.router)
+    app.include_router(weak.router)
 
     _mount_frontend(app)
     return app

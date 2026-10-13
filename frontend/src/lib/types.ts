@@ -389,6 +389,42 @@ export interface ExamProfile {
   can_generate: boolean
 }
 
+export interface WeakTopic {
+  name: string
+  summary: string
+  exam_relevant: boolean
+  places: { lecture_id: number; number: number; title: string; start_s: number }[]
+  mastery: number | null
+  strength: number | null
+  status: 'weak' | 'ok' | 'untested'
+  parts: Record<string, number>
+  reviews: number
+  forgotten: number
+  answers: number
+  score: number
+  max: number
+  cards: number
+  questions: number
+  forgotten_cards: { id: number; front: string; back: string; times: number }[]
+  wrong_answers: {
+    question_id: number
+    prompt: string
+    answer_text: string
+    score: number
+    max: number
+    feedback: string
+  }[]
+}
+
+export interface PracticeSet {
+  id: number
+  subject_id: number
+  topics: string[]
+  question_ids: number[]
+  status: 'building' | 'ready' | 'failed'
+  error: string
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]

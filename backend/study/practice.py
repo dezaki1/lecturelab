@@ -90,8 +90,10 @@ def pick_questions(
     mode: str = "mixed",
     limit: int = 10,
     seed: int | None = None,
+    ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
-    """mixed: random order; weakest: never-tried and last-wrong first, then the rest."""
+    """mixed: random order; weakest: never-tried and last-wrong first, then the rest.
+    With ``ids`` (a practice set): exactly those questions, in that order."""
     q = (
         select(Question)
         .join(Lecture, col(Lecture.id) == col(Question.lecture_id), isouter=True)
@@ -101,6 +103,8 @@ def pick_questions(
         q = q.where(Question.subject_id == subject_id)
     if lecture_id:
         q = q.where(Question.lecture_id == lecture_id)
+    if ids:
+        q = q.where(col(Question.id).in_(ids))
     questions = list(s.exec(q).all())
     last: dict[int, Attempt] = {}
     tries: dict[int, int] = {}
@@ -114,7 +118,9 @@ def pick_questions(
             tries[a.question_id] = tries.get(a.question_id, 0) + 1
     rng = random.Random(seed)
     rng.shuffle(questions)
-    if mode == "weakest":
+    if ids:
+        questions.sort(key=lambda x: ids.index(x.id))  # type: ignore[arg-type]
+    elif mode == "weakest":
 
         def weakness(x: Question) -> float:
             a = last.get(x.id)  # type: ignore[arg-type]

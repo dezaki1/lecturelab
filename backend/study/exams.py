@@ -332,15 +332,22 @@ def generate_questions(
         )
     )
     record_usage(None, s_subject.id, "exam_questions", result)  # type: ignore[arg-type]
+    return store_generated(result.parsed.questions, numbers, result.model, cfg["types"])
+
+
+def store_generated(
+    questions: list[sc.SimQuestion], numbers: dict[int, Lecture], model: str, types: list[str]
+) -> list[Question]:
+    """Save generated questions to the bank (generation 0: kept across lecture regenerations)."""
     out: list[Question] = []
     with session_scope() as s:
-        for q in result.parsed.questions:
+        for q in questions:
             lec = numbers.get(q.lecture)
-            if lec is None or q.type not in cfg["types"]:
+            if lec is None or q.type not in types:
                 continue
             refs = to_refs(lec.id, q.refs, lec.duration_s or 10**6)  # type: ignore[arg-type]
             row = Question(
-                subject_id=s_subject.id,  # type: ignore[arg-type]
+                subject_id=lec.subject_id,
                 lecture_id=lec.id,
                 kind="exam",
                 type=q.type,
@@ -356,7 +363,7 @@ def generate_questions(
                 emphasized=q.emphasized,
                 source_refs=refs,
                 generation=0,
-                model=result.model,
+                model=model,
             )
             s.add(row)
             out.append(row)

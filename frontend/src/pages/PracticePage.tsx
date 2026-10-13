@@ -1,6 +1,17 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Check, ChevronRight, ExternalLink, Lightbulb, RotateCcw, Star, Target, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import {
+  Check,
+  ChevronRight,
+  ExternalLink,
+  Lightbulb,
+  Loader2,
+  RotateCcw,
+  Star,
+  Target,
+  X,
+} from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { Markdown } from '@/components/Markdown'
@@ -31,6 +42,28 @@ export function PracticePage() {
   const [session, setSession] = useState<PracticeItem[] | null>(null)
   const [index, setIndex] = useState(0)
   const [results, setResults] = useState<Result[]>([])
+  // ?set=ID: a practice set written for weak topics (see Weak spots on the subject page).
+  const [params, setParams] = useSearchParams()
+  const setId = params.get('set') ? Number(params.get('set')) : null
+  const { data: practiceSet } = useQuery({
+    queryKey: ['practice-set', setId],
+    queryFn: () => api.practiceSet(setId!),
+    enabled: setId != null,
+    refetchInterval: (q) => (q.state.data?.status === 'building' ? 2000 : false),
+  })
+  const loadSet = useMutation({
+    mutationFn: (ids: number[]) => api.practiceSetQuestions(ids),
+    onSuccess: (items) => {
+      setSession(items)
+      setIndex(0)
+      setResults([])
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  useEffect(() => {
+    if (practiceSet?.status === 'ready' && !session && !loadSet.isPending)
+      loadSet.mutate(practiceSet.question_ids)
+  }, [practiceSet?.status])
 
   const start = useMutation({
     mutationFn: () =>
@@ -109,6 +142,24 @@ export function PracticePage() {
             Change settings
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (setId != null && practiceSet && practiceSet.status !== 'ready') {
+    return (
+      <div className="mx-auto max-w-xl px-8 py-12 text-sm">
+        <h1 className="text-2xl font-semibold tracking-tight">Practice: {practiceSet.topics.join(', ')}</h1>
+        {practiceSet.status === 'building' ? (
+          <p className="mt-4 flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Writing questions aimed at what you got wrong…
+          </p>
+        ) : (
+          <p className="mt-4 text-destructive">{practiceSet.error || 'Writing the questions failed.'}</p>
+        )}
+        <Button variant="ghost" className="mt-4" onClick={() => setParams({})}>
+          Back to practice settings
+        </Button>
       </div>
     )
   }

@@ -280,7 +280,7 @@ class MockProvider:
         }
 
     def _SimQuestionsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
-        n = int(re.search(r"Write (\d+) new exam questions", req.instruction).group(1))  # type: ignore[union-attr]
+        n = int(re.search(r"Write (\d+) new (?:exam|practice) questions", req.instruction).group(1))  # type: ignore[union-attr]
         lecture = int((re.findall(r'^## L(\d+) "', req.context, re.M) or ["1"])[0])
         stamp = (re.findall(r"\[(\d+:\d{2})\]", req.context) or ["00:05"])[0]
         return {

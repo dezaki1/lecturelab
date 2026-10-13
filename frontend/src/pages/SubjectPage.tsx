@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
 import { ConceptMap } from '@/components/hub/ConceptMap'
+import { WeakSpotsPanel } from '@/components/hub/WeakSpots'
 import {
   GlossaryPanel,
   HubStatus,
@@ -143,6 +144,7 @@ export function SubjectPage() {
           <TabsTrigger value="glossary">
             Glossary{hub?.glossary.length ? ` (${hub.glossary.length})` : ''}
           </TabsTrigger>
+          <TabsTrigger value="weak">Weak spots</TabsTrigger>
           <TabsTrigger value="hints">Exam hints</TabsTrigger>
           <TabsTrigger value="materials">Materials</TabsTrigger>
         </TabsList>
@@ -181,6 +183,9 @@ export function SubjectPage() {
         </TabsContent>
         <TabsContent value="glossary" className="mt-4">
           {hub && <GlossaryPanel glossary={hub.glossary} />}
+        </TabsContent>
+        <TabsContent value="weak" className="mt-4">
+          <WeakSpotsPanel subjectId={subject.id} />
         </TabsContent>
         <TabsContent value="hints" className="mt-4">
           <SubjectHints subjectId={subject.id} />

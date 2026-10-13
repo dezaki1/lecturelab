@@ -65,7 +65,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     (retention, activity, forecast, mastery = mean FSRS retrievability per subject),
                     topics (hub read side: cumulative glossary, topic -> note sections -> time
                     ranges -> cards/questions -> mastery, concept map), exams (past-exam analysis
-                    + profile, exam build/take/grade jobs; graded answers also become Attempts)
+                    + profile, exam build/take/grade jobs; graded answers also become Attempts),
+                    weak (topic strength = week-ahead FSRS memory + review recall + answer
+                    scores; `weak_practice` job writes PracticeSets for weak topics)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV)
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)

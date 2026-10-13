@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarClock, Flame, Layers, Target } from 'lucide-react'
 import { Link } from 'react-router'
 
+import { WeakSpotsCard } from '@/components/hub/WeakSpots'
 import { Button } from '@/components/ui/button'
 import { useEvent } from '@/hooks/useEvents'
 import { api } from '@/lib/api'
@@ -109,6 +110,8 @@ export function Home() {
           />
         </section>
       </div>
+
+      <WeakSpotsCard />
 
       <section className="mt-3 rounded-lg border bg-card">
         <div className="flex items-baseline justify-between px-4 pt-4">
