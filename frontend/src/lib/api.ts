@@ -40,6 +40,11 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  Deadline,
+  DeadlineList,
+  Plan,
+  PlanItem,
+  PlannerSettings,
   Timetable,
   TimetableEvent,
   TimetableNow,
@@ -304,6 +309,22 @@ export const api = {
     request<{ ok: boolean }>('PATCH', `/api/timetable/courses/${id}`, body),
   putTimetableSettings: (body: Partial<Pick<TimetableSettings, 'remind_min' | 'auto_record'>>) =>
     request<TimetableSettings>('PUT', '/api/timetable/settings', body),
+
+  deadlines: () => request<DeadlineList>('GET', '/api/deadlines'),
+  addDeadline: (body: Pick<Deadline, 'title' | 'kind' | 'subject_id' | 'due_date' | 'due_time'>) =>
+    request<{ id: number }>('POST', '/api/deadlines', body),
+  updateDeadline: (
+    id: number,
+    body: Partial<Pick<Deadline, 'title' | 'kind' | 'subject_id' | 'due_date' | 'due_time' | 'status'>>,
+  ) => request<{ id: number; status: string }>('PATCH', `/api/deadlines/${id}`, body),
+  deleteDeadline: (id: number) => request<void>('DELETE', `/api/deadlines/${id}`),
+  plan: (days = 21) => request<Plan>('GET', `/api/planner?days=${days}`),
+  rebuildPlan: () => request<{ items: number }>('POST', '/api/planner/rebuild'),
+  setPlanItemDone: (id: number, done: boolean) =>
+    request<PlanItem>('PATCH', `/api/planner/items/${id}`, { done }),
+  putPlannerSettings: (body: Partial<PlannerSettings>) =>
+    request<PlannerSettings>('PUT', '/api/planner/settings', body),
+  calendarUrl: (download = false) => `/api/calendar.ics${download ? '?download=true' : ''}`,
 
   startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),

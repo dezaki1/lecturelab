@@ -71,12 +71,16 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     + profile, exam build/take/grade jobs; graded answers also become Attempts),
                     weak (topic strength = week-ahead FSRS memory + review recall + answer
                     scores; `weak_practice` job writes PracticeSets for weak topics)
+                    deadlines (suggestions from announcements notes, review states), planner
+                    (deterministic day-by-day plan in study_plan_item, rebuilt when the day /
+                    exam dates / open deadlines / settings change)
   timetable/        ics (parse + expand recurring events, course key/kind from titles), service
                     (sources, sync, subject matching, now/next, TimetableScheduler thread:
                     sync, reminders, opt-in auto-record when Zoom is open during a slot)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
                     (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
                     glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)
+                    calendar (.ics of exams, deadlines, study plan; stable UIDs)
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query

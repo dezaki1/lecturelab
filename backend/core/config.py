@@ -151,6 +151,14 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class PlannerConfig(BaseModel):
+    minutes_per_day: int = 90  # study time per study day, reviews included
+    weekdays: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6])  # Monday = 0
+    start_time: str = "18:00"  # when the study block sits in the exported calendar
+    block_min: int = 30  # length of one topic block
+    review_sec_per_card: int = 12  # estimate for the daily review block
+
+
 class TimetableConfig(BaseModel):
     remind_min: int = 2  # reminder this many minutes before a lecture; 0 = off
     auto_record: bool = False  # start recording when Zoom is open during a slot
@@ -188,6 +196,7 @@ class Settings(BaseSettings):
     study: StudyConfig = Field(default_factory=StudyConfig)
     backup: BackupConfig = Field(default_factory=BackupConfig)
     timetable: TimetableConfig = Field(default_factory=TimetableConfig)
+    planner: PlannerConfig = Field(default_factory=PlannerConfig)
 
     @classmethod
     def settings_customise_sources(

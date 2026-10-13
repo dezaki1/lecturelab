@@ -32,6 +32,9 @@ from backend.api import (
 from backend.api import (
     jobs as jobs_api,
 )
+from backend.api import (
+    planner as planner_api,
+)
 from backend.api import settings as settings_api
 from backend.capture import encode  # noqa: F401  (registers the encode job handler)
 from backend.capture.recorder import (
@@ -59,7 +62,9 @@ from backend.pipeline import subject_hub as hub_jobs  # noqa: F401
 from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
 from backend.study import exams as exam_jobs  # noqa: F401
+from backend.study import planner
 from backend.study import weak as weak_jobs  # noqa: F401
+from backend.study.deadlines import backfill as deadline_backfill
 from backend.timetable.service import TimetableScheduler
 
 log = logging.getLogger(__name__)
@@ -78,6 +83,7 @@ def create_app(
     slides.apply_saved_settings(settings)
     settings_api.apply_saved_backup(settings)
     timetable.apply_saved_settings(settings)
+    planner.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -87,6 +93,8 @@ def create_app(
             log.info("Queued search indexing for %d lecture(s)", n)
         if n := hint_backfill(s):
             log.info("Scanned %d lecture(s) for exam hints", n)
+        if n := deadline_backfill(s):
+            log.info("Collected %d deadline suggestion(s) from announcements", n)
     if n := recover_interrupted():
         log.warning("Recovered %d interrupted recording(s)", n)
 
@@ -124,6 +132,7 @@ def create_app(
     app.include_router(weak.router)
     app.include_router(exports.router)
     app.include_router(timetable.router)
+    app.include_router(planner_api.router)
 
     _mount_frontend(app)
     return app

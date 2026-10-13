@@ -398,7 +398,12 @@ def gen_note(r: Runner, kind: str, instructions: str) -> str:
         for a in out.items:
             all_refs += ts_ref(ctx.lecture_id, a.at, ctx.duration)
     tag = f"{prompt.tag}+{load_prompt('system').tag}"
-    save_note(ctx, kind, content, out.model_dump(), all_refs, result, tag, instructions)
+    note = save_note(ctx, kind, content, out.model_dump(), all_refs, result, tag, instructions)
+    if kind == "announcements":
+        from backend.study.deadlines import collect_from_note
+
+        with session_scope() as s:
+            collect_from_note(s, s.get(Note, note.id))  # type: ignore[arg-type]
     return kind
 
 

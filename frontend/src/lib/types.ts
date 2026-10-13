@@ -737,3 +737,60 @@ export interface TimetableNow {
   next: TimetableEvent | null
   today: TimetableEvent[]
 }
+
+export type DeadlineKind = 'deadline' | 'exam' | 'assignment' | 'admin' | 'other'
+
+export interface Deadline {
+  id: number
+  kind: DeadlineKind
+  title: string
+  due_date: string | null
+  due_time: string
+  status: 'suggested' | 'open' | 'done' | 'dismissed'
+  source: 'manual' | 'lecture'
+  subject_id: number | null
+  subject_name: string
+  subject_color: string
+  subject_exam_date: string | null
+  lecture_id: number | null
+  lecture_title: string
+  t_s: number | null
+}
+
+export interface DeadlineList {
+  suggested: Deadline[]
+  open: Deadline[]
+  done: Deadline[]
+  exams: {
+    subject_id: number
+    subject_name: string
+    subject_color: string
+    date: string
+    days_left: number
+  }[]
+}
+
+export interface PlanItem {
+  id: number
+  date: string
+  kind: 'review' | 'topic' | 'practice' | 'mock_exam' | 'cheatsheet' | 'exam' | 'deadline'
+  title: string
+  minutes: number
+  subject_id: number | null
+  subject_color: string
+  meta: { lecture_id?: number; start_s?: number; strength?: number | null; cards?: number; due_time?: string }
+  done: boolean
+}
+
+export interface PlannerSettings {
+  minutes_per_day: number
+  weekdays: number[]
+  start_time: string
+  block_min: number
+}
+
+export interface Plan {
+  settings: PlannerSettings
+  last_day: string | null
+  days: { date: string; study_day: boolean; minutes: number; done_minutes: number; items: PlanItem[] }[]
+}

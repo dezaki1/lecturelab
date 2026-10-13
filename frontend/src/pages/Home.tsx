@@ -3,6 +3,7 @@ import { CalendarClock, Flame, Layers, Target } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { WeakSpotsCard } from '@/components/hub/WeakSpots'
+import { PlanTodayCard } from '@/components/PlanTodayCard'
 import { TodayCard } from '@/components/TodayCard'
 import { Button } from '@/components/ui/button'
 import { useEvent } from '@/hooks/useEvents'
@@ -88,6 +89,7 @@ export function Home() {
       </div>
 
       <TodayCard />
+      <PlanTodayCard />
 
       <div className="mt-3 grid gap-3 lg:grid-cols-[2fr_1fr]">
         <section className="rounded-lg border bg-card p-4">

@@ -166,6 +166,26 @@ Then:
   when a Zoom meeting window is open during a slot and stops once the slot is over and Zoom has
   been closed for a minute. Each slot is recorded at most once automatically.
 
+## Plan: deadlines and the study planner
+
+**Plan** (sidebar) has three parts:
+
+- **Deadlines.** Each lecture's announcements (assignments, deadlines, exam logistics, dated
+  admin items) show up under *From your lectures: to review*, linked to the moment they were
+  said. **Accept** one (fix the date first if needed), **Dismiss** it, or for exam info
+  **Set as exam date** on the subject. You can also add your own. A regenerated lecture never
+  brings back what you dismissed.
+- **Study plan.** A day-by-day revision plan up to each exam, built from your exam dates,
+  your weak topics and the cards due. It has a daily review block and topic blocks: the
+  weakest topics first, and studied topics come back after 2, 4, 7, then 14 days. Two study
+  days before an exam there's a mock exam, and the day before, the cheat sheet. Set your time
+  per day and your study days below the plan. Tick blocks off as you go (also on Overview).
+  The plan rebuilds itself each day and whenever exam dates, deadlines or settings change.
+- **Add to calendar.** Download a `.ics` (exams, accepted deadlines with reminders, one study
+  event per day at your chosen time) and import it into Outlook or Google Calendar, or copy
+  the subscription link for Outlook desktop or Thunderbird so it stays up to date. Events keep
+  stable IDs, so importing again updates them instead of duplicating them.
+
 ## Exports and the cheat sheet
 
 - **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)

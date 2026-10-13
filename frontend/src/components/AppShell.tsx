@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  CalendarCheck,
   Coins,
   GraduationCap,
   ListChecks,
@@ -34,6 +35,8 @@ export function AppShell() {
     refetchInterval: 60_000,
   })
   const toReview = review ? review.due + review.new : 0
+  const { data: deadlines } = useQuery({ queryKey: ['deadlines'], queryFn: api.deadlines })
+  const suggested = deadlines?.suggested.length ?? 0
   const { data: jobCounts } = useQuery({
     queryKey: ['job-counts'],
     queryFn: api.jobCounts,
@@ -110,6 +113,14 @@ export function AppShell() {
           </NavLink>
           <NavLink to="/practice" className={linkClass}>
             <Target className="size-4" /> Practice
+          </NavLink>
+          <NavLink to="/plan" className={linkClass}>
+            <CalendarCheck className="size-4" /> Plan
+            {suggested > 0 && (
+              <span className="ml-auto rounded-full bg-amber-500/20 px-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+                {suggested}
+              </span>
+            )}
           </NavLink>
           <NavLink to="/exams" className={linkClass}>
             <NotebookPen className="size-4" /> Exam simulator

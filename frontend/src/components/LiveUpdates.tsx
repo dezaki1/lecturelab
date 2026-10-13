@@ -63,6 +63,11 @@ function Listeners() {
   useEvent('recorder.bookmark', (d: { lecture_id: number }) => {
     qc.invalidateQueries({ queryKey: ['lecture', d.lecture_id] })
   })
+  useEvent('deadlines', () => {
+    qc.invalidateQueries({ queryKey: ['deadlines'] })
+    qc.invalidateQueries({ queryKey: ['plan'] })
+  })
+  useEvent('planner', () => qc.invalidateQueries({ queryKey: ['plan'] }))
   useEvent('timetable', () => {
     qc.invalidateQueries({ queryKey: ['timetable'] })
     qc.invalidateQueries({ queryKey: ['timetable-now'] })

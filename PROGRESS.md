@@ -200,7 +200,17 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   before with a Record action; opt-in auto-record when the Zoom meeting window is open during a
   slot (stops after the slot once Zoom has been gone 60 s; once per slot)
   - Verified in the browser on dev data (KUSSS-style sample calendar: matching, Today, ignore).
-- [ ] **M19 Deadlines & study planner**
+- [x] **M19 Deadlines & study planner**: Deadline table filled from each announcements note
+  (deadline/exam/assignment always, admin/other only with a date; past dates skipped) as suggestions keyed by
+  lecture + normalised text (decisions survive regeneration, stale suggestions dropped; startup
+  backfill); accept/edit/dismiss/done, manual items, "set as exam date". Deterministic planner
+  (no LLM): daily review block from the FSRS due forecast, topic blocks by remaining need x
+  1/sqrt(days left) with per-day sharing, weakest eligible topic with expanding gaps
+  (2/4/7/14 days), mock exam two study days and cheat sheet the last study day before each
+  exam; minutes/day, study weekdays, calendar start time; rebuilt on a new day or when exams,
+  open deadlines or settings change, done blocks kept. `/api/calendar.ics` (exams, open
+  deadlines with alarms, one study event per day, stable UIDs); Plan page, Overview card
+  - Verified in the browser on dev data (accept, add, tick off, .ics with 24 events).
 - [ ] **M20 Tablet access (LAN + PWA)**
 - [ ] **M21 Teach-back & oral exam**
 - [ ] **M22 Audio recaps**

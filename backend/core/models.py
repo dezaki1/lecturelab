@@ -541,3 +541,44 @@ class ExamAnswer(SQLModel, table=True):
     feedback: str = ""
     graded_by: str = ""  # auto | ai
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class Deadline(SQLModel, table=True):
+    """A deadline, assignment, exam-logistics or admin item. Items found in a lecture's
+    announcements start as ``suggested`` until the student accepts (``open``) or dismisses them."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int | None = Field(
+        default=None, foreign_key="subject.id", index=True, ondelete="CASCADE"
+    )
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="SET NULL"
+    )
+    kind: str = "deadline"  # deadline | exam | assignment | admin | other
+    title: str
+    due_date: date | None = None
+    due_time: str = ""  # "HH:MM" local time, empty = all day
+    status: str = "suggested"  # suggested | open | done | dismissed
+    source: str = "manual"  # manual | lecture
+    source_key: str = Field(default="", index=True)  # dedupes lecture items across regenerations
+    t_s: float | None = None  # where in the lecture it was announced
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class StudyPlanItem(SQLModel, table=True):
+    """One block of the day-by-day revision plan (rebuilt daily; done items are kept)."""
+
+    __tablename__ = "study_plan_item"
+
+    id: int | None = Field(default=None, primary_key=True)
+    day: date = Field(index=True)  # local date
+    position: int = 0
+    subject_id: int | None = Field(default=None, foreign_key="subject.id", ondelete="CASCADE")
+    kind: str  # review | topic | practice | mock_exam | cheatsheet | exam | deadline
+    title: str
+    minutes: int = 0
+    # links: lecture_id + start_s for a topic, deadline_id, ...
+    meta: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    done: bool = False
+    created_at: datetime = Field(default_factory=utcnow)
