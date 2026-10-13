@@ -8,6 +8,7 @@ sample rate and channel count, and pads silent loopback periods with zeros itsel
 from __future__ import annotations
 
 import logging
+import sys
 import threading
 import time
 import warnings
@@ -78,6 +79,17 @@ class SoundcardSource:
             return None
 
     def _run(self) -> None:
+        # Import first: soundcard initialises COM on import and fails if it is already set up.
+        import soundcard  # noqa: F401
+
+        com = _co_initialize()
+        try:
+            self._capture()
+        finally:
+            if com:
+                _co_uninitialize()
+
+    def _capture(self) -> None:
         warnings.filterwarnings("ignore", message="data discontinuity")
         while not self._stop.is_set():
             try:
@@ -106,6 +118,28 @@ class SoundcardSource:
             except Exception as e:  # device unplugged / invalidated
                 log.warning("%s capture error on %s: %s; reopening", self.name, dev_name, e)
                 self._stop.wait(0.5)
+
+
+def _co_initialize() -> bool:
+    """Join the COM multithreaded apartment for this capture thread.
+
+    ``soundcard`` initialises COM only in the thread that first imports it. When that thread
+    ends (the first recording stops), later capture threads fail with CO_E_NOTINITIALIZED
+    (0x800401F0) and record nothing, so every capture thread initialises COM itself.
+    Returns whether CoUninitialize must be called at the end.
+    """
+    if sys.platform != "win32":
+        return False
+    import ctypes
+
+    hr = ctypes.windll.ole32.CoInitializeEx(None, 0)  # COINIT_MULTITHREADED
+    return hr in (0, 1)  # S_OK / S_FALSE (already initialised): both need balancing
+
+
+def _co_uninitialize() -> None:
+    import ctypes
+
+    ctypes.windll.ole32.CoUninitialize()
 
 
 def default_device_names() -> dict[str, str]:

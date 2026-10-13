@@ -72,6 +72,17 @@ def run_worker(args: dict[str, Any], ctx: JobContext, log_path: Path) -> None:
         creationflags=CREATE_NO_WINDOW,
     )
     assert proc.stdin and proc.stdout and proc.stderr
+    jobs.track_child(proc)
+    try:
+        _read_worker(proc, args, ctx, log_path)
+    finally:
+        jobs.untrack_child(proc)
+
+
+def _read_worker(
+    proc: subprocess.Popen, args: dict[str, Any], ctx: JobContext, log_path: Path
+) -> None:  # type: ignore[type-arg]
+    assert proc.stdin and proc.stdout and proc.stderr
     proc.stdin.write(json.dumps(args))
     proc.stdin.close()
     error = ""

@@ -139,3 +139,40 @@ def test_batch_generation(client: TestClient) -> None:
     Worker().run_pending()
     assert client.get(f"/api/lectures/{lid}").json()["stages"]["generate"] == "done"
     assert client.get("/api/generate/pending").json()["count"] == 0
+
+
+def test_shutdown_ends_child_and_requeues_the_job(client: TestClient) -> None:
+    import subprocess
+    import sys
+    import threading
+    import time
+
+    from backend.core import jobs
+    from backend.core.jobs import JobError, handler
+    from backend.core.models import Job, JobStatus
+
+    started = threading.Event()
+
+    @handler("test_slow_child")
+    def slow(ctx):  # type: ignore[no-untyped-def]
+        proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
+        jobs.track_child(proc)
+        started.set()
+        try:
+            if proc.wait() != 0:
+                raise JobError("child ended")
+        finally:
+            jobs.untrack_child(proc)
+
+    with session_scope() as s:
+        job_id = jobs.enqueue(s, "test_slow_child").id
+    w = Worker(poll_s=0.05)
+    w.start()
+    assert started.wait(10)
+    t0 = time.monotonic()
+    w.stop(timeout=10)
+    assert time.monotonic() - t0 < 5  # didn't wait for the 60 s child
+    with session_scope() as s:
+        job = s.get(Job, job_id)
+        assert job.status == JobStatus.queued and job.message == "Resumes after restart"  # type: ignore[union-attr]
+    jobs.HANDLERS.pop("test_slow_child")

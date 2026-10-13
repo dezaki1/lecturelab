@@ -8,7 +8,9 @@ responsive and VRAM is released when the process exits.
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import subprocess
 import threading
 import traceback
 from collections.abc import Callable
@@ -62,6 +64,9 @@ LABELS = {
     "cleanup": "Transcript check",
     "slides": "Reading slides",
     "document": "Reading PDF",
+    "past_exam": "Analysing past exam",
+    "exam_build": "Preparing exam",
+    "exam_grade": "Grading exam",
 }
 # Kinds that announce their own failures (generation reports which sections failed).
 SELF_NOTIFYING = {"generate"}
@@ -103,6 +108,29 @@ def enqueue(
     return job
 
 
+_children: set[subprocess.Popen] = set()  # type: ignore[type-arg]
+_children_lock = threading.Lock()
+
+
+def track_child(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
+    """Register a job's child process (Whisper, OCR) so shutdown can end it."""
+    with _children_lock:
+        _children.add(proc)
+
+
+def untrack_child(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
+    with _children_lock:
+        _children.discard(proc)
+
+
+def _kill_children() -> None:
+    with _children_lock:
+        procs = list(_children)
+    for p in procs:
+        with contextlib.suppress(OSError):
+            p.kill()
+
+
 class Worker:
     def __init__(self, poll_s: float = 2.0) -> None:
         self._poll_s = poll_s
@@ -118,6 +146,7 @@ class Worker:
     def stop(self, timeout: float = 5.0) -> None:
         self._stop.set()
         self._wake.set()
+        _kill_children()  # the interrupted job is re-queued and resumes on the next start
         if self._thread:
             self._thread.join(timeout)
 
@@ -170,6 +199,16 @@ class Worker:
         except Exception as e:
             status, error = JobStatus.failed, f"{type(e).__name__}: {e}"
             log.error("Job %s (%s) crashed:\n%s", ctx.job_id, ctx.kind, traceback.format_exc())
+        if status == JobStatus.failed and self._stop.is_set():
+            # Stopped by shutdown (its child process was ended): run it again next start.
+            log.info("Job %s (%s) interrupted by shutdown; re-queued", ctx.job_id, ctx.kind)
+            with session_scope() as s:
+                job = s.get(Job, ctx.job_id)
+                if job is not None:
+                    job.status, job.message = JobStatus.queued, "Resumes after restart"
+                    s.add(job)
+                    s.commit()
+            return
         with session_scope() as s:
             job = s.get(Job, ctx.job_id)
             if job is None:

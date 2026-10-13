@@ -53,7 +53,13 @@ def serve(settings: Settings) -> None:
 
     app = create_app(settings)
     config = uvicorn.Config(
-        app, host=settings.host, port=settings.port, log_level="warning", access_log=False
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level="warning",
+        access_log=False,
+        # Open browser tabs keep a live-update stream open; don't let them block quitting.
+        timeout_graceful_shutdown=3,
     )
     server = uvicorn.Server(config)
 

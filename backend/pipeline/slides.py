@@ -159,6 +159,15 @@ def run_ocr(paths: list[Path], ctx: JobContext) -> list[str]:
         creationflags=CREATE_NO_WINDOW,
     )
     assert proc.stdin and proc.stdout and proc.stderr
+    jobs.track_child(proc)
+    try:
+        return _read_ocr(proc, paths, ctx)
+    finally:
+        jobs.untrack_child(proc)
+
+
+def _read_ocr(proc: subprocess.Popen, paths: list[Path], ctx: JobContext) -> list[str]:  # type: ignore[type-arg]
+    assert proc.stdin and proc.stdout and proc.stderr
     proc.stdin.write(json.dumps({"images": [str(p) for p in paths]}))
     proc.stdin.close()
     texts = [""] * len(paths)
