@@ -686,3 +686,54 @@ export interface Usage {
     duration_s: number | null
   })[]
 }
+
+export interface TimetableEvent {
+  id: number
+  summary: string
+  location: string
+  kind: string
+  start: string
+  end: string
+  course_id: number
+  ignored: boolean
+  subject_id: number | null
+  subject_name: string
+  subject_color: string
+}
+
+export interface TimetableCourse {
+  id: number
+  label: string
+  subject_id: number | null
+  subject_name: string
+  mapped_by: string
+  ignored: boolean
+  events: number
+}
+
+export interface TimetableSourceRow {
+  id: number
+  name: string
+  url: string
+  is_file: boolean
+  last_sync_at: string | null
+  error: string
+}
+
+export interface TimetableSettings {
+  remind_min: number
+  auto_record: boolean
+  sync_hours: number
+}
+
+export interface Timetable {
+  sources: TimetableSourceRow[]
+  courses: TimetableCourse[]
+  settings: TimetableSettings
+}
+
+export interface TimetableNow {
+  current: TimetableEvent | null
+  next: TimetableEvent | null
+  today: TimetableEvent[]
+}

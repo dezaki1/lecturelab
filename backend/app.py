@@ -26,6 +26,7 @@ from backend.api import (
     study,
     subjects,
     system,
+    timetable,
     weak,
 )
 from backend.api import (
@@ -59,6 +60,7 @@ from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
 from backend.study import exams as exam_jobs  # noqa: F401
 from backend.study import weak as weak_jobs  # noqa: F401
+from backend.timetable.service import TimetableScheduler
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +77,7 @@ def create_app(
     set_settings(settings)
     slides.apply_saved_settings(settings)
     settings_api.apply_saved_backup(settings)
+    timetable.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -89,16 +92,17 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        scheduler = BackupScheduler() if start_worker else None
+        schedulers = [BackupScheduler(), TimetableScheduler()] if start_worker else []
         if start_worker:
             jobs.start_worker()
-            scheduler.start()  # type: ignore[union-attr]
+        for sch in schedulers:
+            sch.start()
         try:
             yield
         finally:
             rec.shutdown()  # finalises an in-progress recording; encoding resumes next start
-            if scheduler:
-                scheduler.stop()
+            for sch in schedulers:
+                sch.stop()
             jobs.stop_worker()
 
     app = FastAPI(title="LectureLab", version="0.1.0", lifespan=lifespan)
@@ -119,6 +123,7 @@ def create_app(
     app.include_router(exams.router)
     app.include_router(weak.router)
     app.include_router(exports.router)
+    app.include_router(timetable.router)
 
     _mount_frontend(app)
     return app

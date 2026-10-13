@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { BackupSettings } from '@/components/BackupSettings'
 import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
+import { TimetableSettings } from '@/components/TimetableSettings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -152,6 +153,8 @@ export function SettingsPage() {
       </section>
 
       <SlideCaptureSettings />
+
+      <TimetableSettings />
 
       <BackupSettings />
 

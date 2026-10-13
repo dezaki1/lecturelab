@@ -151,6 +151,13 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class TimetableConfig(BaseModel):
+    remind_min: int = 2  # reminder this many minutes before a lecture; 0 = off
+    auto_record: bool = False  # start recording when Zoom is open during a slot
+    early_min: int = 10  # a slot counts as "now" from this many minutes before its start
+    sync_hours: float = 6.0  # how often subscribed calendar links are re-read
+
+
 class BackupConfig(BaseModel):
     enabled: bool = False
     folder: Path | None = None  # e.g. ~/OneDrive/LectureLab backup
@@ -180,6 +187,7 @@ class Settings(BaseSettings):
     search: SearchConfig = Field(default_factory=SearchConfig)
     study: StudyConfig = Field(default_factory=StudyConfig)
     backup: BackupConfig = Field(default_factory=BackupConfig)
+    timetable: TimetableConfig = Field(default_factory=TimetableConfig)
 
     @classmethod
     def settings_customise_sources(

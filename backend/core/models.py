@@ -443,6 +443,50 @@ class Attempt(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow, index=True)
 
 
+class TimetableSource(SQLModel, table=True):
+    """An imported calendar: a subscribed .ics URL (synced regularly) or an uploaded file."""
+
+    __tablename__ = "timetable_source"
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = ""
+    url: str = ""  # empty for an uploaded file
+    file_path: str = ""  # relative to data_dir, for uploads
+    last_sync_at: datetime | None = None
+    error: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class TimetableCourse(SQLModel, table=True):
+    """One course in the timetable (events grouped by their normalised title), mapped to a
+    subject automatically or by the student."""
+
+    __tablename__ = "timetable_course"
+
+    id: int | None = Field(default=None, primary_key=True)
+    key: str = Field(unique=True)  # normalised title without LVA number and type
+    label: str = ""  # a readable example title
+    subject_id: int | None = Field(default=None, foreign_key="subject.id", ondelete="SET NULL")
+    mapped_by: str = "auto"  # auto | user
+    ignored: bool = False
+
+
+class TimetableEvent(SQLModel, table=True):
+    __tablename__ = "timetable_event"
+
+    id: int | None = Field(default=None, primary_key=True)
+    source_id: int = Field(foreign_key="timetable_source.id", index=True, ondelete="CASCADE")
+    course_id: int = Field(foreign_key="timetable_course.id", index=True, ondelete="CASCADE")
+    uid: str = ""
+    summary: str = ""
+    location: str = ""
+    kind: str = ""  # VL | VO | UE | KV | ... (from the title)
+    start: datetime = Field(index=True)
+    end: datetime
+    reminded: bool = False
+    auto_recorded: bool = False
+
+
 class PracticeSet(SQLModel, table=True):
     """New questions written for the student's weak topics (M15), practised on the Practice page."""
 

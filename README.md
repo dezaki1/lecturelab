@@ -150,6 +150,22 @@ Restore into a new data folder (then start LectureLab with `--data-dir` pointing
 uv run lecturelab restore "C:\Users\you\OneDrive\LectureLab backup" --to "C:\Users\you\LectureLab-restored"
 ```
 
+## Timetable
+
+**Settings → Timetable**: paste your calendar link (KUSSS: *Kalender → Abonnieren*, an
+`https://` or `webcal://` link, re-read every 6 hours) or upload an exported `.ics` file.
+Courses are matched to your subjects by course number or name (the LVA number and type such as
+VL/UE are ignored); fix a match with the dropdown, or switch a course off (office hours, Mensa).
+Then:
+
+- **Overview** shows today's lectures, the running one marked *now*.
+- Starting a recording without picking a subject (hotkey, tray, or the panel, which preselects
+  it) uses the course that is on (from 10 minutes before it starts) and its type (VL/UE).
+- A reminder pops up 2 minutes before each lecture (configurable) with a **Record** button.
+- **Record automatically when Zoom is open during a lecture** (off by default): starts recording
+  when a Zoom meeting window is open during a slot and stops once the slot is over and Zoom has
+  been closed for a minute. Each slot is recorded at most once automatically.
+
 ## Exports and the cheat sheet
 
 - **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)

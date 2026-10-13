@@ -40,6 +40,10 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  Timetable,
+  TimetableEvent,
+  TimetableNow,
+  TimetableSettings,
   Transcript,
 } from './types'
 
@@ -279,7 +283,29 @@ export const api = {
   generatePending: () => request<{ queued: number }>('POST', '/api/generate/pending'),
 
   recorder: () => request<RecorderStatus>('GET', '/api/recorder'),
-  startRecording: (data: { subject_id: number; mic: boolean; slides: boolean }) =>
+  timetable: () => request<Timetable>('GET', '/api/timetable'),
+  timetableNow: () => request<TimetableNow>('GET', '/api/timetable/now'),
+  timetableWeek: (offset = 0) => request<TimetableEvent[]>('GET', `/api/timetable/week?offset=${offset}`),
+  addTimetableLink: (url: string) => request<{ id: number }>('POST', '/api/timetable/sources', { url }),
+  uploadTimetable: async (file: File) => {
+    const res = await fetch(`/api/timetable/upload?${qs({ filename: file.name })}`, {
+      method: 'POST',
+      body: file,
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new ApiError(res.status, typeof data.detail === 'string' ? data.detail : res.statusText)
+    }
+    return (await res.json()) as { id: number }
+  },
+  syncTimetable: (id: number) => request<{ events: number }>('POST', `/api/timetable/sources/${id}/sync`),
+  deleteTimetable: (id: number) => request<void>('DELETE', `/api/timetable/sources/${id}`),
+  updateTimetableCourse: (id: number, body: { subject_id?: number; ignored?: boolean }) =>
+    request<{ ok: boolean }>('PATCH', `/api/timetable/courses/${id}`, body),
+  putTimetableSettings: (body: Partial<Pick<TimetableSettings, 'remind_min' | 'auto_record'>>) =>
+    request<TimetableSettings>('PUT', '/api/timetable/settings', body),
+
+  startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),
   stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
   bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),

@@ -71,6 +71,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     + profile, exam build/take/grade jobs; graded answers also become Attempts),
                     weak (topic strength = week-ahead FSRS memory + review recall + answer
                     scores; `weak_practice` job writes PracticeSets for weak topics)
+  timetable/        ics (parse + expand recurring events, course key/kind from titles), service
+                    (sources, sync, subject matching, now/next, TimetableScheduler thread:
+                    sync, reminders, opt-in auto-record when Zoom is open during a slot)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
                     (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
                     glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)
@@ -155,3 +158,6 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - Exam-simulator questions are stored with `generation = 0`; lecture regeneration never retires
   them.
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.
+- Background schedulers (backup, timetable) are threads started in the app lifespan only when
+  `start_worker`; tests call their methods directly with a fixed `now` (and a fake `find_zoom`).
+- Recorder start without subject_id: timetable slot first, then the last-used subject.

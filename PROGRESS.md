@@ -191,7 +191,15 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   job, so it never blocks transcription); failure notifications; `lecturelab backup` and
   `lecturelab restore <folder> --to <dir>` CLI
   - Verified in the browser on dev data (21 files, snapshot written), restore in tests.
-- [ ] **M18 Timetable**
+- [x] **M18 Timetable**: calendar sources (subscribed link re-synced every 6 h, or an uploaded
+  .ics) parsed with icalendar + recurring-ical-events (RRULE/time zones, 30 days back / 200
+  ahead, all-day and cancelled events skipped); course key = title without LVA number and type,
+  type -> lecture kind; auto-match to subjects (course code, name similarity, token containment)
+  with user override / ignore; `/api/timetable/now|week`; dashboard Today card; recorder start
+  without a subject uses the current slot (also preselected in the panel); reminders N min
+  before with a Record action; opt-in auto-record when the Zoom meeting window is open during a
+  slot (stops after the slot once Zoom has been gone 60 s; once per slot)
+  - Verified in the browser on dev data (KUSSS-style sample calendar: matching, Today, ignore).
 - [ ] **M19 Deadlines & study planner**
 - [ ] **M20 Tablet access (LAN + PWA)**
 - [ ] **M21 Teach-back & oral exam**

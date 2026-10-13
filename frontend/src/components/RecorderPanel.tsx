@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CircleHelp, Mic, MicOff, Presentation, Square, Star } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMatch } from 'react-router'
 import { toast } from 'sonner'
 
@@ -79,6 +79,12 @@ export function RecorderPanel() {
   const { data: subjects = [] } = useQuery({ queryKey: ['subjects'], queryFn: api.subjects })
   const { data: system } = useQuery({ queryKey: ['system'], queryFn: api.system })
   const routeSubject = useMatch('/subjects/:id')?.params.id
+  const { data: tt } = useQuery({
+    queryKey: ['timetable-now'],
+    queryFn: api.timetableNow,
+    refetchInterval: 60_000,
+  })
+  const slot = tt?.current
 
   const [picked, setPicked] = useState<string | null>(null)
   const [mic, setMic] = useState<boolean | null>(null)
@@ -90,6 +96,7 @@ export function RecorderPanel() {
 
   const subjectId =
     picked ??
+    (slot?.subject_id ? String(slot.subject_id) : undefined) ??
     routeSubject ??
     (status?.last_subject_id ? String(status.last_subject_id) : undefined) ??
     (subjects[0] ? String(subjects[0].id) : undefined)
@@ -116,7 +123,13 @@ export function RecorderPanel() {
   }, [status?.recording, status?.elapsed_s])
 
   const start = useMutation({
-    mutationFn: (sid: number) => api.startRecording({ subject_id: sid, mic: micOn, slides: captureSlides }),
+    mutationFn: (sid: number) =>
+      api.startRecording({
+        subject_id: sid,
+        mic: micOn,
+        slides: captureSlides,
+        kind: slot?.subject_id === sid ? slot.kind : undefined,
+      }),
     onSuccess: (s) => {
       qc.setQueryData(['recorder'], s)
       setSlideStatus(s.slides ?? null)
@@ -140,13 +153,21 @@ export function RecorderPanel() {
     },
   })
 
-  const onRecord = () => {
-    const sid = Number(subjectId)
+  const onRecord = (sid = Number(subjectId)) => {
     const subject = subjects.find((s) => s.id === sid)
     if (!subject) return toast.error('Create a subject first')
     if (!subject.recording_notice_ack) return setNoticeFor(sid)
     start.mutate(sid)
   }
+
+  // "Record" on a timetable reminder toast (LiveUpdates) asks the panel, so the notice still shows.
+  const recordRef = useRef(onRecord)
+  recordRef.current = onRecord
+  useEffect(() => {
+    const fn = (e: Event) => recordRef.current((e as CustomEvent<number>).detail)
+    window.addEventListener('lecturelab:record', fn)
+    return () => window.removeEventListener('lecturelab:record', fn)
+  }, [])
 
   const hk = system?.hotkeys
 
@@ -220,12 +241,18 @@ export function RecorderPanel() {
           ))}
         </SelectContent>
       </Select>
+      {slot && (
+        <p className="truncate text-xs text-muted-foreground" title={slot.summary}>
+          On now: {slot.subject_name}
+          {slot.kind && ` (${slot.kind})`}
+        </p>
+      )}
       <div className="flex gap-1">
         <Button
           size="sm"
           className="flex-1 bg-red-600 text-white hover:bg-red-700"
           disabled={!subjectId || start.isPending}
-          onClick={onRecord}
+          onClick={() => onRecord()}
         >
           <span className="size-2 rounded-full bg-white" /> Record
         </Button>

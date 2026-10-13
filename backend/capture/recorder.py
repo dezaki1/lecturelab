@@ -144,6 +144,10 @@ class RecorderService:
             rc = self.settings.recorder
             mic = rc.mic_default if mic is None else mic
             self._check_disk_before_start()
+            if subject_id is None:  # hotkey, tray, auto-record: the timetable knows what's on
+                slot = self._timetable_slot()
+                if slot is not None:
+                    subject_id, kind = slot["subject_id"], kind or slot["kind"]
             with session_scope() as s:
                 subject = self._pick_subject(s, subject_id)
                 lecture = create_lecture(
@@ -287,6 +291,17 @@ class RecorderService:
             self.stop(reason="app closed")
 
     # Internals ---------------------------------------------------------------------------
+    @staticmethod
+    def _timetable_slot() -> dict[str, Any] | None:
+        try:
+            from backend.timetable.service import current_slot
+
+            with session_scope() as s:
+                return current_slot(s)
+        except Exception:  # the timetable must never stop a recording from starting
+            log.exception("Timetable lookup failed")
+            return None
+
     def _pick_subject(self, s, subject_id: int | None) -> Subject:  # type: ignore[no-untyped-def]
         if subject_id is None:
             subject_id = load_state().get("last_subject_id")
