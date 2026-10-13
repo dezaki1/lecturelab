@@ -119,7 +119,7 @@ export function ReviewPage() {
 
   if (!next.card) {
     return (
-      <div className="mx-auto max-w-xl px-8 py-16 text-center">
+      <div className="mx-auto max-w-xl px-4 sm:px-8 py-16 text-center">
         <PartyPopper className="mx-auto size-10 text-primary" />
         <h1 className="mt-4 text-2xl font-semibold">All done for now</h1>
         {summary && (
@@ -156,7 +156,7 @@ export function ReviewPage() {
 
   const { front, back, extra: backExtra } = sides(next)
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col px-8 py-8">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col px-4 sm:px-8 py-8">
       <header className="flex items-center gap-3 text-sm text-muted-foreground">
         <span className="size-2.5 rounded-full" style={{ background: next.subject_color }} />
         <span className="truncate">{next.subject_name}</span>

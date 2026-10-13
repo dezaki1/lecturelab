@@ -70,7 +70,7 @@ export function SubjectPage() {
   const days = subject.exam_date ? daysUntil(subject.exam_date) : null
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
+    <div className="mx-auto max-w-5xl px-4 sm:px-8 py-10">
       <header className="flex items-start gap-4">
         <span className="mt-2 size-3.5 shrink-0 rounded-full" style={{ background: subject.color }} />
         <div className="min-w-0 flex-1">

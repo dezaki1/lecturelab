@@ -186,6 +186,27 @@ Then:
   the subscription link for Outlook desktop or Thunderbird so it stays up to date. Events keep
   stable IDs, so importing again updates them instead of duplicating them.
 
+## Tablet & phone access
+
+Review cards, read notes and tick off your plan on a tablet or phone on the same Wi-Fi while
+the PC runs LectureLab.
+
+1. **Settings → Tablet & phone access → Allow devices on my network.** The first time, Windows
+   may ask whether Python can use the network: allow it on **private networks**.
+2. Scan the QR code with the tablet's camera (or open the link shown). The device is now paired
+   and opens `http://<your PC>:8770/` directly from then on.
+3. In Chrome: **⋮ → Add to home screen** for an app icon.
+
+Only paired devices get in. **New pairing code** unpairs every device. Settings, API keys,
+starting or stopping recordings and calendar links stay PC-only. The connection is plain
+HTTP: fine at home, don't turn it on in public Wi-Fi. LAN mode stays on across restarts
+until you switch it off.
+
+*Full-screen app with offline start-up (optional):* browsers only install apps from secure
+addresses. On the tablet, open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add
+`http://<your PC's address>:8770` (shown in Settings), enable it and relaunch Chrome. After that,
+"Add to home screen" installs LectureLab as an app.
+
 ## Exports and the cheat sheet
 
 - **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)

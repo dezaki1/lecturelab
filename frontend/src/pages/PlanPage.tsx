@@ -104,7 +104,7 @@ export function PlanPage() {
   const feed = `${window.location.origin}${api.calendarUrl()}`
 
   return (
-    <div className="mx-auto max-w-6xl px-8 py-10">
+    <div className="mx-auto max-w-6xl px-4 sm:px-8 py-10">
       <div className="flex flex-wrap items-center gap-2">
         <h1 className="mr-auto text-2xl font-semibold tracking-tight">Plan</h1>
         <Button variant="outline" size="sm" onClick={() => rebuild.mutate()} disabled={rebuild.isPending}>

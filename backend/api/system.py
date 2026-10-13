@@ -19,7 +19,7 @@ def health() -> dict[str, object]:
 
 
 @router.get("/system")
-def system_info() -> dict[str, object]:
+def system_info(request: Request) -> dict[str, object]:
     s = get_settings()
     usage = shutil.disk_usage(s.data_dir)
     return {
@@ -27,6 +27,7 @@ def system_info() -> dict[str, object]:
         "free_gb": round(usage.free / 1e9, 1),
         "hotkeys": s.hotkeys.model_dump(),
         "recorder": {"mic_default": s.recorder.mic_default, "slides_default": s.slides.enabled},
+        "remote": bool(request.scope.get("lan")),  # opened from a tablet/phone via LAN mode
     }
 
 

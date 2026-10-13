@@ -33,7 +33,7 @@ export function SearchPage() {
   })
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-3xl px-4 sm:px-8 py-10">
       <h1 className="flex items-center gap-2 text-xl font-semibold">
         <Search className="size-5" /> Results for “{q}”
       </h1>

@@ -31,7 +31,7 @@ export function Home() {
   const nextExam = d.subjects.find((s) => s.days_left != null && s.days_left >= 0)
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
+    <div className="mx-auto max-w-5xl px-4 sm:px-8 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

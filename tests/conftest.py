@@ -10,6 +10,19 @@ from backend.app import create_app
 from backend.core.config import Settings, load_settings
 
 
+@pytest.fixture(autouse=True)
+def lan_token_store(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, str]]:
+    """Keep the LAN pairing token in memory, never in the real Credential Manager."""
+    from backend.core import lan
+
+    box: dict[str, str] = {}
+    monkeypatch.setitem(lan.store, "get", lambda: box.get("token"))
+    monkeypatch.setitem(lan.store, "set", lambda v: box.__setitem__("token", v))
+    lan._cache.clear()
+    yield box
+    lan._cache.clear()
+
+
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     return make_settings(tmp_path / "data")

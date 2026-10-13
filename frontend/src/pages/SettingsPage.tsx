@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
 import { BackupSettings } from '@/components/BackupSettings'
+import { LanSettings } from '@/components/LanSettings'
 import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { TimetableSettings } from '@/components/TimetableSettings'
 import { Button } from '@/components/ui/button'
@@ -44,11 +45,20 @@ export function SettingsPage() {
   const provider = useMutation({ mutationFn: api.setProvider, onSuccess: refresh })
   const runTest = useMutation({ mutationFn: api.testLlm, onSuccess: setTest })
 
+  if (system?.remote)
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Settings are only available on the PC running LectureLab.
+        </p>
+      </div>
+    )
   if (!s) return null
   const k = s.anthropic.key
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-3xl px-4 sm:px-8 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
 
       <section className="mt-8 space-y-4 rounded-lg border bg-card p-5">
@@ -157,6 +167,8 @@ export function SettingsPage() {
       <TimetableSettings />
 
       <BackupSettings />
+
+      <LanSettings />
 
       <section className="mt-6 flex items-center gap-4 rounded-lg border bg-card p-5 text-sm">
         <div className="flex-1">

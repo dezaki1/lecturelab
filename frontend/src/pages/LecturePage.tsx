@@ -158,7 +158,10 @@ export function LecturePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-8 py-8" style={{ '--player-h': '4rem' } as React.CSSProperties}>
+    <div
+      className="mx-auto max-w-4xl px-4 sm:px-8 py-8"
+      style={{ '--player-h': '4rem' } as React.CSSProperties}
+    >
       <Link
         to={`/subjects/${lecture.subject_id}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -250,7 +253,7 @@ export function LecturePage() {
         </Select>
       </div>
 
-      <div className="sticky top-0 z-20 -mx-8 mt-4 border-b bg-background/95 px-8 py-3 backdrop-blur">
+      <div className="sticky top-0 z-20 -mx-4 sm:-mx-8 mt-4 border-b bg-background/95 px-4 sm:px-8 py-3 backdrop-blur">
         {lecture.has_audio ? (
           <audio
             ref={audio}

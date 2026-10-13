@@ -35,6 +35,7 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     library (lecture folders), state (last-used subject), backup (DB snapshot
                     zips with day/week rotation + incremental mirror of subjects/; scheduler
                     thread outside the job queue; `lecturelab backup` / `restore` CLI)
+                    lan (LAN mode: LanGuard ASGI token wrapper + second uvicorn server thread)
   capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
                     crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray ;
@@ -165,3 +166,7 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - Background schedulers (backup, timetable) are threads started in the app lifespan only when
   `start_worker`; tests call their methods directly with a fixed `now` (and a fake `find_zoom`).
 - Recorder start without subject_id: timetable slot first, then the last-used subject.
+- LAN mode: anything reachable through `LanGuard` is reachable from the network. New PC-only
+  endpoints (settings, secrets, things that fetch URLs or touch devices) go into
+  `lan.BLOCKED`. Tests keep the token in memory (autouse conftest fixture) and bind LAN
+  servers to 127.0.0.1 only. The dev instance's config.toml pins `[lan] host = "127.0.0.1"`.

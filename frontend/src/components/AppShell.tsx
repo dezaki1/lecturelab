@@ -7,6 +7,7 @@ import {
   Home,
   Layers,
   Library,
+  Menu,
   NotebookPen,
   MessageSquare,
   Moon,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router'
 
 import { RecorderPanel } from '@/components/RecorderPanel'
 import { SubjectDialog } from '@/components/SubjectDialog'
@@ -44,6 +45,12 @@ export function AppShell() {
   })
   const activeJobs = jobCounts ? jobCounts.queued + jobCounts.running : 0
   const [creating, setCreating] = useState(false)
+  const { data: system } = useQuery({ queryKey: ['system'], queryFn: api.system })
+  const remote = system?.remote ?? false // opened from a tablet/phone (LAN mode)
+  // Narrow screens: the sidebar is a drawer, closed again after every navigation.
+  const [navOpen, setNavOpen] = useState(false)
+  const location = useLocation()
+  useEffect(() => setNavOpen(false), [location.pathname, location.search])
   const { resolvedTheme, setTheme } = useTheme()
   const navigate = useNavigate()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -70,14 +77,26 @@ export function AppShell() {
     )
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <aside className="flex w-64 shrink-0 flex-col border-r bg-sidebar">
+    <div className="flex h-dvh bg-background text-foreground">
+      {navOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          aria-hidden
+          onClick={() => setNavOpen(false)}
+        />
+      )}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col border-r bg-sidebar transition-transform md:static md:translate-x-0',
+          navOpen ? 'translate-x-0 shadow-xl' : '-translate-x-full',
+        )}
+      >
         <div className="flex items-center gap-2 px-4 py-4">
           <GraduationCap className="size-5 text-primary" />
           <span className="font-semibold tracking-tight">LectureLab</span>
         </div>
 
-        <RecorderPanel />
+        {!remote && <RecorderPanel />}
 
         <form
           className="relative mx-2 mb-2"
@@ -186,9 +205,26 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto">
-        <Outlet />
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center gap-2 border-b px-2 py-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] md:hidden">
+          <Button size="icon-sm" variant="ghost" aria-label="Open menu" onClick={() => setNavOpen(true)}>
+            <Menu />
+          </Button>
+          <GraduationCap className="size-4 text-primary" />
+          <span className="text-sm font-semibold tracking-tight">LectureLab</span>
+          {toReview > 0 && (
+            <NavLink
+              to="/review"
+              className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground"
+            >
+              {toReview} to review
+            </NavLink>
+          )}
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
+      </div>
 
       <SubjectDialog open={creating} onOpenChange={setCreating} />
     </div>

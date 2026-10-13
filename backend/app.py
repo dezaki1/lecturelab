@@ -33,6 +33,9 @@ from backend.api import (
     jobs as jobs_api,
 )
 from backend.api import (
+    lan as lan_api,
+)
+from backend.api import (
     planner as planner_api,
 )
 from backend.api import settings as settings_api
@@ -49,6 +52,7 @@ from backend.core import jobs
 from backend.core.backup import BackupScheduler
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
+from backend.core.lan import LanServer
 from backend.pipeline import cheatsheet as cheatsheet_jobs  # noqa: F401
 from backend.pipeline import (  # noqa: F401  (job handlers)
     cleanup,
@@ -84,6 +88,7 @@ def create_app(
     settings_api.apply_saved_backup(settings)
     timetable.apply_saved_settings(settings)
     planner.apply_saved_settings(settings)
+    lan_api.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -105,9 +110,12 @@ def create_app(
             jobs.start_worker()
         for sch in schedulers:
             sch.start()
+        if start_worker and settings.lan.enabled:
+            app.state.lan.start()
         try:
             yield
         finally:
+            app.state.lan.stop()
             rec.shutdown()  # finalises an in-progress recording; encoding resumes next start
             for sch in schedulers:
                 sch.stop()
@@ -133,7 +141,9 @@ def create_app(
     app.include_router(exports.router)
     app.include_router(timetable.router)
     app.include_router(planner_api.router)
+    app.include_router(lan_api.router)
 
+    app.state.lan = LanServer(app)
     _mount_frontend(app)
     return app
 

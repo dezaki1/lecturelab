@@ -211,7 +211,18 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   open deadlines or settings change, done blocks kept. `/api/calendar.ics` (exams, open
   deadlines with alarms, one study event per day, stable UIDs); Plan page, Overview card
   - Verified in the browser on dev data (accept, add, tick off, .ics with 24 events).
-- [ ] **M20 Tablet access (LAN + PWA)**
+- [x] **M20 Tablet access (LAN + PWA)**: opt-in second uvicorn server (thread, lifespan
+  off) on 0.0.0.0:8770 serving the same app through `LanGuard` (pure ASGI): pairing token in
+  Credential Manager, `/?token=` sets an HttpOnly SameSite=Lax cookie and redirects, Bearer also
+  accepted, /api 401 unpaired, PC-only 403 (settings writes, /api/lan, recorder writes,
+  timetable writes), unpaired pages get a "not paired" notice, PWA files public; toggle without
+  restart, port-in-use error, new pairing code unpairs all; QR via segno; `/api/system.remote`
+  hides the recorder and settings on devices. PWA: manifest, icons, network-first service
+  worker (never /api), responsive shell (drawer below md, 16 px gutters on phones)
+  - Verified in the browser through the guarded listener (dev instance bound to loopback):
+    unpaired 401, pairing link -> cookie -> Review/Cards/lecture at phone and tablet size,
+    remote settings notice. The pane can't register service workers on unmanaged ports, even
+    without the guard, so that part is untested on a device.
 - [ ] **M21 Teach-back & oral exam**
 - [ ] **M22 Audio recaps**
 - [ ] **M23 Handwritten notes**

@@ -75,7 +75,7 @@ function dueLabel(card: CardRow): string {
 
 export function CardsPage() {
   return (
-    <div className="mx-auto max-w-5xl px-8 py-10">
+    <div className="mx-auto max-w-5xl px-4 sm:px-8 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">Cards</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         All flashcards across your lectures. Edit, suspend, merge duplicates, or export to Anki.

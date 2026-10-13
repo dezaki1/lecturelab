@@ -151,6 +151,12 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class LanConfig(BaseModel):
+    enabled: bool = False  # tablet/phone access on the home network (token-protected)
+    host: str = "0.0.0.0"  # all interfaces; the main server stays on 127.0.0.1
+    port: int = 8770
+
+
 class PlannerConfig(BaseModel):
     minutes_per_day: int = 90  # study time per study day, reviews included
     weekdays: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4, 5, 6])  # Monday = 0
@@ -197,6 +203,7 @@ class Settings(BaseSettings):
     backup: BackupConfig = Field(default_factory=BackupConfig)
     timetable: TimetableConfig = Field(default_factory=TimetableConfig)
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
+    lan: LanConfig = Field(default_factory=LanConfig)
 
     @classmethod
     def settings_customise_sources(

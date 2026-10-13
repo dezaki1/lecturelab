@@ -84,7 +84,7 @@ export function PracticePage() {
 
   if (session && index < session.length) {
     return (
-      <div className="mx-auto max-w-3xl px-8 py-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-8 py-8">
         <div className="mb-4 flex items-center gap-3 text-sm text-muted-foreground">
           <Target className="size-4" />
           Question {index + 1} of {session.length}
@@ -111,7 +111,7 @@ export function PracticePage() {
     const score = results.reduce((s, r) => s + r.score, 0)
     const max = results.reduce((s, r) => s + r.max, 0)
     return (
-      <div className="mx-auto max-w-2xl px-8 py-12">
+      <div className="mx-auto max-w-2xl px-4 sm:px-8 py-12">
         <h1 className="text-2xl font-semibold">
           {score} / {max} points{max ? ` (${Math.round((score / max) * 100)}%)` : ''}
         </h1>
@@ -148,7 +148,7 @@ export function PracticePage() {
 
   if (setId != null && practiceSet && practiceSet.status !== 'ready') {
     return (
-      <div className="mx-auto max-w-xl px-8 py-12 text-sm">
+      <div className="mx-auto max-w-xl px-4 sm:px-8 py-12 text-sm">
         <h1 className="text-2xl font-semibold tracking-tight">Practice: {practiceSet.topics.join(', ')}</h1>
         {practiceSet.status === 'building' ? (
           <p className="mt-4 flex items-center gap-2 text-muted-foreground">
@@ -165,7 +165,7 @@ export function PracticePage() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-8 py-12">
+    <div className="mx-auto max-w-xl px-4 sm:px-8 py-12">
       <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
         <Target className="size-5 text-primary" /> Practice
       </h1>

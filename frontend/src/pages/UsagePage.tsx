@@ -134,7 +134,7 @@ export function UsagePage() {
     : null
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-8 py-10">
+    <div className="mx-auto max-w-5xl space-y-6 px-4 sm:px-8 py-10">
       <header className="flex items-center gap-3">
         <Coins className="size-5 text-primary" />
         <h1 className="text-2xl font-semibold tracking-tight">Usage & costs</h1>

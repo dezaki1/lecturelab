@@ -37,6 +37,17 @@ export interface SystemInfo {
   free_gb: number
   hotkeys: { start_stop: string; important: string; confused: string; enabled: boolean }
   recorder: { mic_default: boolean; slides_default: boolean }
+  remote: boolean // opened from a tablet/phone through LAN mode
+}
+
+export interface LanStatus {
+  enabled: boolean
+  running: boolean
+  port: number
+  error: string
+  urls: string[]
+  pair_url: string | null
+  qr_svg: string | null
 }
 
 export type BookmarkKind = 'important' | 'confused' | 'question'

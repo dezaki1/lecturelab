@@ -37,7 +37,7 @@ export function ExamPage() {
   if (!exam) return null
 
   return (
-    <div className="mx-auto max-w-3xl px-8 py-10">
+    <div className="mx-auto max-w-3xl px-4 sm:px-8 py-10">
       <Link
         to={`/exams?subject=${exam.subject_id}`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -193,7 +193,7 @@ function Taking({ exam }: { exam: ExamDetail }) {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 -mx-8 mt-4 flex items-center gap-3 border-b bg-background/95 px-8 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 -mx-4 sm:-mx-8 mt-4 flex items-center gap-3 border-b bg-background/95 px-4 sm:px-8 py-3 backdrop-blur">
         <span
           className={cn(
             'flex items-center gap-1.5 font-mono text-lg tabular-nums',

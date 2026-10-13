@@ -24,6 +24,7 @@ dependencies = [
     "pystray>=0.19.5",
     "rapidocr>=3.8,<3.10",
     "recurring-ical-events>=3.8.2",
+    "segno>=1.6",
     "soundcard>=0.4.6",
     "sqlite-vec>=0.1.9",
     "sqlmodel>=0.0.48",

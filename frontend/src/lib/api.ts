@@ -15,6 +15,7 @@ import type {
   Materials,
   Note,
   Lecture,
+  LanStatus,
   LectureDetail,
   LectureDocument,
   RecorderStatus,
@@ -325,6 +326,10 @@ export const api = {
   putPlannerSettings: (body: Partial<PlannerSettings>) =>
     request<PlannerSettings>('PUT', '/api/planner/settings', body),
   calendarUrl: (download = false) => `/api/calendar.ics${download ? '?download=true' : ''}`,
+
+  lan: () => request<LanStatus>('GET', '/api/lan'),
+  putLan: (body: { enabled?: boolean; port?: number }) => request<LanStatus>('PUT', '/api/lan', body),
+  rotateLanToken: () => request<LanStatus>('POST', '/api/lan/token'),
 
   startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),
