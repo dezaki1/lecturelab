@@ -7,6 +7,7 @@ import { BackupSettings } from '@/components/BackupSettings'
 import { LanSettings } from '@/components/LanSettings'
 import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { TimetableSettings } from '@/components/TimetableSettings'
+import { VoiceSettings } from '@/components/VoiceSettings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -165,6 +166,8 @@ export function SettingsPage() {
       <SlideCaptureSettings />
 
       <TimetableSettings />
+
+      <VoiceSettings />
 
       <BackupSettings />
 

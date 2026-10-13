@@ -805,3 +805,102 @@ export interface Plan {
   last_day: string | null
   days: { date: string; study_day: boolean; minutes: number; done_minutes: number; items: PlanItem[] }[]
 }
+
+export interface SpeakRef {
+  lecture_id: number
+  start_s: number
+  label: string
+  title: string
+}
+
+export interface SpeakPoint {
+  point: string
+  refs: SpeakRef[]
+}
+
+export interface SpeakMisconception {
+  student_said: string
+  correction: string
+  refs: SpeakRef[]
+}
+
+export interface TeachResult {
+  score: number
+  verdict: string
+  covered: string[]
+  missing: SpeakPoint[]
+  misconceptions: SpeakMisconception[]
+  feedback: string
+}
+
+export interface OralResult {
+  score: number
+  grade: number
+  summary: string
+  strengths: string[]
+  gaps: SpeakPoint[]
+  misconceptions: SpeakMisconception[]
+  questions: { question: string; score: number; comment: string; refs: SpeakRef[] }[]
+  revise: string[]
+}
+
+export interface SpeakTurn {
+  role: 'examiner' | 'student' | 'coach'
+  kind: 'prompt' | 'question' | 'follow_up' | 'end' | 'answer' | 'feedback'
+  text: string
+  topic?: string
+  spoken?: boolean
+  rating?: number
+  data?: TeachResult
+}
+
+export interface SpeakSession {
+  id: number
+  subject_id: number
+  mode: 'teach' | 'oral'
+  title: string
+  config: { topics: string[]; questions: number; voice: boolean; lecture_ids: number[] }
+  turns: SpeakTurn[]
+  result: Partial<TeachResult & OralResult>
+  score: number | null
+  status: 'active' | 'evaluating' | 'done' | 'failed'
+  error: string
+  cost_usd: number
+  created_at: string
+  finished_at: string | null
+}
+
+export interface SpeakSessionRow {
+  id: number
+  subject_id: number
+  subject_name: string
+  mode: 'teach' | 'oral'
+  title: string
+  status: string
+  score: number | null
+  grade: number | null
+  created_at: string
+}
+
+export interface SpeakTopic {
+  name: string
+  strength: number | null
+  status: 'weak' | 'ok' | 'untested'
+  exam_relevant: boolean
+  lecture_ids: number[]
+}
+
+export interface VoiceStatus {
+  voice: string
+  rate: number
+  tts_ready: boolean
+  voices: {
+    id: string
+    label: string
+    language: string
+    size_mb: number
+    installed: boolean
+    download: { state: 'running' | 'done' | 'failed'; fraction: number; error: string } | null
+  }[]
+  stt: { model: string; device: string; loaded: boolean }
+}

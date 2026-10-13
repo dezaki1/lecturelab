@@ -39,6 +39,9 @@ from backend.api import (
     planner as planner_api,
 )
 from backend.api import settings as settings_api
+from backend.api import (
+    speak as speak_api,
+)
 from backend.capture import encode  # noqa: F401  (registers the encode job handler)
 from backend.capture.recorder import (
     RecorderService,
@@ -70,6 +73,7 @@ from backend.study import planner
 from backend.study import weak as weak_jobs  # noqa: F401
 from backend.study.deadlines import backfill as deadline_backfill
 from backend.timetable.service import TimetableScheduler
+from backend.voice.stt import get_transcriber
 
 log = logging.getLogger(__name__)
 
@@ -89,6 +93,7 @@ def create_app(
     timetable.apply_saved_settings(settings)
     planner.apply_saved_settings(settings)
     lan_api.apply_saved_settings(settings)
+    speak_api.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -116,6 +121,7 @@ def create_app(
             yield
         finally:
             app.state.lan.stop()
+            get_transcriber().shutdown()
             rec.shutdown()  # finalises an in-progress recording; encoding resumes next start
             for sch in schedulers:
                 sch.stop()
@@ -142,6 +148,7 @@ def create_app(
     app.include_router(timetable.router)
     app.include_router(planner_api.router)
     app.include_router(lan_api.router)
+    app.include_router(speak_api.router)
 
     app.state.lan = LanServer(app)
     _mount_frontend(app)

@@ -8,6 +8,7 @@ import {
   Layers,
   Library,
   Menu,
+  Mic,
   NotebookPen,
   MessageSquare,
   Moon,
@@ -143,6 +144,9 @@ export function AppShell() {
           </NavLink>
           <NavLink to="/exams" className={linkClass}>
             <NotebookPen className="size-4" /> Exam simulator
+          </NavLink>
+          <NavLink to="/speak" className={linkClass}>
+            <Mic className="size-4" /> Oral practice
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             <MessageSquare className="size-4" /> Ask your lectures

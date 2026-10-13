@@ -57,7 +57,9 @@ class AnthropicProvider:
 
     def complete(self, req: LLMRequest) -> LLMResult:
         model = self.model_for(req.task, req.tier)
-        effort = self.cfg.main_effort if req.tier == "main" else self.cfg.cheap_effort
+        effort = req.effort or (
+            self.cfg.main_effort if req.tier == "main" else self.cfg.cheap_effort
+        )
         tool_mode = bool(req.shared_outputs) and req.task in (req.shared_outputs or {})
         instruction = req.instruction
         if tool_mode:

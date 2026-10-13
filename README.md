@@ -166,6 +166,28 @@ Then:
   when a Zoom meeting window is open during a slot and stops once the slot is over and Zoom has
   been closed for a minute. Each slot is recorded at most once automatically.
 
+## Oral practice: teach-back and oral exam
+
+**Oral practice** (sidebar). Answer by voice (**Speak**, then check the transcript and fix
+misheard words) or by typing (Ctrl+Enter sends).
+
+- **Teach-back**: pick a topic (weak ones are marked ●) and explain it as if teaching a
+  classmate. You get a score, what you covered, what's missing and what was wrong, each linked
+  to the lecture moment, plus one follow-up question about the biggest gap. Your answer to it
+  is judged together with the first explanation.
+- **Oral exam**: pick a subject (and optionally topics) and how many questions. The examiner
+  asks one question at a time, read aloud, and follows up when an answer is thin. It doesn't
+  give away answers during the exam. At the end (or **End exam**) you get an Austrian grade
+  (1-5), feedback per question, gaps and misconceptions with lecture links, and what to revise.
+  With Claude a 3-question exam costs a few cents.
+
+The examiner's voice is generated locally by Piper: download one in **Settings → Voice**
+(about 60 MB; English US/UK or German), test it, and set the speed. Spoken answers are
+transcribed locally by Whisper. The model loads with the first answer (about 10 s), then each
+answer takes about a second or two, and it unloads after 5 idle minutes. While a lecture is being
+transcribed, answers use the CPU. Voice answers need the microphone, which browsers only allow
+on this PC or on a trusted address (see *Tablet & phone access*). Typing always works.
+
 ## Plan: deadlines and the study planner
 
 **Plan** (sidebar) has three parts:

@@ -41,6 +41,10 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  SpeakSession,
+  SpeakSessionRow,
+  SpeakTopic,
+  VoiceStatus,
   Deadline,
   DeadlineList,
   Plan,
@@ -330,6 +334,43 @@ export const api = {
   lan: () => request<LanStatus>('GET', '/api/lan'),
   putLan: (body: { enabled?: boolean; port?: number }) => request<LanStatus>('PUT', '/api/lan', body),
   rotateLanToken: () => request<LanStatus>('POST', '/api/lan/token'),
+
+  speakTopics: (subjectId: number) =>
+    request<SpeakTopic[]>('GET', `/api/speak/topics?subject_id=${subjectId}`),
+  speakSessions: (subjectId?: number) =>
+    request<SpeakSessionRow[]>('GET', `/api/speak/sessions?${qs({ subject_id: subjectId })}`),
+  speakSession: (id: number) => request<SpeakSession>('GET', `/api/speak/sessions/${id}`),
+  startSpeak: (body: {
+    subject_id: number
+    mode: 'teach' | 'oral'
+    topics: string[]
+    questions?: number
+    voice?: boolean
+  }) => request<SpeakSession>('POST', '/api/speak/sessions', body),
+  speakAnswer: (id: number, text: string, spoken: boolean) =>
+    request<SpeakSession>('POST', `/api/speak/sessions/${id}/answer`, { text, spoken }),
+  finishSpeak: (id: number) => request<SpeakSession>('POST', `/api/speak/sessions/${id}/finish`),
+  deleteSpeak: (id: number) => request<void>('DELETE', `/api/speak/sessions/${id}`),
+  turnAudioUrl: (id: number, index: number) => `/api/speak/sessions/${id}/turns/${index}/audio`,
+  voiceSampleUrl: (voice?: string) =>
+    `/api/voice/sample${voice ? `?voice=${encodeURIComponent(voice)}` : ''}`,
+  transcribeVoice: async (blob: Blob, subjectId?: number) => {
+    const res = await fetch(`/api/voice/transcribe?${qs({ subject_id: subjectId })}`, {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type || 'audio/webm' },
+      body: blob,
+    })
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new ApiError(res.status, typeof data.detail === 'string' ? data.detail : res.statusText)
+    }
+    return (await res.json()) as { text: string; language: string | null }
+  },
+  voiceSettings: () => request<VoiceStatus>('GET', '/api/settings/voice'),
+  putVoiceSettings: (body: { voice?: string; rate?: number }) =>
+    request<VoiceStatus>('PUT', '/api/settings/voice', body),
+  downloadVoice: (voice: string) =>
+    request<{ started: boolean }>('POST', '/api/settings/voice/download', { voice }),
 
   startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),

@@ -74,10 +74,13 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     scores; `weak_practice` job writes PracticeSets for weak topics)
                     deadlines (suggestions from announcements notes, review states), planner
                     (deterministic day-by-day plan in study_plan_item, rebuilt when the day /
-                    exam dates / open deadlines / settings change)
+                    exam dates / open deadlines / settings change), speak (teach-back + oral
+                    exam conversations, synchronous LLM turns)
   timetable/        ics (parse + expand recurring events, course key/kind from titles), service
                     (sources, sync, subject matching, now/next, TimetableScheduler thread:
                     sync, reminders, opt-in auto-record when Zoom is open during a slot)
+  voice/            stt (warm `whisper_worker --serve` child for spoken answers, outside the job
+                    queue, idle unload), tts (Piper voices: catalogue, download, WAV cache)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
                     (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
                     glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)
@@ -170,3 +173,7 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   endpoints (settings, secrets, things that fetch URLs or touch devices) go into
   `lan.BLOCKED`. Tests keep the token in memory (autouse conftest fixture) and bind LAN
   servers to 127.0.0.1 only. The dev instance's config.toml pins `[lan] host = "127.0.0.1"`.
+- Voice: tests use `voice.tts_engine = "fake"` (conftest) and the fake Whisper engine, which
+  answers in serve mode too. Never download Piper voices in tests.
+- Writing a file twice in quick succession sometimes fails on this machine (OSError 22, a
+  brief lock): retry instead of assuming the content is wrong.

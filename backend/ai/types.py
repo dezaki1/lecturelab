@@ -72,6 +72,9 @@ class LLMRequest:
     # schemas (as tools, for Claude) and answers with the one for ``task``. A per-call output
     # schema would sit in the cached prefix and give every task its own cache entry.
     shared_outputs: dict[str, type[BaseModel]] | None = None
+    # Thinking effort for this call instead of the tier's default (Claude only), e.g. "low"
+    # for quick conversational turns.
+    effort: str | None = None
 
 
 @dataclass

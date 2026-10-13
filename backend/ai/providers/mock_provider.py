@@ -325,6 +325,59 @@ class MockProvider:
             )
         return {"answers": answers, "summary": "Mock summary.", "revise": ["Mock topic"]}
 
+    def _TeachBackOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        rounds = req.instruction.count("\nStudent: ")
+        ref = [{"lecture": 1, "at": "00:10"}]
+        return {
+            "score": 60 + 15 * rounds,
+            "verdict": "Mostly right.",
+            "covered": ["The main idea"],
+            "missing": [{"point": "Why it matters", "refs": ref}],
+            "misconceptions": [
+                {"student_said": "It is always linear", "correction": "Not always.", "refs": ref}
+            ],
+            "follow_up": "Why does it matter?" if rounds < 2 else "",
+            "feedback": "Good start. Look at the motivation again.",
+        }
+
+    def _OralTurnOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        def number(pattern: str) -> int:
+            m = re.search(pattern, req.instruction)
+            return int(m.group(1)) if m else 0
+
+        n = number(r"Plan: (\d+) main")
+        asked = number(r"So far: (\d+) main")
+        followups = number(r"(\d+) follow-up\(s\)")
+        rating = 6 if asked else 0
+        last = req.instruction.rsplit("Student: ", 1)[-1] if asked else ""
+        if followups == 0 and "wrong" in last:  # a weak answer gets a follow-up
+            return {"say": "Why?", "kind": "follow_up", "topic": "t", "last_answer": 3}
+        if asked >= n:
+            return {"say": "Thank you.", "kind": "end", "topic": "", "last_answer": rating}
+        return {
+            "say": f"Question {asked + 1}: what is mock topic {asked + 1}?",
+            "kind": "question",
+            "topic": f"Topic {asked + 1}",
+            "last_answer": rating,
+        }
+
+    def _OralResultOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        ref = [{"lecture": 1, "at": "00:10"}]
+        asked = req.instruction.count("Examiner: Question")
+        return {
+            "score": 72,
+            "grade": 3,
+            "summary": "Solid basics.",
+            "strengths": ["Clear definitions"],
+            "gaps": [{"point": "Edge cases", "refs": ref}],
+            "misconceptions": [],
+            "questions": [
+                {"question": f"Question {i + 1}", "score": 7, "comment": "Fine.", "refs": ref}
+                for i in range(asked)
+            ],
+            "revise": ["Topic 1"],
+        }
+
     def _CheatSheetOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         lectures = re.findall(r'^## L(\d+) "(.*)"', req.context, re.M)
         body = "\n\n".join(f"## {t}\n- ★ Key idea of L{n}\n- $x^2$" for n, t in lectures)

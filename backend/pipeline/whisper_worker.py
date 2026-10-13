@@ -1,5 +1,9 @@
 """Transcription child process: ``python -m backend.pipeline.whisper_worker`` (JSON args on stdin).
 
+``--serve`` keeps one model loaded for short voice answers (oral exam, teach-back): the first
+stdin line is the model config, then one JSON request per line (``audio``, ``language``,
+``hotwords``), each answered with one ``result`` or ``error`` line.
+
 Runs in its own process so (a) the API never stalls, (b) VRAM is guaranteed to be released when
 it exits, and (c) a CUDA crash can't take the app down. Reports progress as JSON lines on
 stdout and writes ``transcript.json`` atomically. Deliberately imports nothing from the app.
@@ -57,7 +61,7 @@ def model_is_cached(model: str, models_dir: Path) -> bool:
     return any(models_dir.glob(f"models--*{name.split('/')[-1]}*/snapshots/*/model.bin"))
 
 
-def run_faster_whisper(args: dict[str, Any]) -> dict[str, Any]:
+def load_model(args: dict[str, Any]):  # type: ignore[no-untyped-def]
     if args["device"] == "cuda":
         add_cuda_dll_dirs()
     os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
@@ -67,14 +71,18 @@ def run_faster_whisper(args: dict[str, Any]) -> dict[str, Any]:
     models_dir = Path(args["models_dir"])
     cached = model_is_cached(args["model"], models_dir)
     emit(type="status", message="Loading model" if cached else "Downloading model (first run)")
-    t_load = time.monotonic()
-    model = WhisperModel(
+    return WhisperModel(
         args["model"],
         device=args["device"],
         compute_type=args["compute_type"],
         cpu_threads=args.get("cpu_threads", 0),
         download_root=str(models_dir),
     )
+
+
+def run_faster_whisper(args: dict[str, Any]) -> dict[str, Any]:
+    t_load = time.monotonic()
+    model = load_model(args)
     load_s = time.monotonic() - t_load
 
     emit(type="status", message="Decoding audio")
@@ -171,7 +179,46 @@ def run_fake(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+FAKE_CLIP_TEXT = "This is a placeholder spoken answer."
+
+
+def serve() -> int:
+    """Short clips, one model load: config line first, then one request per line."""
+    cfg = json.loads(sys.stdin.readline())
+    fake = cfg.get("engine") == "fake"
+    try:
+        model = None if fake else load_model(cfg)
+    except Exception as e:
+        emit(type="error", message=f"{type(e).__name__}: {e}")
+        return 1
+    emit(type="ready", device=cfg["device"])
+    for line in sys.stdin:
+        if not line.strip():
+            continue
+        req = json.loads(line)
+        try:
+            if model is None:
+                emit(type="result", text=FAKE_CLIP_TEXT, language=req.get("language") or "en")
+                continue
+            audio = load_audio(req["audio"], cfg.get("ffmpeg", "ffmpeg"))
+            segments, info = model.transcribe(
+                audio,
+                language=req.get("language") or None,
+                beam_size=cfg.get("beam_size", 5),
+                vad_filter=True,
+                condition_on_previous_text=False,
+                hotwords=req.get("hotwords") or None,
+            )
+            text = " ".join(seg.text.strip() for seg in segments).strip()
+            emit(type="result", text=text, language=info.language, duration=info.duration)
+        except Exception as e:  # one bad clip doesn't end the server
+            emit(type="error", message=f"{type(e).__name__}: {e}")
+    return 0
+
+
 def main() -> int:
+    if "--serve" in sys.argv:
+        return serve()
     args = json.loads(sys.stdin.read())
     try:
         result = run_fake(args) if args.get("engine") == "fake" else run_faster_whisper(args)

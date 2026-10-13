@@ -582,3 +582,27 @@ class StudyPlanItem(SQLModel, table=True):
     meta: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     done: bool = False
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class SpeakSession(SQLModel, table=True):
+    """A teach-back or oral-exam conversation. ``turns``: [{role: examiner | student | coach,
+    text, kind, data?, spoken?}]; ``result``: the final evaluation (refs resolved to lectures)."""
+
+    __tablename__ = "speak_session"
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True, ondelete="CASCADE")
+    mode: str  # teach | oral
+    title: str = ""
+    # topics, questions, voice, lecture_ids
+    config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    turns: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    result: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    score: float | None = None
+    status: str = "active"  # active | evaluating | done | failed
+    error: str = ""
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utcnow)
+    finished_at: datetime | None = None

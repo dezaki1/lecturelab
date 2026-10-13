@@ -40,6 +40,7 @@ def make_settings(data_dir: Path) -> Settings:
         generation={"auto": False, "cleanup": False, "subject_hub": False},
         search={"embed_provider": "mock"},
         slides={"enabled": False},  # never grab the real screen; test_slides uses a fake
+        voice={"tts_engine": "fake"},  # no Piper model needed
     )
 
 

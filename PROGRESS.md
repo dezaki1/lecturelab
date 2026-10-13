@@ -223,7 +223,18 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
     unpaired 401, pairing link -> cookie -> Review/Cards/lecture at phone and tablet size,
     remote settings notice. The pane can't register service workers on unmanaged ports, even
     without the guard, so that part is untested on a device.
-- [ ] **M21 Teach-back & oral exam**
+- [x] **M21 Teach-back & oral exam**: SpeakSession (turns JSON); teach-back = main model judges
+  the explanation against the topic's lecture notes (covered / missing with refs /
+  misconceptions with corrections + refs / follow-up, max 2 rounds); oral exam = examiner turns
+  (main model, effort "low" via new `LLMRequest.effort`, cached notes prefix, conversation after
+  the breakpoint; hard caps on main questions and 2 follow-ups each) + final evaluation (score,
+  Austrian grade, per question, gaps, misconceptions, revise). Voice: `whisper_worker --serve`
+  child kept warm (unloads after 5 idle min, CPU while a transcription job runs, stderr to a log
+  file), Piper TTS (piper-tts 1.8, voices downloaded on request into models/piper, WAV cache,
+  fake engine for tests); browser MediaRecorder answers, editable transcript; Settings → Voice
+  - Verified: real Piper sample -> real Whisper round trip exact (10.6 s cold, 1.4 s warm);
+    teach-back and oral exam in the browser with the mock provider (audio streamed, feedback,
+    refs, grade). Not run with a real LLM or a real microphone in the pane.
 - [ ] **M22 Audio recaps**
 - [ ] **M23 Handwritten notes**
 - [ ] **M24 Live mode & evals**

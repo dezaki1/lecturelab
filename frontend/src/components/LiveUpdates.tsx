@@ -68,6 +68,7 @@ function Listeners() {
     qc.invalidateQueries({ queryKey: ['plan'] })
   })
   useEvent('planner', () => qc.invalidateQueries({ queryKey: ['plan'] }))
+  useEvent('speak', () => qc.invalidateQueries({ queryKey: ['speak-sessions'] }))
   useEvent('timetable', () => {
     qc.invalidateQueries({ queryKey: ['timetable'] })
     qc.invalidateQueries({ queryKey: ['timetable-now'] })

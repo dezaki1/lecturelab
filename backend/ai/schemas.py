@@ -258,6 +258,67 @@ class ExamGradeOut(BaseModel):
     revise: list[str] = Field(description="Topics to revise, most important first")
 
 
+class LectureRef(BaseModel):
+    lecture: int = Field(description="Lecture number, e.g. 3 for L3")
+    at: str = Field(description="Timestamp in that lecture, e.g. 12:34 (from the notes)")
+
+
+class KeyPoint(BaseModel):
+    point: str
+    refs: list[LectureRef] = Field(description="Where the lecture covers it")
+
+
+class Misconception(BaseModel):
+    student_said: str = Field(description="What the student claimed (short quote or paraphrase)")
+    correction: str = Field(description="What is actually right, per the lecture")
+    refs: list[LectureRef]
+
+
+class TeachBackOut(BaseModel):
+    score: int = Field(description="0-100: how complete and correct the explanation is")
+    verdict: str = Field(description="One sentence overall judgement")
+    covered: list[str] = Field(description="Key points the student explained correctly")
+    missing: list[KeyPoint] = Field(
+        description="Important points not mentioned, most important first"
+    )
+    misconceptions: list[Misconception]
+    follow_up: str = Field(
+        description="One probing question about the biggest gap; empty if the explanation is "
+        "complete"
+    )
+    feedback: str = Field(description="Short, specific, encouraging feedback in Markdown")
+
+
+class OralTurnOut(BaseModel):
+    say: str = Field(
+        description="What the examiner says next, read aloud: plain sentences, no Markdown, "
+        "formulas in words"
+    )
+    kind: Literal["question", "follow_up", "end"]
+    topic: str = Field(description="Topic the question is about (empty for end)")
+    last_answer: int = Field(
+        description="0-10 quality of the student's previous answer; 0 on the first turn"
+    )
+
+
+class OralQuestionScore(BaseModel):
+    question: str
+    score: float = Field(description="0-10, including how the follow-ups went")
+    comment: str
+    refs: list[LectureRef]
+
+
+class OralResultOut(BaseModel):
+    score: int = Field(description="0-100 overall")
+    grade: int = Field(description="Austrian grade 1 (Sehr gut) to 5 (Nicht genügend)")
+    summary: str = Field(description="Overall feedback in Markdown")
+    strengths: list[str]
+    gaps: list[KeyPoint]
+    misconceptions: list[Misconception]
+    questions: list[OralQuestionScore]
+    revise: list[str] = Field(description="Topics to revise, most important first")
+
+
 class CheatSheetOut(BaseModel):
     title: str = Field(description='e.g. "Machine Learning: cheat sheet"')
     markdown: str = Field(description="The cheat sheet in Markdown (no top-level # heading)")

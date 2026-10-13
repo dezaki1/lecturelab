@@ -151,6 +151,13 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class VoiceConfig(BaseModel):
+    voice: str = "en_US-lessac-medium"  # Piper voice for the examiner and audio recaps
+    rate: float = 1.0  # speaking speed (1.0 = the voice's natural pace)
+    tts_engine: str = "piper"  # piper | fake (tests)
+    stt_idle_s: int = 300  # unload the voice-answer Whisper model after this much idle time
+
+
 class LanConfig(BaseModel):
     enabled: bool = False  # tablet/phone access on the home network (token-protected)
     host: str = "0.0.0.0"  # all interfaces; the main server stays on 127.0.0.1
@@ -204,6 +211,7 @@ class Settings(BaseSettings):
     timetable: TimetableConfig = Field(default_factory=TimetableConfig)
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
     lan: LanConfig = Field(default_factory=LanConfig)
+    voice: VoiceConfig = Field(default_factory=VoiceConfig)
 
     @classmethod
     def settings_customise_sources(
