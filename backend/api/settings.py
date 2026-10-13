@@ -12,7 +12,7 @@ from backend.ai.providers import active_provider_name, get_provider
 from backend.ai.types import LLMError, LLMRequest
 from backend.core.config import get_settings
 from backend.core.events import bus
-from backend.core.state import update_state
+from backend.core.state import load_state, update_state
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -100,3 +100,80 @@ def test_llm() -> dict[str, Any]:
     except LLMError as e:
         return {"ok": False, "error": str(e)}
     return {"ok": bool(result.parsed.ok), "model": result.model, "provider": result.provider}
+
+
+# Backup --------------------------------------------------------------------------------------
+BACKUP_EDITABLE = ("enabled", "folder", "interval_hours")
+
+
+class BackupSettings(BaseModel):
+    enabled: bool | None = None
+    folder: str | None = None
+    interval_hours: float | None = Field(default=None, ge=1, le=24 * 7)
+
+
+def apply_saved_backup(settings) -> None:  # type: ignore[no-untyped-def]
+    from pathlib import Path
+
+    saved = load_state().get("backup") or {}
+    for k in BACKUP_EDITABLE:
+        if k in saved:
+            value = saved[k]
+            setattr(settings.backup, k, Path(value) if k == "folder" and value else value)
+
+
+def _suggested_folder() -> str:
+    import os
+    from pathlib import Path
+
+    onedrive = os.environ.get("ONEDRIVE")  # Windows env vars are case-insensitive
+    base = Path(onedrive) if onedrive else Path.home() / "Documents"
+    return str(base / "LectureLab backup")
+
+
+@router.get("/backup")
+def backup_settings() -> dict[str, Any]:
+    from backend.core import backup
+
+    return {**backup.status(), "suggested_folder": _suggested_folder()}
+
+
+@router.put("/backup")
+def put_backup_settings(req: BackupSettings) -> dict[str, Any]:
+    from pathlib import Path
+
+    from backend.core import backup
+
+    cfg = get_settings().backup
+    changes = req.model_dump(exclude_unset=True)
+    if "folder" in changes:
+        folder = (changes["folder"] or "").strip().strip('"')
+        if folder:
+            try:
+                cfg.folder = backup.check_folder(Path(folder))
+            except backup.BackupError as e:
+                raise HTTPException(422, str(e)) from e
+        else:
+            cfg.folder = None
+    if "enabled" in changes:
+        cfg.enabled = bool(changes["enabled"])
+    if changes.get("interval_hours"):
+        cfg.interval_hours = float(changes["interval_hours"])
+    update_state(
+        backup={
+            "enabled": cfg.enabled,
+            "folder": str(cfg.folder) if cfg.folder else None,
+            "interval_hours": cfg.interval_hours,
+        }
+    )
+    return backup_settings()
+
+
+@router.post("/backup/run")
+def backup_now() -> dict[str, Any]:
+    from backend.core import backup
+
+    try:
+        return backup.run_backup()
+    except backup.BackupError as e:
+        raise HTTPException(409, str(e)) from e

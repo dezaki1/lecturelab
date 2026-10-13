@@ -32,7 +32,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
   core/             config (pydantic-settings + <data>/config.toml), db (SQLite WAL, Alembic),
                     models (SQLModel tables), jobs (persistent queue + worker), events (SSE bus),
                     media (ffprobe/ffmpeg helpers; all audio ends up as mono AAC audio.m4a),
-                    library (lecture folders), state (last-used subject)
+                    library (lecture folders), state (last-used subject), backup (DB snapshot
+                    zips with day/week rotation + incremental mirror of subjects/; scheduler
+                    thread outside the job queue; `lecturelab backup` / `restore` CLI)
   capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
                     crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray ;

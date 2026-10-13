@@ -18,6 +18,8 @@ import type {
   LectureDetail,
   LectureDocument,
   RecorderStatus,
+  BackupResult,
+  BackupStatus,
   CheatSheet,
   PracticeSet,
   WeakTopic,
@@ -123,6 +125,10 @@ export const api = {
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
+  backup: () => request<BackupStatus>('GET', '/api/settings/backup'),
+  putBackup: (body: { folder?: string; enabled?: boolean; interval_hours?: number }) =>
+    request<BackupStatus>('PUT', '/api/settings/backup', body),
+  runBackup: () => request<BackupResult>('POST', '/api/settings/backup/run'),
   cheatsheet: (subjectId: number) => request<CheatSheet>('GET', `/api/subjects/${subjectId}/cheatsheet`),
   buildCheatsheet: (subjectId: number, body: { pages: number; instructions: string }) =>
     request<{ queued: boolean }>('POST', `/api/subjects/${subjectId}/cheatsheet`, body),

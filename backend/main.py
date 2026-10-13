@@ -110,6 +110,14 @@ def main(argv: list[str] | None = None) -> None:
     p_serve.add_argument("--port", type=int)
     p_seed = sub.add_parser("seed-subjects", help="import subjects from a JSON file")
     p_seed.add_argument("file", type=Path)
+    sub.add_parser("backup", help="back up now to the configured backup folder")
+    p_restore = sub.add_parser("restore", help="rebuild a data folder from a backup folder")
+    p_restore.add_argument("source", type=Path, help="the backup folder")
+    p_restore.add_argument(
+        "--to", type=Path, help="data folder to restore into (default: --data-dir)"
+    )
+    p_restore.add_argument("--snapshot", help="snapshot file name (default: the newest)")
+    p_restore.add_argument("--force", action="store_true", help="overwrite an existing database")
     args = parser.parse_args(argv)
 
     overrides: dict[str, object] = {}
@@ -133,6 +141,35 @@ def main(argv: list[str] | None = None) -> None:
         init_db(settings.db_path)
         created, skipped = seed_subjects(args.file)
         print(f"Subjects: {created} created, {skipped} already existed.")
+        return
+
+    if args.cmd == "backup":
+        from backend.api.settings import apply_saved_backup
+        from backend.core import backup
+        from backend.core.config import set_settings
+
+        set_settings(settings)
+        apply_saved_backup(settings)
+        result = backup.run_backup()
+        copied = result["files_copied"]
+        print(
+            f"Backed up to {settings.backup.folder}: {result['snapshot']}, {copied} files copied."
+        )
+        return
+
+    if args.cmd == "restore":
+        from backend.core import backup
+        from backend.core.config import set_settings
+
+        if _already_running(settings) and not args.to:
+            print("Quit LectureLab first, or restore into another folder with --to.")
+            return
+        target = args.to or settings.data_dir
+        set_settings(load_settings(target))
+        used = backup.restore(args.source, target, args.snapshot, args.force)
+        print(
+            f'Restored {used} into {target}. Start it with: lecturelab --data-dir "{target}" serve'
+        )
         return
 
     serve(settings)

@@ -42,6 +42,7 @@ from backend.capture.recorder import (
 )
 from backend.capture.slides import ScreenFactory, default_screen
 from backend.core import jobs
+from backend.core.backup import BackupScheduler
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
 from backend.pipeline import cheatsheet as cheatsheet_jobs  # noqa: F401
@@ -73,6 +74,7 @@ def create_app(
 ) -> FastAPI:
     set_settings(settings)
     slides.apply_saved_settings(settings)
+    settings_api.apply_saved_backup(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -87,12 +89,16 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        scheduler = BackupScheduler() if start_worker else None
         if start_worker:
             jobs.start_worker()
+            scheduler.start()  # type: ignore[union-attr]
         try:
             yield
         finally:
             rec.shutdown()  # finalises an in-progress recording; encoding resumes next start
+            if scheduler:
+                scheduler.stop()
             jobs.stop_worker()
 
     app = FastAPI(title="LectureLab", version="0.1.0", lifespan=lifespan)

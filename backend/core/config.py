@@ -151,6 +151,14 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class BackupConfig(BaseModel):
+    enabled: bool = False
+    folder: Path | None = None  # e.g. ~/OneDrive/LectureLab backup
+    interval_hours: float = 24.0
+    keep_daily: int = 7
+    keep_weekly: int = 4
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -171,6 +179,7 @@ class Settings(BaseSettings):
     generation: GenerationConfig = Field(default_factory=GenerationConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     study: StudyConfig = Field(default_factory=StudyConfig)
+    backup: BackupConfig = Field(default_factory=BackupConfig)
 
     @classmethod
     def settings_customise_sources(

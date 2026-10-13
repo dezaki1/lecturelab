@@ -179,6 +179,26 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
 
 Phase 2 complete (2026-10-13).
 
+## Phase 3 (automation & extras)
+
+Agreed 2026-10-13: all of M17-M24 in this order; Piper (local) for text-to-speech; study plan
+and deadlines as .ics (no TickTick account yet); backups to a folder the user chooses.
+
+- [x] **M17 Backup**: backup folder + schedule in Settings (stored in state.json); each run
+  writes a consistent DB snapshot zip (SQLite backup API, with config.toml and state.json)
+  rotated to the newest per day (7) and per week (4), and mirrors new/changed files of the
+  lecture folders (skipping raw PCM/temp); scheduler thread checks every 10 min (not a queue
+  job, so it never blocks transcription); failure notifications; `lecturelab backup` and
+  `lecturelab restore <folder> --to <dir>` CLI
+  - Verified in the browser on dev data (21 files, snapshot written), restore in tests.
+- [ ] **M18 Timetable**
+- [ ] **M19 Deadlines & study planner**
+- [ ] **M20 Tablet access (LAN + PWA)**
+- [ ] **M21 Teach-back & oral exam**
+- [ ] **M22 Audio recaps**
+- [ ] **M23 Handwritten notes**
+- [ ] **M24 Live mode & evals**
+
 ## Decisions (from SPEC §13, 2026-10-08)
 
 - LLM: tiered Claude (Sonnet for notes/cards/questions/chat, Haiku for cheap passes), Ollama offline.

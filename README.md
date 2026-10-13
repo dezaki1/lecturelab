@@ -135,6 +135,21 @@ the cards you keep forgetting and the answers that lost points. **Practice my we
 writes new questions aimed at exactly those mistakes (about $0.03-0.06 with Claude) and opens
 them on the Practice page.
 
+## Backup
+
+**Settings → Backup**: choose a folder (a folder inside OneDrive syncs to the cloud) and turn on
+automatic backups (daily by default; **Back up now** any time). Each backup writes a dated
+snapshot of the database and settings (the newest per day for a week and per week for a month
+are kept) and copies new or changed lecture files (audio, slides, PDFs, transcripts); files
+you delete in LectureLab stay in the backup. Whisper models, temp files and your API key are
+not included.
+
+Restore into a new data folder (then start LectureLab with `--data-dir` pointing at it):
+
+```powershell
+uv run lecturelab restore "C:\Users\you\OneDrive\LectureLab backup" --to "C:\Users\you\LectureLab-restored"
+```
+
 ## Exports and the cheat sheet
 
 - **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)

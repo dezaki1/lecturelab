@@ -440,6 +440,26 @@ export interface CheatSheet {
   building: boolean
 }
 
+export interface BackupResult {
+  ok: boolean
+  at: string
+  error: string
+  snapshot?: string
+  files_copied: number
+  bytes_copied: number
+  seconds?: number
+}
+
+export interface BackupStatus {
+  folder: string
+  enabled: boolean
+  interval_hours: number
+  last: BackupResult | null
+  running: boolean
+  snapshots: { name: string; bytes: number }[]
+  suggested_folder: string
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]

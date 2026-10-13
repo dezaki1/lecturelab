@@ -3,6 +3,7 @@ import { CheckCircle2, KeyRound, Loader2, PlugZap, Trash2, XCircle } from 'lucid
 import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 
+import { BackupSettings } from '@/components/BackupSettings'
 import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -151,6 +152,8 @@ export function SettingsPage() {
       </section>
 
       <SlideCaptureSettings />
+
+      <BackupSettings />
 
       <section className="mt-6 flex items-center gap-4 rounded-lg border bg-card p-5 text-sm">
         <div className="flex-1">
