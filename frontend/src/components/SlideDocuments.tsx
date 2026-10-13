@@ -14,6 +14,7 @@ export function SlideDocuments({ lecture }: { lecture: LectureDetail }) {
   const { data: docs = [] } = useQuery({
     queryKey: ['documents', lecture.id, lecture.slide_count],
     queryFn: () => api.documents(lecture.id),
+    select: (ds) => ds.filter((d) => d.kind !== 'handwritten'), // shown in the My notes tab
     refetchInterval: (q) => (q.state.data?.some((d) => d.processing) ? 2000 : false),
   })
   const refresh = () => {

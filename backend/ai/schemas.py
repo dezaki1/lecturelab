@@ -333,6 +333,12 @@ class RecapOut(BaseModel):
     sections: list[RecapSection]
 
 
+class HandwritingOut(BaseModel):
+    markdown: str = Field(description="The page as Markdown with LaTeX math")
+    unclear: list[str] = Field(description="Words or passages that could not be read")
+    summary: str = Field(description="What the page is about, in a few words")
+
+
 class CheatSheetOut(BaseModel):
     title: str = Field(description='e.g. "Machine Learning: cheat sheet"')
     markdown: str = Field(description="The cheat sheet in Markdown (no top-level # heading)")

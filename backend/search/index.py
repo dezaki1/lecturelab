@@ -127,6 +127,29 @@ def slide_chunks(slides: list[Slide]) -> list[dict]:
     return out
 
 
+def handwritten_chunks(s: Session, lecture_id: int) -> list[dict]:
+    """One chunk per page of the student's handwritten notes (no timestamp)."""
+    from backend.pipeline.handwriting import lecture_notes
+
+    out = []
+    for m in lecture_notes(s, lecture_id):
+        for p in (m.analysis or {}).get("pages", []):
+            if len(p["text"].strip()) >= MIN_SLIDE_TEXT:
+                summary = f": {p['summary']}" if p.get("summary") else ""
+                out.append(
+                    {
+                        "source": "handwritten",
+                        "heading": f"My notes, p. {p['page']}{summary}"[:200],
+                        "text": p["text"].strip(),
+                        "start_s": None,
+                        "end_s": None,
+                        "material_id": m.id,
+                        "page": p["page"],
+                    }
+                )
+    return out
+
+
 def remove_lecture_index(s: Session, lecture_id: int) -> None:
     ids = s.exec(select(Chunk.id).where(Chunk.lecture_id == lecture_id)).all()
     if ids:
@@ -159,6 +182,7 @@ def index_lecture(lecture_id: int) -> dict[str, Any]:
         ).all()
         raw = transcript_chunks(list(segments), cfg.chunk_min_s, cfg.chunk_max_s)
         raw.extend(slide_chunks(list(slides)))
+        raw.extend(handwritten_chunks(s, lecture_id))
         for n in notes:
             raw.extend(note_chunks(n))
         remove_lecture_index(s, lecture_id)

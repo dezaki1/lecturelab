@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { HandwrittenNotes } from '@/components/HandwrittenNotes'
 import { LectureRecap } from '@/components/LectureRecap'
 import { api } from '@/lib/api'
 import { downloadPdf } from '@/lib/download'
@@ -316,6 +317,7 @@ export function LecturePage() {
               <TabsTrigger value="hints">Exam hints{count(materials?.hints)}</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="transcript">Transcript</TabsTrigger>
+              <TabsTrigger value="mynotes">My notes</TabsTrigger>
               <TabsTrigger value="slides">Slides{shown.length ? ` (${shown.length})` : ''}</TabsTrigger>
               <TabsTrigger value="flashcards">Flashcards{count(materials?.flashcards)}</TabsTrigger>
               <TabsTrigger value="exercises">Exercises{count(materials?.exercises)}</TabsTrigger>
@@ -334,6 +336,9 @@ export function LecturePage() {
                 )}
               </TabsContent>
             ))}
+            <TabsContent value="mynotes" className="mt-4">
+              <HandwrittenNotes lectureId={lecture.id} />
+            </TabsContent>
             <TabsContent value="recap" className="mt-4">
               <LectureRecap lectureId={lecture.id} hasNotes={!!materials?.notes.notes} />
             </TabsContent>

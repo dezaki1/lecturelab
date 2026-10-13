@@ -67,7 +67,7 @@ def test_full_pipeline_with_mock_provider(client: TestClient) -> None:
     assert set(m["notes"]) == {"summary", "notes", "glossary", "announcements"}
     summary = m["notes"]["summary"]
     assert "## TL;DR" in summary["content_md"] and "[00:" in summary["content_md"]
-    assert summary["prompt_version"] == "summary@v2+system@v3" and summary["version"] == 1
+    assert summary["prompt_version"] == "summary@v2+system@v4" and summary["version"] == 1
     assert "★" in m["notes"]["notes"]["content_md"]  # emphasized section marked
     assert "Hauptkomponente" in m["notes"]["glossary"]["content_md"]
 

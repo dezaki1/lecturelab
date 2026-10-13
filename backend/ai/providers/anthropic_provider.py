@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import logging
 from collections.abc import Iterator
 from typing import Any
@@ -81,6 +82,17 @@ class AnthropicProvider:
                             "text": req.context,
                             "cache_control": {"type": "ephemeral"},
                         },
+                        *(
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media,
+                                    "data": base64.b64encode(data).decode(),
+                                },
+                            }
+                            for media, data in req.images
+                        ),
                         {"type": "text", "text": instruction},
                     ],
                 }

@@ -169,6 +169,7 @@ def prepare(s: Session, provider: Provider, thread: ChatThread, question: str) -
         what = {
             "note": f"notes: {h.heading}",
             "slide": "slide text (OCR), shown on screen at this time",
+            "handwritten": "the student's own handwritten notes (transcribed)",
         }.get(h.source, "transcript")
         body = _timestamped_transcript(s, h) if h.source == "transcript" else h.text
         blocks.append(

@@ -15,6 +15,7 @@ from backend.core.db import get_session
 from backend.core.events import bus
 from backend.core.library import abs_path, rel_path
 from backend.core.models import Lecture, Material, Slide, Subject
+from backend.pipeline import handwriting as hw
 from backend.pipeline.documents import (
     DOCS_DIR,
     delete_document,
@@ -27,7 +28,7 @@ from backend.pipeline.documents import (
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
-KINDS = ("slides", "notes", "past_exam", "other")
+KINDS = ("slides", "notes", "past_exam", "other", "handwritten")
 MAX_BYTES = 200 * 1024 * 1024
 
 
@@ -75,7 +76,7 @@ async def upload_document(
         raise HTTPException(404, "Lecture not found")
     if kind not in KINDS:
         raise HTTPException(422, f"kind must be one of {KINDS}")
-    data = await _pdf_body(filename, request)
+    data = await _pdf_body(filename, request, images=kind == hw.KIND)
     path = unique_path(docs_dir(lecture), safe_name(filename))
     path.write_bytes(data)
     material = Material(
@@ -125,13 +126,22 @@ async def upload_subject_document(
     return _read(session, material)
 
 
-async def _pdf_body(filename: str, request: Request) -> bytes:
-    if not filename.lower().endswith(".pdf"):
-        raise HTTPException(415, "Only PDF files can be added here")
+async def _pdf_body(filename: str, request: Request, images: bool = False) -> bytes:
+    """The uploaded PDF (or, for handwritten notes, also a JPEG/PNG/WebP photo)."""
+    image = images and hw.is_image(filename)
+    if not filename.lower().endswith(".pdf") and not image:
+        raise HTTPException(
+            415,
+            "Only PDFs or photos (JPEG, PNG, WebP) can be added here"
+            if images
+            else "Only PDF files can be added here",
+        )
     data = await request.body()
     if len(data) > MAX_BYTES:
-        raise HTTPException(413, "PDF is larger than 200 MB")
-    if not data.startswith(b"%PDF"):
+        raise HTTPException(413, "The file is larger than 200 MB")
+    if image and not hw.looks_like_image(data):
+        raise HTTPException(415, "This file is not a JPEG, PNG or WebP image")
+    if not image and not data.startswith(b"%PDF"):
         raise HTTPException(415, "This file is not a PDF")
     return data
 
@@ -141,10 +151,11 @@ def document_file(document_id: int, session: Session = Depends(get_session)) -> 
     m = session.get(Material, document_id)
     if m is None or not abs_path(m.file_path).exists():
         raise HTTPException(404, "Document not found")
-    # inline: opens in the browser's PDF viewer
+    # inline: opens in the browser's PDF viewer (or as an image)
+    path = abs_path(m.file_path)
     return FileResponse(
-        abs_path(m.file_path),
-        media_type="application/pdf",
+        path,
+        media_type=hw.IMAGE_TYPES.get(path.suffix.lower(), "application/pdf"),
         content_disposition_type="inline",
         filename=abs_path(m.file_path).name,
     )
@@ -177,3 +188,62 @@ def remove_document(document_id: int, session: Session = Depends(get_session)) -
             queue_index(session, lecture.id)  # type: ignore[arg-type]
         bus.publish("lecture", {"id": lecture.id, "subject_id": lecture.subject_id})
     return Response(status_code=204)
+
+
+# Handwritten notes --------------------------------------------------------------------------
+
+
+class PageEdit(BaseModel):
+    text: str
+
+
+def _handwritten(s: Session, m: Material) -> dict[str, Any]:
+    a = m.analysis or {}
+    return {
+        "id": m.id,
+        "title": m.title,
+        "created_at": m.created_at,
+        "processing": is_processing(s, m.id),  # type: ignore[arg-type]
+        "method": a.get("method"),
+        "cost_usd": a.get("cost_usd", 0),
+        "is_pdf": m.file_path.lower().endswith(".pdf"),
+        "pages": [
+            {k: p.get(k) for k in ("page", "text", "unclear", "summary", "edited")}
+            for p in a.get("pages", [])
+        ],
+    }
+
+
+@router.get("/lectures/{lecture_id}/handwritten")
+def list_handwritten(lecture_id: int, session: Session = Depends(get_session)) -> list[dict]:
+    if session.get(Lecture, lecture_id) is None:
+        raise HTTPException(404, "Lecture not found")
+    return [_handwritten(session, m) for m in hw.lecture_notes(session, lecture_id)]
+
+
+def _page(m: Material | None, page: int) -> dict[str, Any]:
+    pages = (m.analysis or {}).get("pages", []) if m else []
+    hit = next((p for p in pages if p["page"] == page), None)
+    if m is None or m.kind != hw.KIND or hit is None:
+        raise HTTPException(404, "Page not found")
+    return hit
+
+
+@router.get("/documents/{document_id}/pages/{page}/image")
+def page_image(
+    document_id: int, page: int, session: Session = Depends(get_session)
+) -> FileResponse:
+    p = _page(session.get(Material, document_id), page)
+    path = abs_path(p["image"])
+    if not path.is_file():
+        raise HTTPException(404, "Page image missing")
+    return FileResponse(path, media_type="image/jpeg")
+
+
+@router.patch("/documents/{document_id}/pages/{page}")
+def edit_page(
+    document_id: int, page: int, req: PageEdit, session: Session = Depends(get_session)
+) -> dict[str, Any]:
+    m = session.get(Material, document_id)
+    _page(m, page)
+    return hw.edit_page(session, m, page, req.text)  # type: ignore[arg-type]

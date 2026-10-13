@@ -361,6 +361,17 @@ class MockProvider:
             "last_answer": rating,
         }
 
+    def _HandwritingOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        page = re.search(r"page (\d+) of", req.instruction)
+        n = page.group(1) if page else "1"
+        size = len(req.images[0][1]) if req.images else 0
+        return {
+            "markdown": f"## Eigenvectors (page {n})\nThe covariance matrix $C$ has [?] "
+            f"eigenvectors. ({size} bytes read)",
+            "unclear": ["has [?] eigenvectors"],
+            "summary": f"Mock page {n}",
+        }
+
     def _RecapOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         keys = re.findall(r"\[#(\d+)\]", req.context)
         sections = [

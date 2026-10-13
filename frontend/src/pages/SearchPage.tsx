@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { FileText, Mic, Presentation, Search } from 'lucide-react'
+import { FileText, Mic, PenLine, Presentation, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router'
 
 import { formatDuration } from '@/lib/dates'
@@ -43,7 +43,13 @@ export function SearchPage() {
         {hits?.map((h) => (
           <li key={h.chunk_id}>
             <Link
-              to={`/lectures/${h.lecture_id}${h.start_s != null ? `?t=${Math.floor(h.start_s)}` : ''}`}
+              to={`/lectures/${h.lecture_id}${
+                h.source === 'handwritten'
+                  ? '?tab=mynotes'
+                  : h.start_s != null
+                    ? `?t=${Math.floor(h.start_s)}`
+                    : ''
+              }`}
               className="block rounded-lg border bg-card p-4 transition hover:border-foreground/20"
             >
               <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -51,6 +57,8 @@ export function SearchPage() {
                   <FileText className="size-3.5" />
                 ) : h.source === 'slide' ? (
                   <Presentation className="size-3.5" />
+                ) : h.source === 'handwritten' ? (
+                  <PenLine className="size-3.5" />
                 ) : (
                   <Mic className="size-3.5" />
                 )}

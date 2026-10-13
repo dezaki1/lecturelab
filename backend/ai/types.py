@@ -26,6 +26,10 @@ class LLMRefusal(LLMError):
     pass
 
 
+class LLMNoVision(LLMError):
+    """The provider can't read images (local text-only models)."""
+
+
 @dataclass
 class Usage:
     input_tokens: int = 0
@@ -75,6 +79,8 @@ class LLMRequest:
     # Thinking effort for this call instead of the tier's default (Claude only), e.g. "low"
     # for quick conversational turns.
     effort: str | None = None
+    # Images to read (handwritten notes): (media type, bytes), sent after the cached context.
+    images: list[tuple[str, bytes]] = field(default_factory=list)
 
 
 @dataclass

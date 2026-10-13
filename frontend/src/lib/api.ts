@@ -15,6 +15,8 @@ import type {
   Materials,
   Note,
   Lecture,
+  HandwrittenNotes,
+  HandwrittenPage,
   LanStatus,
   LectureDetail,
   LectureDocument,
@@ -127,6 +129,11 @@ export const api = {
   documents: (lectureId: number) => request<LectureDocument[]>('GET', `/api/lectures/${lectureId}/documents`),
   documentFileUrl: (id: number) => `/api/documents/${id}/file`,
   deleteDocument: (id: number) => request<void>('DELETE', `/api/documents/${id}`),
+  handwritten: (lectureId: number) =>
+    request<HandwrittenNotes[]>('GET', `/api/lectures/${lectureId}/handwritten`),
+  handwrittenPageUrl: (id: number, page: number) => `/api/documents/${id}/pages/${page}/image`,
+  editHandwrittenPage: (id: number, page: number, text: string) =>
+    request<HandwrittenPage>('PATCH', `/api/documents/${id}/pages/${page}`, { text }),
   placeDocument: (id: number) => request<LectureDocument>('POST', `/api/documents/${id}/place`),
   runCleanup: (lectureId: number) => request<LectureDetail>('POST', `/api/lectures/${lectureId}/cleanup`),
   revertCleanup: (lectureId: number, segmentIds?: number[]) =>
@@ -448,11 +455,15 @@ export async function uploadSubjectDocument(
 }
 
 /** Upload a PDF to a lecture (raw body). */
-export async function uploadDocument(lectureId: number, file: File): Promise<LectureDocument> {
-  const params = new URLSearchParams({ filename: file.name, kind: 'slides' })
+export async function uploadDocument(
+  lectureId: number,
+  file: File,
+  kind: 'slides' | 'handwritten' = 'slides',
+): Promise<LectureDocument> {
+  const params = new URLSearchParams({ filename: file.name, kind })
   const res = await fetch(`/api/lectures/${lectureId}/documents?${params}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/pdf' },
+    headers: { 'Content-Type': file.type || 'application/pdf' },
     body: file,
   })
   const data = await res.json().catch(() => ({}))

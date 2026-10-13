@@ -246,7 +246,13 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   - Verified: real Piper on ~580 words = 3.5 min audio in 12 s (17× real time); week and
     lecture recaps built in the dev instance (mock script, real voice), ffprobe shows the AAC
     chapters; chapter seek and 1.5× in the browser.
-- [ ] **M23 Handwritten notes**
+- [x] **M23 Handwritten notes**: Material kind `handwritten` (PDF or JPEG/PNG/WebP, EXIF
+  orientation applied); pages rendered/resized and read one by one by the main model with
+  vision (new `LLMRequest.images`; local providers raise `LLMNoVision` -> RapidOCR fallback);
+  pages in `Material.analysis["pages"]`, editable; indexed as chunk source `handwritten`; in
+  the generation context (system prompt v4); My notes tab, search icon/link
+  - Verified in the browser with the mock provider (photo + 2-page PDF, correction, re-index,
+    search hit). Not run with real Claude vision on real handwriting.
 - [ ] **M24 Live mode & evals**
 
 ## Decisions (from SPEC §13, 2026-10-08)

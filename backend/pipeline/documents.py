@@ -38,16 +38,20 @@ def docs_dir(lecture: Lecture) -> Path:
     return d
 
 
+IMAGE_SUFFIXES = (".jpg", ".jpeg", ".png", ".webp")  # photos of handwritten notes
+
+
 def safe_name(filename: str) -> str:
     stem = SAFE.sub("_", Path(filename).stem).strip(" ._") or "slides"
-    return stem[:80] + ".pdf"
+    suffix = Path(filename).suffix.lower()
+    return stem[:80] + (suffix if suffix in IMAGE_SUFFIXES else ".pdf")
 
 
 def unique_path(folder: Path, name: str) -> Path:
     path = folder / name
     n = 2
     while path.exists():
-        path = folder / f"{Path(name).stem} ({n}).pdf"
+        path = folder / f"{Path(name).stem} ({n}){Path(name).suffix}"
         n += 1
     return path
 
@@ -90,7 +94,9 @@ def page_texts(pdf_path: Path) -> list[str]:
         pdf.close()
 
 
-def render_pages(pdf_path: Path, out: Path, pages: list[int], ctx: JobContext) -> dict[int, Path]:
+def render_pages(
+    pdf_path: Path, out: Path, pages: list[int], ctx: JobContext, width: int = PAGE_WIDTH
+) -> dict[int, Path]:
     """Render the given 1-based pages to JPEG; returns page -> file."""
     import pypdfium2 as pdfium
 
@@ -100,7 +106,7 @@ def render_pages(pdf_path: Path, out: Path, pages: list[int], ctx: JobContext) -
     try:
         for n, p in enumerate(pages):
             page = pdf[p - 1]
-            img = page.render(scale=PAGE_WIDTH / max(page.get_width(), 1)).to_pil()
+            img = page.render(scale=width / max(page.get_width(), 1)).to_pil()
             path = out / f"p{p:04d}.jpg"
             img.convert("RGB").save(path, "JPEG", quality=85, optimize=True)
             files[p] = path
@@ -120,6 +126,10 @@ def process_document(ctx: JobContext) -> None:
         pdf_path = abs_path(material.file_path)
         lecture = s.get(Lecture, material.lecture_id) if material.lecture_id else None
         kind = material.kind
+    if kind == "handwritten":
+        from backend.pipeline import handwriting
+
+        return handwriting.process(ctx, material_id)
     if not pdf_path.exists():
         raise JobError("The PDF file is missing")
 

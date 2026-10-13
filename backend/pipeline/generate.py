@@ -176,6 +176,12 @@ def build_context(session: Session, lecture: Lecture) -> LectureContext:
     if slide_lines:
         parts.append("\n## Slides shown (time each slide appeared; text from OCR or the PDF)")
         parts.append(slide_lines)
+    from backend.pipeline.handwriting import context_block
+
+    handwritten = context_block(session, lecture.id)  # type: ignore[arg-type]
+    if handwritten:
+        parts.append("\n## The student's own handwritten notes (transcribed from their tablet)")
+        parts.append(handwritten)
     parts.append("\n## Transcript")
     parts.extend(f"[{format_hms(s.start)}] {s.text}" for s in segments)
     return LectureContext(

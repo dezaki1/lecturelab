@@ -188,6 +188,16 @@ answer takes about a second or two, and it unloads after 5 idle minutes. While a
 transcribed, answers use the CPU. Voice answers need the microphone, which browsers only allow
 on this PC or on a trusted address (see *Tablet & phone access*). Typing always works.
 
+## Handwritten notes
+
+The **My notes** tab of a lecture: **Upload PDF or photos** (Samsung Notes or GoodNotes exports,
+scans, photos of paper; several at once) or **Take a photo** on the tablet. Claude reads each
+page into Markdown with formulas in LaTeX and drawings as short [sketch: ...] descriptions;
+unreadable words are marked [?] and listed. Correct a page with **Correct**. Your notes are
+searchable and are added to the lecture's material for the next generation (regenerate to use
+them). About $0.01 per page with Claude. With a local model, pages go through local OCR, which
+reads handwriting poorly.
+
 ## Audio recaps
 
 **Audio recaps** (sidebar), or the **Audio recap** tab of a lecture: a spoken summary of one

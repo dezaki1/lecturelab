@@ -15,7 +15,15 @@ from collections.abc import Iterator
 import httpx2 as httpx
 import pydantic
 
-from backend.ai.types import ChatEvent, ChatRequest, LLMError, LLMRequest, LLMResult, Usage
+from backend.ai.types import (
+    ChatEvent,
+    ChatRequest,
+    LLMError,
+    LLMNoVision,
+    LLMRequest,
+    LLMResult,
+    Usage,
+)
 from backend.core.config import LLMConfig
 
 log = logging.getLogger(__name__)
@@ -78,6 +86,8 @@ class OllamaProvider:
         return self.cfg.task_models.get(task) or self.cfg.ollama_model
 
     def complete(self, req: LLMRequest) -> LLMResult:
+        if req.images:
+            raise LLMNoVision("The local model can't read images")
         model = self.model_for(req.task, req.tier)
         schema = req.output.model_json_schema()
         body = {
@@ -196,6 +206,8 @@ class OpenAICompatProvider:
         return self.cfg.task_models.get(task) or self.cfg.openai_model
 
     def complete(self, req: LLMRequest) -> LLMResult:
+        if req.images:
+            raise LLMNoVision("This endpoint is used without image support")
         model = self.model_for(req.task, req.tier)
         headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
         body = {

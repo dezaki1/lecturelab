@@ -98,6 +98,25 @@ export interface Slide {
   page: number | null
 }
 
+export interface HandwrittenPage {
+  page: number
+  text: string
+  unclear: string[]
+  summary: string
+  edited: boolean
+}
+
+export interface HandwrittenNotes {
+  id: number
+  title: string
+  created_at: string
+  processing: boolean
+  method: 'vision' | 'ocr' | null
+  cost_usd: number
+  is_pdf: boolean
+  pages: HandwrittenPage[]
+}
+
 export interface LectureDocument {
   id: number
   lecture_id: number | null
@@ -509,7 +528,7 @@ export interface SearchHit {
   lecture_number: number | null
   lecture_title: string
   started_at: string | null
-  source: 'transcript' | 'note' | 'slide'
+  source: 'transcript' | 'note' | 'slide' | 'handwritten'
   note_kind: string
   heading: string
   snippet: string
