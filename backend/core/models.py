@@ -606,3 +606,37 @@ class SpeakSession(SQLModel, table=True):
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utcnow)
     finished_at: datetime | None = None
+
+
+class Recap(SQLModel, table=True):
+    """A spoken summary (podcast-style) of one lecture or of a week, as chaptered audio.
+
+    ``scope`` "lecture" uses ``lecture_id``; "week" uses ``week_start`` (a Monday) and
+    optionally ``subject_id`` (none = every subject). ``chapters``: [{title, start_s, refs}].
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    scope: str  # lecture | week
+    subject_id: int | None = Field(
+        default=None, foreign_key="subject.id", index=True, ondelete="CASCADE"
+    )
+    lecture_id: int | None = Field(
+        default=None, foreign_key="lecture.id", index=True, ondelete="CASCADE"
+    )
+    week_start: date | None = None
+    title: str = ""
+    minutes: int = 7  # target length
+    status: str = "queued"  # queued | writing | speaking | ready | failed
+    error: str = ""
+    script: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    chapters: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    audio_path: str = ""  # relative to data_dir
+    duration_s: float = 0.0
+    voice: str = ""
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

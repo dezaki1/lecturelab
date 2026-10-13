@@ -853,6 +853,10 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
             queue_index(s, lecture_id)
             if set(kinds) & {"summary", "notes", "glossary", "hints"}:
                 queue_subject_update(s, lecture.subject_id)
+            if set(kinds) == set(ALL_KINDS):
+                from backend.pipeline.recap import maybe_auto_queue
+
+                maybe_auto_queue(s, lecture_id)
         subject_id, title = lecture.subject_id, lecture.title
     bus.publish("lecture", {"id": lecture_id, "subject_id": subject_id})
     if len(errors) < len(kinds):

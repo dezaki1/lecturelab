@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { LectureRecap } from '@/components/LectureRecap'
 import { api } from '@/lib/api'
 import { downloadPdf } from '@/lib/download'
 import { formatDateTime, formatDuration } from '@/lib/dates'
@@ -267,7 +268,14 @@ export function LecturePage() {
               if (startAt != null) {
                 e.currentTarget.currentTime = startAt
                 setCurrentTime(startAt)
-                setParams({}, { replace: true })
+                setParams(
+                  (p) => {
+                    p.delete('t')
+                    if (!p.get('tab')) p.set('tab', 'transcript')
+                    return p
+                  },
+                  { replace: true },
+                )
               }
             }}
             onSeeked={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -289,12 +297,22 @@ export function LecturePage() {
       <SeekContext.Provider value={(t) => seek(t, 0)}>
         <SlidesContext.Provider value={{ slides: shown, open: setViewer }}>
           <Tabs
-            key={hasNotes ? 'material' : 'plain'}
-            defaultValue={startAt != null || !hasNotes ? 'transcript' : 'summary'}
+            // In the URL so it survives re-renders while jobs update the lecture, and is linkable.
+            value={params.get('tab') ?? (startAt != null || !hasNotes ? 'transcript' : 'summary')}
+            onValueChange={(v) =>
+              setParams(
+                (p) => {
+                  p.set('tab', v)
+                  return p
+                },
+                { replace: true },
+              )
+            }
             className="mt-4"
           >
             <TabsList className="w-full justify-start overflow-x-auto [scrollbar-width:none] [&>button]:flex-none">
               <TabsTrigger value="summary">Summary</TabsTrigger>
+              <TabsTrigger value="recap">Audio recap</TabsTrigger>
               <TabsTrigger value="hints">Exam hints{count(materials?.hints)}</TabsTrigger>
               <TabsTrigger value="notes">Notes</TabsTrigger>
               <TabsTrigger value="transcript">Transcript</TabsTrigger>
@@ -316,6 +334,9 @@ export function LecturePage() {
                 )}
               </TabsContent>
             ))}
+            <TabsContent value="recap" className="mt-4">
+              <LectureRecap lectureId={lecture.id} hasNotes={!!materials?.notes.notes} />
+            </TabsContent>
             <TabsContent value="hints" className="mt-4">
               {materials ? (
                 <HintList lectureId={lecture.id} hints={materials.hints} />

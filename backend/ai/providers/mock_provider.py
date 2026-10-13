@@ -361,6 +361,22 @@ class MockProvider:
             "last_answer": rating,
         }
 
+    def _RecapOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        keys = re.findall(r"\[#(\d+)\]", req.context)
+        sections = [
+            {"title": "Intro", "text": "Here is your recap.", "refs": []},
+            *(
+                {
+                    "title": f"Lecture {k}",
+                    "text": f"Lecture {k} was about something important.",
+                    "refs": [{"lecture": int(k), "at": "00:10"}],
+                }
+                for k in keys
+            ),
+            {"title": "Self-test", "text": "What was it about? Pause and think.", "refs": []},
+        ]
+        return {"title": "Mock recap", "sections": sections}
+
     def _OralResultOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         ref = [{"lecture": 1, "at": "00:10"}]
         asked = req.instruction.count("Examiner: Question")

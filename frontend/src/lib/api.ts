@@ -41,6 +41,7 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  Recap,
   SpeakSession,
   SpeakSessionRow,
   SpeakTopic,
@@ -371,6 +372,24 @@ export const api = {
     request<VoiceStatus>('PUT', '/api/settings/voice', body),
   downloadVoice: (voice: string) =>
     request<{ started: boolean }>('POST', '/api/settings/voice/download', { voice }),
+
+  recaps: (p: { lecture_id?: number; subject_id?: number } = {}) =>
+    request<Recap[]>('GET', `/api/recaps?${qs(p)}`),
+  recap: (id: number) => request<Recap>('GET', `/api/recaps/${id}`),
+  recapWeeks: () => request<{ week_start: string; subjects: string[] }[]>('GET', '/api/recaps/weeks'),
+  createRecap: (body: {
+    scope: 'lecture' | 'week'
+    lecture_id?: number
+    subject_id?: number
+    week_start?: string
+    minutes?: number
+  }) => request<Recap>('POST', '/api/recaps', body),
+  deleteRecap: (id: number) => request<void>('DELETE', `/api/recaps/${id}`),
+  recapAudioUrl: (id: number, download = false) =>
+    `/api/recaps/${id}/audio${download ? '?download=true' : ''}`,
+  recapSettings: () => request<{ auto_lecture: boolean; minutes: number }>('GET', '/api/settings/recap'),
+  putRecapSettings: (body: { auto_lecture?: boolean; minutes?: number }) =>
+    request<{ auto_lecture: boolean; minutes: number }>('PUT', '/api/settings/recap', body),
 
   startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),

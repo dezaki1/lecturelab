@@ -21,6 +21,7 @@ from backend.api import (
     imports,
     lectures,
     materials,
+    recaps,
     recorder,
     slides,
     study,
@@ -94,6 +95,7 @@ def create_app(
     planner.apply_saved_settings(settings)
     lan_api.apply_saved_settings(settings)
     speak_api.apply_saved_settings(settings)
+    recaps.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -149,6 +151,7 @@ def create_app(
     app.include_router(planner_api.router)
     app.include_router(lan_api.router)
     app.include_router(speak_api.router)
+    app.include_router(recaps.router)
 
     app.state.lan = LanServer(app)
     _mount_frontend(app)

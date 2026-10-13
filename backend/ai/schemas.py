@@ -319,6 +319,20 @@ class OralResultOut(BaseModel):
     revise: list[str] = Field(description="Topics to revise, most important first")
 
 
+class RecapSection(BaseModel):
+    title: str = Field(description="Chapter title shown in the player (not read aloud)")
+    text: str = Field(
+        description="What is read aloud: plain spoken sentences, no Markdown or symbols, "
+        "formulas in words"
+    )
+    refs: list[LectureRef] = Field(description="Lecture moments this chapter is based on")
+
+
+class RecapOut(BaseModel):
+    title: str = Field(description='Short episode title, e.g. "PCA and the covariance matrix"')
+    sections: list[RecapSection]
+
+
 class CheatSheetOut(BaseModel):
     title: str = Field(description='e.g. "Machine Learning: cheat sheet"')
     markdown: str = Field(description="The cheat sheet in Markdown (no top-level # heading)")

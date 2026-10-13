@@ -188,6 +188,22 @@ answer takes about a second or two, and it unloads after 5 idle minutes. While a
 transcribed, answers use the CPU. Voice answers need the microphone, which browsers only allow
 on this PC or on a trusted address (see *Tablet & phone access*). Typing always works.
 
+## Audio recaps
+
+**Audio recaps** (sidebar), or the **Audio recap** tab of a lecture: a spoken summary of one
+lecture or of a week (all subjects, or one), about 5-15 minutes, to listen to on the way. The
+AI writes a spoken script from your notes: the main ideas in order, what the lecturer flagged
+for the exam, a wrap-up, and self-test questions with a pause before each answer. Your local
+Piper voice reads it (a 7-minute recap takes about half a minute on the CPU). With Claude it
+costs about $0.03-0.06.
+
+The player has chapters (each links to the lecture moment), speeds up to 1.75×, the script,
+and **.m4a** download. The file has chapter marks, so podcast and music apps show them. On a
+phone or tablet (Tablet & phone access) the lock screen and headphones can pause and skip
+chapters. Turn on **Make a recap of every new lecture automatically** to get one after each
+lecture's study material is ready. Making a new recap of the same lecture or week replaces
+the old one.
+
 ## Plan: deadlines and the study planner
 
 **Plan** (sidebar) has three parts:

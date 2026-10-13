@@ -16,6 +16,7 @@ import { JobsPage } from '@/pages/JobsPage'
 import { LecturePage } from '@/pages/LecturePage'
 import { PracticePage } from '@/pages/PracticePage'
 import { PlanPage } from '@/pages/PlanPage'
+import { RecapsPage } from '@/pages/RecapsPage'
 import { SpeakPage } from '@/pages/SpeakPage'
 import { PrintCheatSheet, PrintLecture } from '@/pages/PrintPages'
 import { ReviewPage } from '@/pages/ReviewPage'
@@ -53,6 +54,7 @@ export default function App() {
                   <Route path="practice" element={<PracticePage />} />
                   <Route path="plan" element={<PlanPage />} />
                   <Route path="speak" element={<SpeakPage />} />
+                  <Route path="recaps" element={<RecapsPage />} />
                   <Route path="speak/:id" element={<SpeakPage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:id" element={<ChatPage />} />

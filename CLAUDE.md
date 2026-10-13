@@ -57,7 +57,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     appended to section instructions after the cache breakpoint),
                     subject_hub (job: course overview/topics/concept map from per-lecture notes,
                     stored as subject-level Note kind "course"; queued after each generation),
-                    cheatsheet (job: subject-level Note kind "cheatsheet")
+                    cheatsheet (job: subject-level Note kind "cheatsheet"), recap (job:
+                    spoken script -> tts_worker -> chaptered AAC)
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -80,7 +81,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     (sources, sync, subject matching, now/next, TimetableScheduler thread:
                     sync, reminders, opt-in auto-record when Zoom is open during a slot)
   voice/            stt (warm `whisper_worker --serve` child for spoken answers, outside the job
-                    queue, idle unload), tts (Piper voices: catalogue, download, WAV cache)
+                    queue, idle unload), tts (Piper voices: catalogue, download, WAV cache),
+                    tts_worker (child: sections -> one WAV + chapter starts; used by recaps)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
                     (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
                     glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)

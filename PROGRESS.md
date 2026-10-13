@@ -235,7 +235,17 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   - Verified: real Piper sample -> real Whisper round trip exact (10.6 s cold, 1.4 s warm);
     teach-back and oral exam in the browser with the mock provider (audio streamed, feedback,
     refs, grade). Not run with a real LLM or a real microphone in the pane.
-- [ ] **M22 Audio recaps**
+- [x] **M22 Audio recaps**: Recap table (scope lecture | week with optional subject);
+  `recap` job: main model writes a chaptered spoken script (`prompts/recap.md`: notes +
+  summary + exam hints per lecture, [#k] keys for refs, ~160 words/min) ->
+  `voice.tts_worker` child renders one WAV with pauses and section start times -> ffmpeg mono
+  AAC with ffmetadata chapters. Lecture recaps in the lecture folder, week recaps in
+  `<data>/recaps/`; a new recap replaces the old one of the same scope (queued job
+  cancelled); opt-in auto recap after each full generation; Recaps page, lecture tab (lecture
+  tabs now in `?tab=`), player with chapters, speed, Media Session, script, download
+  - Verified: real Piper on ~580 words = 3.5 min audio in 12 s (17× real time); week and
+    lecture recaps built in the dev instance (mock script, real voice), ffprobe shows the AAC
+    chapters; chapter seek and 1.5× in the browser.
 - [ ] **M23 Handwritten notes**
 - [ ] **M24 Live mode & evals**
 

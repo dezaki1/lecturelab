@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   Coins,
   GraduationCap,
+  Headphones,
   ListChecks,
   Home,
   Layers,
@@ -147,6 +148,9 @@ export function AppShell() {
           </NavLink>
           <NavLink to="/speak" className={linkClass}>
             <Mic className="size-4" /> Oral practice
+          </NavLink>
+          <NavLink to="/recaps" className={linkClass}>
+            <Headphones className="size-4" /> Audio recaps
           </NavLink>
           <NavLink to="/chat" className={linkClass}>
             <MessageSquare className="size-4" /> Ask your lectures

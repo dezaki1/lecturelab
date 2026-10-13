@@ -158,6 +158,11 @@ class VoiceConfig(BaseModel):
     stt_idle_s: int = 300  # unload the voice-answer Whisper model after this much idle time
 
 
+class RecapConfig(BaseModel):
+    auto_lecture: bool = False  # make an audio recap for every newly generated lecture
+    minutes: int = 7  # default length
+
+
 class LanConfig(BaseModel):
     enabled: bool = False  # tablet/phone access on the home network (token-protected)
     host: str = "0.0.0.0"  # all interfaces; the main server stays on 127.0.0.1
@@ -212,6 +217,7 @@ class Settings(BaseSettings):
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
     lan: LanConfig = Field(default_factory=LanConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
+    recap: RecapConfig = Field(default_factory=RecapConfig)
 
     @classmethod
     def settings_customise_sources(

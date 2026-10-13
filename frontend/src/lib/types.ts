@@ -904,3 +904,30 @@ export interface VoiceStatus {
   }[]
   stt: { model: string; device: string; loaded: boolean }
 }
+
+export interface RecapRef {
+  lecture_id: number
+  start_s: number
+  title: string
+  at: string
+}
+
+export interface Recap {
+  id: number
+  scope: 'lecture' | 'week'
+  subject_id: number | null
+  lecture_id: number | null
+  week_start: string | null
+  title: string
+  minutes: number
+  status: 'queued' | 'writing' | 'speaking' | 'ready' | 'failed'
+  error: string
+  script: { title: string; text: string; refs: RecapRef[] }[]
+  chapters: { title: string; start_s: number; refs: RecapRef[] }[]
+  duration_s: number
+  voice: string
+  cost_usd: number
+  has_audio: boolean
+  created_at: string
+  updated_at: string
+}
