@@ -120,15 +120,69 @@ def build_material(s: Session, subject: Subject) -> tuple[str, int]:
     return "\n".join(parts), covered
 
 
-def current_hub(s: Session, subject_id: int) -> Note | None:
+def current_subject_note(s: Session, subject_id: int, kind: str) -> Note | None:
     return s.exec(
         select(Note).where(
             Note.subject_id == subject_id,
             col(Note.lecture_id).is_(None),
-            Note.kind == HUB_KIND,
+            Note.kind == kind,
             col(Note.is_current),
         )
     ).first()
+
+
+def current_hub(s: Session, subject_id: int) -> Note | None:
+    return current_subject_note(s, subject_id, HUB_KIND)
+
+
+def save_subject_note(
+    subject_id: int,
+    kind: str,
+    content: str,
+    data: dict[str, Any],
+    model: str,
+    prompt_version: str,
+    instructions: str = "",
+) -> Note:
+    """New current version of a subject-level note (course overview, cheat sheet)."""
+    with session_scope() as s:
+        old = s.exec(
+            select(Note).where(
+                Note.subject_id == subject_id,
+                col(Note.lecture_id).is_(None),
+                Note.kind == kind,
+                col(Note.is_current),
+            )
+        ).all()
+        for o in old:
+            o.is_current = False
+            s.add(o)
+        version = (
+            s.exec(
+                select(func.max(Note.version)).where(
+                    Note.subject_id == subject_id,
+                    col(Note.lecture_id).is_(None),
+                    Note.kind == kind,
+                )
+            ).one()
+            or 0
+        ) + 1
+        note = Note(
+            subject_id=subject_id,
+            lecture_id=None,
+            kind=kind,
+            version=version,
+            content_md=content,
+            data=data,
+            model=model,
+            prompt_version=prompt_version,
+            instructions=instructions,
+        )
+        s.add(note)
+        s.commit()
+        s.refresh(note)
+        s.expunge(note)
+    return note
 
 
 def render_overview(out: sc.SubjectHubOut, numbers: dict[int, Lecture]) -> str:
@@ -179,40 +233,8 @@ def update_subject_hub(ctx: JobContext) -> None:
     data: dict[str, Any] = out.model_dump()
     data["lecture_ids"] = {str(n): lec.id for n, lec in numbers.items()}
     data["lectures_covered"] = covered
-    with session_scope() as s:
-        old = s.exec(
-            select(Note).where(
-                Note.subject_id == subject_id,
-                col(Note.lecture_id).is_(None),
-                Note.kind == HUB_KIND,
-                col(Note.is_current),
-            )
-        ).all()
-        for o in old:
-            o.is_current = False
-            s.add(o)
-        version = (
-            s.exec(
-                select(func.max(Note.version)).where(
-                    Note.subject_id == subject_id,
-                    col(Note.lecture_id).is_(None),
-                    Note.kind == HUB_KIND,
-                )
-            ).one()
-            or 0
-        ) + 1
-        s.add(
-            Note(
-                subject_id=subject_id,
-                lecture_id=None,
-                kind=HUB_KIND,
-                version=version,
-                content_md=render_overview(out, numbers),
-                data=data,
-                model=result.model,
-                prompt_version=prompt.tag,
-            )
-        )
-        s.commit()
+    save_subject_note(
+        subject_id, HUB_KIND, render_overview(out, numbers), data, result.model, prompt.tag
+    )
     bus.publish("subject_hub", {"subject_id": subject_id})
     log.info("Course overview for subject %s updated (%d lectures)", subject_id, covered)

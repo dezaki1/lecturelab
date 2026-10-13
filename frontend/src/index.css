@@ -238,3 +238,67 @@
   overflow-y: hidden;
   padding: 0.2em 0;
 }
+
+/* Print pages (/print/...): PDF export via headless Edge or the browser's "Save as PDF". */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+.print-page .print-section {
+  margin-top: 1.5rem;
+}
+.print-page .print-h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 0.5rem;
+}
+.print-page .prose-notes pre,
+.print-page table tr,
+.print-page li {
+  break-inside: avoid;
+}
+.cheatsheet {
+  max-width: 210mm;
+  font-size: 8.4pt;
+}
+.cheatsheet-columns {
+  columns: 2;
+  column-gap: 1.1rem;
+  column-rule: 1px solid #e5e5e5;
+}
+.cheatsheet .prose-notes {
+  font-size: 8.4pt;
+  line-height: 1.35;
+}
+.cheatsheet .prose-notes > * + * {
+  margin-top: 0.35em;
+}
+.cheatsheet .prose-notes h2 {
+  font-size: 9.6pt;
+  margin-top: 0.8em;
+  padding-bottom: 0.1em;
+  break-after: avoid;
+}
+.cheatsheet .prose-notes h3 {
+  font-size: 8.8pt;
+  margin-top: 0.6em;
+}
+.cheatsheet .prose-notes li + li {
+  margin-top: 0.1em;
+}
+.cheatsheet .prose-notes table,
+.cheatsheet .prose-notes pre,
+.cheatsheet .prose-notes ul,
+.cheatsheet .prose-notes .katex-display {
+  break-inside: avoid;
+}
+.cheatsheet .prose-notes pre {
+  font-size: 7.6pt;
+  padding: 0.4em 0.6em;
+}
+@media print {
+  body {
+    background: white;
+  }
+}

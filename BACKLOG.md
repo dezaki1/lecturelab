@@ -32,6 +32,8 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Cleanup: optional Sonnet for cleanup on lectures with many low-confidence lines.
 - Cards: remember "not duplicates" decisions; AnkiConnect live sync instead of file export;
   optionally export FSRS state into Anki's scheduling.
+- Exports: include slide images in the vault (attachments folder); PDF of the course overview
+  and glossary; Notion export (SPEC Phase 3, optional).
 - Weak spots: show the trend per topic (getting better?); suggest re-watching the lecture
   passage of a weak topic; extra flashcards for weak topics, not only questions.
 - Exam simulator: oral-exam style follow-up questions on wrong answers; "retry the questions I

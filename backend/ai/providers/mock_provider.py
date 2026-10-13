@@ -325,6 +325,11 @@ class MockProvider:
             )
         return {"answers": answers, "summary": "Mock summary.", "revise": ["Mock topic"]}
 
+    def _CheatSheetOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        lectures = re.findall(r'^## L(\d+) "(.*)"', req.context, re.M)
+        body = "\n\n".join(f"## {t}\n- ★ Key idea of L{n}\n- $x^2$" for n, t in lectures)
+        return {"title": "Mock cheat sheet", "markdown": body}
+
     def _ExplanationsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         ids = re.findall(r"^- id=(\d+) \[(\d+:\d{2}(?::\d{2})?)\]", req.instruction, re.M)
         return {

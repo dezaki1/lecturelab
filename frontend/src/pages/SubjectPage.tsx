@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
+import { CalendarDays, Download, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
 import { ConceptMap } from '@/components/hub/ConceptMap'
+import { CheatSheetPanel } from '@/components/hub/CheatSheet'
 import { WeakSpotsPanel } from '@/components/hub/WeakSpots'
 import {
   GlossaryPanel,
@@ -99,6 +100,16 @@ export function SubjectPage() {
           >
             <MessageSquare /> Ask
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            title="Download an Obsidian vault (Markdown) of this subject"
+          >
+            <a href={api.vaultUrl(subject.id)} download>
+              <Download /> Obsidian
+            </a>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil /> Edit
           </Button>
@@ -145,6 +156,7 @@ export function SubjectPage() {
             Glossary{hub?.glossary.length ? ` (${hub.glossary.length})` : ''}
           </TabsTrigger>
           <TabsTrigger value="weak">Weak spots</TabsTrigger>
+          <TabsTrigger value="cheatsheet">Cheat sheet</TabsTrigger>
           <TabsTrigger value="hints">Exam hints</TabsTrigger>
           <TabsTrigger value="materials">Materials</TabsTrigger>
         </TabsList>
@@ -183,6 +195,9 @@ export function SubjectPage() {
         </TabsContent>
         <TabsContent value="glossary" className="mt-4">
           {hub && <GlossaryPanel glossary={hub.glossary} />}
+        </TabsContent>
+        <TabsContent value="cheatsheet" className="mt-4">
+          <CheatSheetPanel subjectId={subject.id} />
         </TabsContent>
         <TabsContent value="weak" className="mt-4">
           <WeakSpotsPanel subjectId={subject.id} />

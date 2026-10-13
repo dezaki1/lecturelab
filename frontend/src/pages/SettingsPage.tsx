@@ -152,6 +152,22 @@ export function SettingsPage() {
 
       <SlideCaptureSettings />
 
+      <section className="mt-6 flex items-center gap-4 rounded-lg border bg-card p-5 text-sm">
+        <div className="flex-1">
+          <h2 className="font-semibold">Export</h2>
+          <p className="mt-1 text-muted-foreground">
+            All subjects as an Obsidian vault (Markdown with wikilinks, flashcards for the Spaced Repetition
+            plugin, the concept maps as Mermaid). Lecture PDFs and cheat sheets are on the lecture and subject
+            pages.
+          </p>
+        </div>
+        <Button variant="outline" asChild>
+          <a href={api.vaultUrl()} download>
+            Download vault
+          </a>
+        </Button>
+      </section>
+
       {system && (
         <section className="mt-6 rounded-lg border bg-card p-5 text-sm text-muted-foreground">
           Data folder: <code>{system.data_dir}</code> · {system.free_gb} GB free. Advanced options (models,

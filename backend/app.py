@@ -16,6 +16,7 @@ from backend.api import (
     chat,
     documents,
     exams,
+    exports,
     hub,
     imports,
     lectures,
@@ -43,6 +44,7 @@ from backend.capture.slides import ScreenFactory, default_screen
 from backend.core import jobs
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
+from backend.pipeline import cheatsheet as cheatsheet_jobs  # noqa: F401
 from backend.pipeline import (  # noqa: F401  (job handlers)
     cleanup,
     generate,
@@ -110,6 +112,7 @@ def create_app(
     app.include_router(hub.router)
     app.include_router(exams.router)
     app.include_router(weak.router)
+    app.include_router(exports.router)
 
     _mount_frontend(app)
     return app

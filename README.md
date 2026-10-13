@@ -135,6 +135,22 @@ the cards you keep forgetting and the answers that lost points. **Practice my we
 writes new questions aimed at exactly those mistakes (about $0.03-0.06 with Claude) and opens
 them on the Practice page.
 
+## Exports and the cheat sheet
+
+- **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)
+  downloads a zip of Markdown notes: one note per lecture (summary, notes, exam hints,
+  explanations, glossary, flashcards for the Spaced Repetition plugin, exam questions with
+  collapsible answers), a course overview with topics as wikilinks to lecture sections and the
+  concept map as a Mermaid diagram, the glossary and the cheat sheet. Timestamps link back to
+  LectureLab.
+- **PDF**: **PDF** on a lecture page; the cheat sheet has its own PDF button. PDFs are printed
+  by Microsoft Edge in the background (no extra software); without Edge or Chrome the print
+  view opens so you can use "Save as PDF".
+- **Cheat sheet**: the **Cheat sheet** tab on a subject page writes a dense 1-2 page sheet for
+  the last revision before the exam (formulas, definitions, algorithms, exam hints ★), printed
+  in two columns. Edit it like any note, or rewrite it with extra instructions (about
+  $0.05-0.15 with Claude).
+
 ## Subject hub
 
 Each subject page has tabs next to the lecture list:

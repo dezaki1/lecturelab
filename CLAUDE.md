@@ -53,7 +53,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     hints (keyword exam-hint detector EN/DE at transcription; hint list
                     appended to section instructions after the cache breakpoint),
                     subject_hub (job: course overview/topics/concept map from per-lecture notes,
-                    stored as subject-level Note kind "course"; queued after each generation)
+                    stored as subject-level Note kind "course"; queued after each generation),
+                    cheatsheet (job: subject-level Note kind "cheatsheet")
   ai/               providers/ (anthropic, ollama + openai-compatible, mock), schemas (structured
                     outputs), prompts (loader for prompts/*.md), types (LLMRequest/Usage/PRICING),
                     keys (keyring)
@@ -68,7 +69,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     + profile, exam build/take/grade jobs; graded answers also become Attempts),
                     weak (topic strength = week-ahead FSRS memory + review recall + answer
                     scores; `weak_practice` job writes PracticeSets for weak topics)
-  exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV)
+  exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
+                    (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
+                    glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
 frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), TanStack Query
@@ -144,6 +147,9 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   `sources._co_initialize`): soundcard's own COM init dies with the first capture thread.
 - Job child processes (Whisper, OCR) are registered with `jobs.track_child` so shutdown can end
   them; a job interrupted by shutdown is re-queued, not failed.
+- Print pages (`/print/lectures/:id`, `/print/subjects/:id/cheatsheet`) live outside the app
+  shell, force the light theme and must not open the SSE stream (LiveUpdates skips /print/):
+  an open stream keeps headless Edge from ever printing.
 - Exam-simulator questions are stored with `generation = 0`; lecture regeneration never retires
   them.
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.

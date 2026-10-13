@@ -425,6 +425,21 @@ export interface PracticeSet {
   error: string
 }
 
+export interface CheatSheet {
+  note: {
+    id: number
+    title: string
+    content_md: string
+    version: number
+    edited_by_me: boolean
+    pages: number
+    model: string
+    created_at: string
+    updated_at: string
+  } | null
+  building: boolean
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]

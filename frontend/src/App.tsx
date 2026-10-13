@@ -15,6 +15,7 @@ import { ChatPage } from '@/pages/ChatPage'
 import { JobsPage } from '@/pages/JobsPage'
 import { LecturePage } from '@/pages/LecturePage'
 import { PracticePage } from '@/pages/PracticePage'
+import { PrintCheatSheet, PrintLecture } from '@/pages/PrintPages'
 import { ReviewPage } from '@/pages/ReviewPage'
 import { SearchPage } from '@/pages/SearchPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -33,6 +34,8 @@ export default function App() {
           <BrowserRouter>
             <ImportProvider>
               <Routes>
+                <Route path="print/lectures/:id" element={<PrintLecture />} />
+                <Route path="print/subjects/:id/cheatsheet" element={<PrintCheatSheet />} />
                 <Route element={<AppShell />}>
                   <Route index element={<Home />} />
                   <Route path="subjects/:id" element={<SubjectPage />} />

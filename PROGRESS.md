@@ -167,7 +167,17 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   PracticeSet opened on the Practice page
   - Verified in the browser on dev data: forgotten reviews -> weak topic -> practice set of 6
     new questions -> Practice page.
-- [ ] **M16 Exports**
+- [x] **M16 Exports**: Obsidian vault zip (per-subject folders; lecture notes with frontmatter,
+  prev/next and overview links, timestamps linking back to LectureLab, headings cleaned for
+  wikilink anchors, Spaced Repetition flashcards incl. cloze, exam questions as collapsible
+  callouts; course overview with topic wikilinks to lecture sections and the concept map as
+  Mermaid; glossary; cheat sheet); PDFs of lectures and cheat sheets printed by headless Edge
+  (Chrome fallback) from print pages, with a print-view fallback; per-subject cheat sheet job
+  (main model, 1-2 pages, two-column print layout, editable, versioned)
+  - Verified: Edge printed the lecture print page (3 pages, math rendered) and the cheat sheet
+    (1 page) from the dev instance; vault export of the dev data (20 files).
+
+Phase 2 complete (2026-10-13).
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

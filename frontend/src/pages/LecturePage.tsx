@@ -1,5 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CircleHelp, MessageCircleQuestion, MessageSquare, Star, Trash2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  CircleHelp,
+  FileDown,
+  MessageCircleQuestion,
+  MessageSquare,
+  Star,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
@@ -31,6 +40,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api'
+import { downloadPdf } from '@/lib/download'
 import { formatDateTime, formatDuration } from '@/lib/dates'
 import type { BookmarkKind, LectureDetail } from '@/lib/types'
 
@@ -180,6 +190,15 @@ export function LecturePage() {
           onClick={() => startChat.mutate({ scope: 'lecture', lecture_id: lecture.id })}
         >
           <MessageSquare /> Ask
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!lecture.stages.transcribe}
+          onClick={() => downloadPdf(api.lecturePdfUrl(lecture.id), `/print/lectures/${lecture.id}`)}
+          title="Summary, notes, glossary, cards and questions as a PDF"
+        >
+          <FileDown /> PDF
         </Button>
         <Button
           variant="ghost"

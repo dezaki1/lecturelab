@@ -68,6 +68,7 @@ LABELS = {
     "exam_build": "Preparing exam",
     "exam_grade": "Grading exam",
     "weak_practice": "Practice for weak topics",
+    "cheatsheet": "Cheat sheet",
 }
 # Kinds that announce their own failures (generation reports which sections failed).
 SELF_NOTIFYING = {"generate"}

@@ -258,6 +258,11 @@ class ExamGradeOut(BaseModel):
     revise: list[str] = Field(description="Topics to revise, most important first")
 
 
+class CheatSheetOut(BaseModel):
+    title: str = Field(description='e.g. "Machine Learning: cheat sheet"')
+    markdown: str = Field(description="The cheat sheet in Markdown (no top-level # heading)")
+
+
 class LineFix(BaseModel):
     line: int = Field(description="The line number shown before the timestamp")
     text: str = Field(description="The complete corrected line")
@@ -283,4 +288,5 @@ OUTPUTS: dict[str, type[BaseModel]] = {
     "past_exam": PastExamOut,
     "exam_questions": SimQuestionsOut,
     "exam_grade": ExamGradeOut,
+    "cheatsheet": CheatSheetOut,
 }

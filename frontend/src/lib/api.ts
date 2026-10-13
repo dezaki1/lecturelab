@@ -18,6 +18,7 @@ import type {
   LectureDetail,
   LectureDocument,
   RecorderStatus,
+  CheatSheet,
   PracticeSet,
   WeakTopic,
   ExamConfig,
@@ -122,6 +123,12 @@ export const api = {
   retranscribe: (lectureId: number, language?: string) =>
     request<LectureDetail>('POST', `/api/lectures/${lectureId}/transcribe`, language ? { language } : {}),
 
+  cheatsheet: (subjectId: number) => request<CheatSheet>('GET', `/api/subjects/${subjectId}/cheatsheet`),
+  buildCheatsheet: (subjectId: number, body: { pages: number; instructions: string }) =>
+    request<{ queued: boolean }>('POST', `/api/subjects/${subjectId}/cheatsheet`, body),
+  cheatsheetPdfUrl: (subjectId: number) => `/api/subjects/${subjectId}/cheatsheet.pdf`,
+  lecturePdfUrl: (lectureId: number) => `/api/lectures/${lectureId}/export.pdf`,
+  vaultUrl: (subjectId?: number) => `/api/export/vault${subjectId ? `?subject_id=${subjectId}` : ''}`,
   weakSpots: (subjectId: number) =>
     request<{ topics: WeakTopic[]; window_days: number; weak_below: number }>(
       'GET',

@@ -3,8 +3,14 @@ import { toast } from 'sonner'
 
 import { useEvent } from '@/hooks/useEvents'
 
-/** Turns server events into cache invalidations and toasts. Renders nothing. */
+/** Turns server events into cache invalidations and toasts. Renders nothing.
+ * Not on print pages: the open event stream keeps a headless browser waiting forever. */
 export function LiveUpdates() {
+  if (window.location.pathname.startsWith('/print/')) return null
+  return <Listeners />
+}
+
+function Listeners() {
   const qc = useQueryClient()
 
   useEvent('subjects', () => qc.invalidateQueries({ queryKey: ['subjects'] }))
@@ -24,6 +30,9 @@ export function LiveUpdates() {
   })
   useEvent('exams', (d: { subject_id: number }) =>
     qc.invalidateQueries({ queryKey: ['exam-profile', d.subject_id] }),
+  )
+  useEvent('cheatsheet', (d: { subject_id: number }) =>
+    qc.invalidateQueries({ queryKey: ['cheatsheet', d.subject_id] }),
   )
   useEvent('subject_hub', (d: { subject_id: number }) =>
     qc.invalidateQueries({ queryKey: ['hub', d.subject_id] }),
