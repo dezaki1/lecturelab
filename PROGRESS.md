@@ -143,7 +143,21 @@ Order agreed 2026-10-09: slides first (they can't be captured after the fact), t
   page tabs (Lectures, Course overview, Topics, Concept map, Glossary, Exam hints, Materials)
   - Concept map drawn with @dagrejs/dagre + SVG instead of Mermaid (SPEC default): ~16 KB
     gzipped on demand vs. ~120 MB of Mermaid deps, and nodes link to their lectures.
-- [ ] **M14 Past exams + exam simulator**
+- [x] **M14 Past exams + exam simulator**: past exam PDFs (text layer, or OCR for scans) analysed
+  once by the main model (questions with type/points/topic, duration, total, style notes) into a
+  per-subject exam profile that steers the simulator and is appended (after the cache
+  breakpoint) to lecture exam-question generation; exam builder (question bank filtered by type,
+  difficulty and hub topics, weighted towards weak topics, emphasised and unanswered questions,
+  topped up with new questions in the past exams' style, stored with generation 0); timed exam
+  with server-side deadline, autosaved answers, auto-submit, late flag; grading job (choice
+  questions automatic, open answers by Sonnet against the rubric with per-item points clamped,
+  feedback, summary, topics to revise); answers recorded as Attempts (practice stats, topic
+  mastery); history with score trend
+  - Verified in the browser on dev data (mock model): build, start, autosave across a reload,
+    timer, submit, graded review.
+  - Also fixed (found during a live recording): only the first recording per app session
+    captured audio (COM initialised in the first capture thread only); quitting hung on open
+    browser tabs while the job worker kept starting jobs.
 - [ ] **M15 Weak spots**
 - [ ] **M16 Exports**
 

@@ -27,7 +27,7 @@ from backend.pipeline.documents import (
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
-KINDS = ("slides", "notes", "other")
+KINDS = ("slides", "notes", "past_exam", "other")
 MAX_BYTES = 200 * 1024 * 1024
 
 

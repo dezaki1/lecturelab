@@ -309,6 +309,86 @@ export interface SubjectDocument extends LectureDocument {
   lecture_title: string
 }
 
+export type ExamStatus =
+  'building' | 'ready' | 'in_progress' | 'grading' | 'graded' | 'failed' | 'grading_failed'
+
+export interface ExamConfig {
+  title?: string
+  topics: string[]
+  types: string[]
+  difficulty: 'mixed' | 'easy' | 'medium' | 'hard'
+  duration_min?: number
+  target_points?: number
+  allow_new: boolean
+}
+
+export interface ExamSummary {
+  id: number
+  subject_id: number
+  title: string
+  status: ExamStatus
+  error: string
+  config: ExamConfig & { late?: boolean }
+  time_limit_s: number
+  total_points: number
+  score: number | null
+  created_at: string
+  started_at: string | null
+  submitted_at: string | null
+  graded_at: string | null
+}
+
+export interface ExamQuestion {
+  id: number
+  type: string
+  title: string
+  points: number
+  prompt: string
+  options: { text: string; correct?: boolean; explanation?: string }[]
+  answer?: string
+  explanation?: string
+  rubric?: { criterion: string; points: number }[]
+  source_refs?: SourceRef[]
+  lecture_id?: number | null
+}
+
+export interface ExamAnswer {
+  id: number
+  position: number
+  selected: number[]
+  answer_text: string
+  score: number | null
+  max_points: number
+  feedback: string
+  rubric_scores: { item: number; points: number; comment: string }[]
+  graded_by: string
+  question: ExamQuestion
+}
+
+export interface ExamDetail extends ExamSummary {
+  summary_md: string
+  revise: string[]
+  deadline: string | null
+  server_now: string
+  answers: ExamAnswer[]
+}
+
+export interface ExamProfile {
+  profile: {
+    exams: number
+    types: Record<string, number>
+    topics: { topic: string; share: number }[]
+    duration_min: number | null
+    total_points: number | null
+    avg_points: number | null
+    style_notes: string[]
+    examples: string[]
+  } | null
+  past_exams: { id: number; title: string; questions: number; analysed: boolean; has_text: boolean }[]
+  bank: Record<string, number>
+  can_generate: boolean
+}
+
 export interface Materials {
   notes: Record<string, Note>
   flashcards: Card[]

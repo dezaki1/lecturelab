@@ -32,6 +32,8 @@ Ideas that came up while building. Not scheduled; Phase 2/3 items live in SPEC.m
 - Cleanup: optional Sonnet for cleanup on lectures with many low-confidence lines.
 - Cards: remember "not duplicates" decisions; AnkiConnect live sync instead of file export;
   optionally export FSRS state into Anki's scheduling.
+- Exam simulator: oral-exam style follow-up questions on wrong answers; "retry the questions I
+  got wrong"; per-topic score breakdown over the exam history.
 - Hub: "Review this topic" (filtered review queue by topic card ids); editable topic list;
   concept map export (SVG/PNG) for the cheat sheet.
 - Exam hints: let the student add/remove hints by hand; weight hints by how often across the

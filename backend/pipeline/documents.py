@@ -128,6 +128,13 @@ def process_document(ctx: JobContext) -> None:
         texts = page_texts(pdf_path)
     except Exception as e:
         raise JobError(f"Could not read the PDF: {e}") from e
+    if kind == "past_exam" and not any(t.strip() for t in texts):
+        # Old exams are often scans: render the pages and read them with OCR.
+        from backend.pipeline.slides import run_ocr
+
+        ctx.progress(0.2, "Reading the scanned exam")
+        files = render_pages(pdf_path, pages_dir_for(pdf_path), list(range(1, len(texts) + 1)), ctx)
+        texts = run_ocr([files[p] for p in sorted(files)], ctx)
     with session_scope() as s:
         material = s.get(Material, material_id)
         if material is None:
@@ -137,6 +144,10 @@ def process_document(ctx: JobContext) -> None:
         )
         s.add(material)
         s.commit()
+        if kind == "past_exam":
+            from backend.study.exams import queue_past_exam_analysis
+
+            queue_past_exam_analysis(s, material_id)
 
     if kind != "slides" or lecture is None:
         return

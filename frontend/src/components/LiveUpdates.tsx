@@ -17,6 +17,13 @@ export function LiveUpdates() {
     qc.invalidateQueries({ queryKey: ['review-summary'] })
     qc.invalidateQueries({ queryKey: ['subjects'] })
   })
+  useEvent('exam', (d: { id: number }) => {
+    qc.invalidateQueries({ queryKey: ['exam', d.id] })
+    qc.invalidateQueries({ queryKey: ['exams'] })
+  })
+  useEvent('exams', (d: { subject_id: number }) =>
+    qc.invalidateQueries({ queryKey: ['exam-profile', d.subject_id] }),
+  )
   useEvent('subject_hub', (d: { subject_id: number }) =>
     qc.invalidateQueries({ queryKey: ['hub', d.subject_id] }),
   )

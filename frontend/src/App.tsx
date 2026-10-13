@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Home } from '@/pages/Home'
 import { CardsPage } from '@/pages/CardsPage'
+import { ExamPage } from '@/pages/ExamPage'
+import { ExamsPage } from '@/pages/ExamsPage'
 import { ChatPage } from '@/pages/ChatPage'
 import { JobsPage } from '@/pages/JobsPage'
 import { LecturePage } from '@/pages/LecturePage'
@@ -41,6 +43,8 @@ export default function App() {
                   <Route path="search" element={<SearchPage />} />
                   <Route path="review" element={<ReviewPage />} />
                   <Route path="cards" element={<CardsPage />} />
+                  <Route path="exams" element={<ExamsPage />} />
+                  <Route path="exams/:id" element={<ExamPage />} />
                   <Route path="practice" element={<PracticePage />} />
                   <Route path="chat" element={<ChatPage />} />
                   <Route path="chat/:id" element={<ChatPage />} />

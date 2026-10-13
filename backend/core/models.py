@@ -178,6 +178,8 @@ class Material(SQLModel, table=True):
     title: str = ""
     file_path: str  # relative to data_dir
     extracted_text: str = ""
+    # Past exams: format, questions and style as analysed by the LLM (M14).
+    analysis: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -436,4 +438,48 @@ class Attempt(SQLModel, table=True):
     score: float = 0.0
     max_points: float = 0.0
     duration_ms: int | None = None
+    exam_id: int | None = Field(default=None, foreign_key="exam.id", ondelete="SET NULL")
+    feedback: str = ""  # AI grading feedback (exam simulator)
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class Exam(SQLModel, table=True):
+    """A simulated exam: built from the question bank (plus new questions), taken under a time
+    limit, graded (choice questions automatically, open ones by the main model)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    title: str = ""
+    # topics, types, difficulty, duration_min, target_points, allow_new
+    config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    status: str = "building"  # building | ready | in_progress | grading | graded | failed
+    error: str = ""
+    time_limit_s: int = 3600
+    total_points: float = 0.0
+    score: float | None = None
+    summary_md: str = ""  # overall feedback
+    revise: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    created_at: datetime = Field(default_factory=utcnow)
+    started_at: datetime | None = None
+    submitted_at: datetime | None = None
+    graded_at: datetime | None = None
+
+
+class ExamAnswer(SQLModel, table=True):
+    __tablename__ = "exam_answer"
+
+    id: int | None = Field(default=None, primary_key=True)
+    exam_id: int = Field(foreign_key="exam.id", index=True, ondelete="CASCADE")
+    question_id: int = Field(foreign_key="question.id", ondelete="CASCADE")
+    position: int
+    selected: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    answer_text: str = ""
+    score: float | None = None
+    max_points: float = 0.0
+    # [{item, points, comment}] per rubric item, from the grader
+    rubric_scores: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    feedback: str = ""
+    graded_by: str = ""  # auto | ai
+    updated_at: datetime = Field(default_factory=utcnow)

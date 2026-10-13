@@ -15,6 +15,7 @@ from backend.api import (
     cards,
     chat,
     documents,
+    exams,
     hub,
     imports,
     lectures,
@@ -52,6 +53,7 @@ from backend.pipeline import slides as slide_jobs  # noqa: F401
 from backend.pipeline import subject_hub as hub_jobs  # noqa: F401
 from backend.pipeline.hints import backfill as hint_backfill
 from backend.search import index as search_index
+from backend.study import exams as exam_jobs  # noqa: F401
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +106,7 @@ def create_app(
     app.include_router(documents.router)
     app.include_router(cards.router)
     app.include_router(hub.router)
+    app.include_router(exams.router)
 
     _mount_frontend(app)
     return app

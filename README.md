@@ -110,6 +110,21 @@ slow (~40 min for a 2-minute test lecture) and noticeably less accurate. Use off
 chat and as a fallback, and let Claude generate the study material. `[llm] ollama_model` in config.toml can point to a smaller model (e.g.
 `qwen3:4b`, which fits in 4 GB of VRAM) for speed.
 
+## Exam simulator
+
+**Exam simulator** (sidebar): pick a subject, the duration, question types, topics (with your
+mastery shown) and difficulty, and **Build exam**. Questions come from the lectures' exam
+questions, favouring weak topics and ones you haven't answered; if there aren't enough, new
+ones are written in the style of the course's past exams. The exam is timed (the timer keeps
+running if you leave the page; it submits itself when time is up) and answers save as you type.
+Choice questions are marked automatically; open answers are graded by Claude against the rubric,
+with partial credit, feedback per answer, links to the lecture moment and topics to revise
+(about $0.02-0.10 per exam). Results stay in the history with a score trend.
+
+**Past exams**: add old exam PDFs on the simulator page (scans work: they are read with OCR).
+Each is analysed once (questions, types, points, topics, style), and both the simulator and the
+lectures' generated exam questions then match their format, style and topic weighting.
+
 ## Subject hub
 
 Each subject page has tabs next to the lecture list:

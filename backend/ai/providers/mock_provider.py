@@ -257,6 +257,74 @@ class MockProvider:
             "relations": relations,
         }
 
+    def _PastExamOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """One question per non-empty line that starts with a number, e.g. "1) Derive ..."."""
+        found = re.findall(
+            r"^(\d+[a-z]?)[).:] (.+?)(?: \((\d+) ?(?:P|pts|points)\))?$", req.context, re.M
+        )
+        return {
+            "title": "Mock past exam",
+            "duration_min": 90,
+            "total_points": float(sum(int(p or 0) for *_, p in found)),
+            "questions": [
+                {
+                    "number": n,
+                    "type": "calculation" if "comput" in t.lower() else "short",
+                    "points": float(p or 0),
+                    "topic": t.split()[1] if len(t.split()) > 1 else t,
+                    "text": t,
+                }
+                for n, t, p in found
+            ],
+            "style_notes": "Derivations by hand; short justifications.",
+        }
+
+    def _SimQuestionsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        n = int(re.search(r"Write (\d+) new exam questions", req.instruction).group(1))  # type: ignore[union-attr]
+        lecture = int((re.findall(r'^## L(\d+) "', req.context, re.M) or ["1"])[0])
+        stamp = (re.findall(r"\[(\d+:\d{2})\]", req.context) or ["00:05"])[0]
+        return {
+            "questions": [
+                {
+                    "type": "short",
+                    "bloom": "understand",
+                    "difficulty": "medium",
+                    "points": 4.0,
+                    "prompt": f"New mock exam question {i + 1}: explain the main idea.",
+                    "options": [],
+                    "answer": "The main idea is the mock answer.",
+                    "explanation": "Because the lecture said so.",
+                    "rubric": [
+                        {"criterion": "States the main idea", "points": 2.0},
+                        {"criterion": "Explains why", "points": 2.0},
+                    ],
+                    "emphasized": False,
+                    "refs": [{"start": stamp, "end": stamp}],
+                    "lecture": lecture,
+                    "topic": "Mock topic",
+                }
+                for i in range(n)
+            ]
+        }
+
+    def _ExamGradeOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        """Full marks for answers containing "correct", half otherwise; over-awards get clamped."""
+        blocks = re.split(r"(?m)^- answer_id=", req.instruction)[1:]
+        answers = []
+        for b in blocks:
+            aid = int(b.split(" ", 1)[0])
+            student = b.split("Student answer:", 1)[1]
+            items = re.findall(r"^    (\d+)\) .* \(([\d.]+) pts\)$", b, re.M)
+            good = "correct" in student.lower()
+            rubric = [
+                {"item": int(i), "points": float(p) * (5 if good else 0.5), "comment": "mock"}
+                for i, p in items
+            ]
+            answers.append(
+                {"answer_id": aid, "points": 99.0, "rubric": rubric, "feedback": "Mock feedback."}
+            )
+        return {"answers": answers, "summary": "Mock summary.", "revise": ["Mock topic"]}
+
     def _ExplanationsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         ids = re.findall(r"^- id=(\d+) \[(\d+:\d{2}(?::\d{2})?)\]", req.instruction, re.M)
         return {

@@ -235,6 +235,10 @@ class Runner:
         if task in HINT_AWARE:  # after the cache breakpoint, so the shared prefix is unchanged
             with session_scope() as s:
                 instruction += hints_block(lecture_hints(s, self.ctx.lecture_id))
+                if task == "questions":  # exam questions in the style of the real exams
+                    from backend.study.exams import exam_profile, profile_text
+
+                    instruction += profile_text(exam_profile(s, self.ctx.subject_id))
         req = LLMRequest(
             task=task,
             system=self.ctx.system,
@@ -552,7 +556,8 @@ def _retire_previous(
         q = q.where(getattr(model, k) == v)
     for item in s.exec(q).all():
         reviewed = bool(getattr(item, "fsrs", None))
-        if not item.edited_by_me and not reviewed:
+        from_exam_sim = item.generation == 0  # written for a practice exam: part of its history
+        if not item.edited_by_me and not reviewed and not from_exam_sim:
             item.is_current = False
             s.add(item)
 

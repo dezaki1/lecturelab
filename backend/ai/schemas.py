@@ -208,6 +208,56 @@ class SubjectHubOut(BaseModel):
     relations: list[ConceptEdge]
 
 
+class PastExamQuestion(BaseModel):
+    number: str = Field(description='As printed, e.g. "3b"')
+    type: Literal["mcq", "multi", "tf", "short", "long", "calculation", "code", "other"]
+    points: float = Field(description="Points if stated, else 0")
+    topic: str = Field(description="Course topic it tests, a few words")
+    text: str = Field(description="The question reduced to its core, keeping the exam's wording")
+
+
+class PastExamOut(BaseModel):
+    title: str = Field(description='e.g. "Final exam, winter 2024"')
+    duration_min: int = Field(description="Exam duration in minutes if stated, else 0")
+    total_points: float = Field(description="Total points if stated, else 0")
+    questions: list[PastExamQuestion]
+    style_notes: str = Field(
+        description="How this exam asks: question styles, what answers must show (derivations, "
+        "proofs, code, numbers by hand), allowed aids, typical traps"
+    )
+
+
+class SimQuestion(QuestionOut):
+    lecture: int = Field(description="Number of the lecture the question is based on, e.g. 3")
+    topic: str = Field(description="Course topic it tests")
+
+
+class SimQuestionsOut(BaseModel):
+    questions: list[SimQuestion]
+
+
+class RubricScore(BaseModel):
+    item: int = Field(description="Index of the rubric item, starting at 0")
+    points: float = Field(description="Points awarded for this item")
+    comment: str = Field(description="Why, briefly")
+
+
+class GradedAnswer(BaseModel):
+    answer_id: int
+    points: float = Field(description="Total points awarded (sum of the rubric items)")
+    rubric: list[RubricScore]
+    feedback: str = Field(
+        description="Markdown: what is right, what is wrong or missing, and how the full-mark "
+        "answer differs"
+    )
+
+
+class ExamGradeOut(BaseModel):
+    answers: list[GradedAnswer]
+    summary: str = Field(description="Overall feedback in Markdown: strengths and weaknesses")
+    revise: list[str] = Field(description="Topics to revise, most important first")
+
+
 class LineFix(BaseModel):
     line: int = Field(description="The line number shown before the timestamp")
     text: str = Field(description="The complete corrected line")
@@ -230,4 +280,7 @@ OUTPUTS: dict[str, type[BaseModel]] = {
     "explanations": ExplanationsOut,
     "verify": VerifyOut,
     "cleanup": CleanupOut,
+    "past_exam": PastExamOut,
+    "exam_questions": SimQuestionsOut,
+    "exam_grade": ExamGradeOut,
 }

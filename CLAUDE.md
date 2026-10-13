@@ -15,6 +15,7 @@ $env:LECTURELAB_TEST_WHISPER=1; uv run pytest -k real   # opt-in: real Whisper o
 uv run ruff check . ; uv run ruff format --check .
 cd frontend; npm run lint; npm run format:check; npm run build
 cd frontend; npm run dev                      # Vite on :5173, proxies /api to :8765
+cd frontend; npm run dev:preview              # Vite on :5174, proxies /api to the dev instance :8766
 ```
 
 New migration after changing `backend/core/models.py`:
@@ -63,7 +64,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     cards (browse/filter, bulk actions, duplicate groups, merge), dashboard
                     (retention, activity, forecast, mastery = mean FSRS retrievability per subject),
                     topics (hub read side: cumulative glossary, topic -> note sections -> time
-                    ranges -> cards/questions -> mastery, concept map)
+                    ranges -> cards/questions -> mastery, concept map), exams (past-exam analysis
+                    + profile, exam build/take/grade jobs; graded answers also become Attempts)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV)
 prompts/            prompt templates with `version:` front matter; bump it when changing a prompt
                     (stored on every generated note as prompt_version)
@@ -131,4 +133,15 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
 - Test PDFs: `tests/pdfgen.make_pdf` writes real text PDFs (Pillow PDFs have no text layer).
 - Frontend graphs: concept map = @dagrejs/dagre layout (lazy-loaded) + own SVG, not Mermaid
   (Mermaid is ~120 MB of deps; our data is already structured and nodes need links).
+- While the user's app is running (and especially recording): don't restart it, don't run
+  `uv sync`, don't rebuild `frontend/dist` (it serves that folder; a new UI would call endpoints
+  its old backend lacks) and don't edit `whisper_worker.py`/`ocr_worker.py` (child processes
+  start from the current source). Check the UI via `lecturelab-dev` + `lecturelab-ui-preview`
+  in `.claude/launch.json`; test migrations on a `sqlite3` backup-API snapshot of the live DB.
+- Capture threads must join the COM MTA themselves, after importing soundcard (see
+  `sources._co_initialize`): soundcard's own COM init dies with the first capture thread.
+- Job child processes (Whisper, OCR) are registered with `jobs.track_child` so shutdown can end
+  them; a job interrupted by shutdown is re-queued, not failed.
+- Exam-simulator questions are stored with `generation = 0`; lecture regeneration never retires
+  them.
 - GitHub: private repo dezaki1/lecturelab; push after each milestone commit.
