@@ -8,6 +8,7 @@ import threading
 from collections.abc import Iterator
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,7 +16,14 @@ from fastapi.testclient import TestClient
 from backend.core.config import Settings
 from backend.core.jobs import Worker
 from backend.core.lan import _blocked
-from backend.pipeline.download import clean_tmp, parse_progress, write_cookies
+from backend.core.media import probe_duration
+from backend.pipeline.download import (
+    clean_tmp,
+    parse_progress,
+    safe_filename,
+    unique_path,
+    write_cookies,
+)
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not on PATH")
 
@@ -170,3 +178,75 @@ def test_cookie_files(settings: Settings) -> None:
     assert path.exists()
     clean_tmp(now=path.stat().st_mtime + 3 * 24 * 3600)
     assert not path.exists()
+
+
+@pytest.fixture
+def save_dir(settings: Settings, tmp_path: Path) -> Path:
+    settings.downloads.save_dir = tmp_path / "Downloads"
+    return settings.downloads.save_dir
+
+
+def test_just_download_saves_the_file(
+    client: TestClient, settings: Settings, site: str, save_dir: Path
+) -> None:
+    r = client.post("/api/downloads/save", json={"url": f"{site}/lecture.mp4"})
+    assert r.status_code == 202, r.text
+    assert r.json()["folder"] == str(save_dir)
+    Worker().run_pending()
+    assert [f.name for f in save_dir.iterdir()] == ["lecture.mp4"]
+    assert not list(settings.tmp_dir.glob("save-*")), "staging folder removed"
+    kinds = {j["kind"] for j in client.get("/api/jobs").json()}
+    assert kinds == {"save_media"}, "no lecture, no import"
+
+    # Same video again: a new name instead of overwriting.
+    client.post("/api/downloads/save", json={"url": f"{site}/lecture.mp4"})
+    Worker().run_pending()
+    assert sorted(f.name for f in save_dir.iterdir()) == ["lecture (2).mp4", "lecture.mp4"]
+
+
+def test_just_download_audio_and_pages(
+    client: TestClient, settings: Settings, site: str, save_dir: Path
+) -> None:
+    cookies = "127.0.0.1\tFALSE\t/\tFALSE\t0\tsession\tabc\n"
+    client.post(
+        "/api/downloads/save",
+        json={"url": f"{site}/private/lecture.mp4", "video": False, "cookies": cookies},
+    )
+    client.post("/api/downloads/save", json={"url": f"{site}/page.html"})
+    Worker().run_pending()
+    names = sorted(f.name for f in save_dir.iterdir())
+    assert names == ["VL Algorithms - Week 3.mp4", "lecture.m4a"]
+    assert probe_duration(save_dir / "lecture.m4a") == pytest.approx(3, abs=0.5)
+    assert not list(settings.tmp_dir.glob("cookies-*.txt"))
+
+
+def test_just_download_failure_is_reported(client: TestClient, site: str, save_dir: Path) -> None:
+    client.post("/api/downloads/save", json={"url": f"{site}/missing.mp4"})
+    Worker().run_pending()
+    (job,) = [j for j in client.get("/api/jobs").json() if j["kind"] == "save_media"]
+    assert job["status"] == "failed"
+    assert "404" in job["error"]
+    assert not save_dir.exists() or not any(save_dir.iterdir())
+
+
+def test_just_download_uses_the_given_name(client: TestClient, site: str, save_dir: Path) -> None:
+    client.post(
+        "/api/downloads/save",
+        json={"url": f"{site}/lecture.mp4", "title": 'Panopto: VL 3 "Graphs" 100%?'},
+    )
+    Worker().run_pending()
+    assert [f.name for f in save_dir.iterdir()] == ["Panopto VL 3 Graphs 100%.mp4"]
+
+
+def test_safe_filename() -> None:
+    assert safe_filename('a/b\\c:d*e?"f"<g>|h') == "a b c d e f g h"
+    assert safe_filename("Lecture 3. ") == "Lecture 3"
+    assert safe_filename("x" * 300) == "x" * 150
+    assert safe_filename("") == ""
+
+
+def test_unique_path(tmp_path: Path) -> None:
+    (tmp_path / "a.mp4").touch()
+    (tmp_path / "a (2).mp4").touch()
+    assert unique_path(tmp_path / "a.mp4").name == "a (3).mp4"
+    assert unique_path(tmp_path / "b.mp4").name == "b.mp4"

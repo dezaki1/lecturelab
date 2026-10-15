@@ -1,4 +1,4 @@
-"""Import from a link: probe a page or media URL, then queue the download as a new lecture.
+"""Import from a link: probe a page or media URL, then queue it as a new lecture or just save it.
 
 Called by the UI ("Import from link") and the browser extension (``extension/``). The server
 fetches whatever URL it is given, so these endpoints are PC-only (``lan.BLOCKED``) and refuse
@@ -7,6 +7,7 @@ requests from other websites (a page you visit could otherwise POST to 127.0.0.1
 
 from __future__ import annotations
 
+import os
 import shutil
 from urllib.parse import urlsplit
 
@@ -21,7 +22,14 @@ from backend.core.db import session_scope
 from backend.core.events import bus
 from backend.core.library import create_lecture
 from backend.core.models import LectureSource, LectureStatus, Subject
-from backend.pipeline.download import DOWNLOAD_JOB, Source, probe_url, write_cookies
+from backend.pipeline.download import (
+    DOWNLOAD_JOB,
+    SAVE_JOB,
+    Source,
+    downloads_folder,
+    probe_url,
+    write_cookies,
+)
 
 EXTENSION_SCHEMES = ("chrome-extension", "moz-extension", "extension", "safari-web-extension")
 
@@ -122,3 +130,42 @@ def start_download(body: DownloadIn) -> dict:
         result = lecture_read(s, lecture)
     bus.publish("lecture", {"id": result["id"], "subject_id": body.subject_id})
     return result
+
+
+class SaveIn(LinkIn):
+    video: bool = True  # False = audio only (.m4a)
+    # File name; empty = the video's own title. The extension sends the tab title for
+    # streams it found (their own "title" is the URL's file name, e.g. "index").
+    title: str = ""
+
+
+@router.post("/save", status_code=202)
+def save(body: SaveIn) -> dict:
+    """Just download: save the video to the Downloads folder, no lecture."""
+    settings = get_settings()
+    url = _check_url(body.url)
+    free = shutil.disk_usage(settings.data_dir).free
+    if free < settings.recorder.min_free_gb * 1e9:
+        raise HTTPException(507, f"Not enough disk space: {free / 1e9:.1f} GB free")
+    cookie_file = write_cookies(body.cookies) if body.cookies else None
+    payload = {
+        "url": url,
+        "video": body.video,
+        "title": body.title.strip(),
+        "referer": body.referer,
+        "user_agent": body.user_agent,
+        "cookies": cookie_file.name if cookie_file else None,
+    }
+    with session_scope() as s:
+        job_id = jobs.enqueue(s, SAVE_JOB, payload=payload).id
+    return {"job_id": job_id, "folder": str(downloads_folder())}
+
+
+@router.post("/open-folder", status_code=204)
+def open_folder() -> None:
+    """Show the Downloads folder in Explorer."""
+    folder = downloads_folder()
+    folder.mkdir(parents=True, exist_ok=True)
+    if not hasattr(os, "startfile"):
+        raise HTTPException(501, "Opening folders only works on Windows")
+    os.startfile(folder)

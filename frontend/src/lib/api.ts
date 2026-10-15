@@ -421,6 +421,9 @@ export const api = {
   probeLink: (url: string) => request<LinkInfo>('POST', '/api/downloads/probe', { url }),
   importLink: (data: { url: string; subject_id: number; title?: string; kind?: string; video?: boolean }) =>
     request<Lecture>('POST', '/api/downloads', data),
+  saveLink: (data: { url: string; video?: boolean; title?: string }) =>
+    request<{ job_id: number; folder: string }>('POST', '/api/downloads/save', data),
+  openDownloadsFolder: () => request<void>('POST', '/api/downloads/open-folder'),
 }
 
 /** Stream a file to the import endpoint (raw body), reporting upload progress 0..1. */

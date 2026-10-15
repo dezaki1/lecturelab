@@ -208,6 +208,8 @@ class DownloadConfig(BaseModel):
     max_height: int = 1080  # video resolution cap; slides stay readable at 720-1080p
     concurrent_fragments: int = 4  # parallel HLS/DASH segment downloads
     probe_timeout_s: float = 60.0
+    # "Just download" target; None = the Windows Downloads folder.
+    save_dir: Path | None = None
 
 
 class Settings(BaseSettings):

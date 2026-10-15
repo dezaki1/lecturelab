@@ -58,6 +58,7 @@ LABELS = {
     "encode_recording": "Saving recording",
     "import_media": "Importing",
     "download_media": "Downloading",
+    "save_media": "Saving video",
     "transcribe": "Transcription",
     "generate": "Study material",
     "index": "Search indexing",

@@ -15,28 +15,35 @@
     <p id="error" class="error" hidden></p>
 
     <section id="form" hidden>
-      <label>
-        Subject
-        <select id="subject"></select>
-      </label>
-      <div class="row">
-        <label class="grow">
-          Title <span class="muted">(optional)</span>
-          <input id="title" placeholder="Taken from the video" />
-        </label>
+      <div class="modes" role="radiogroup" aria-label="What to do">
+        <label><input type="radio" name="mode" value="study" checked /> Add to LectureLab</label>
+        <label><input type="radio" name="mode" value="save" /> Just download</label>
+      </div>
+      <div id="study-fields">
         <label>
-          Type
-          <select id="kind">
-            <option value="">–</option>
-            <option>VL</option>
-            <option>VO</option>
-            <option>UE</option>
-            <option value="other">Other</option>
-          </select>
+          Subject
+          <select id="subject"></select>
         </label>
+        <div class="row">
+          <label class="grow">
+            Title <span class="muted">(optional)</span>
+            <input id="title" placeholder="Taken from the video" />
+          </label>
+          <label>
+            Type
+            <select id="kind">
+              <option value="">–</option>
+              <option>VL</option>
+              <option>VO</option>
+              <option>UE</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+        </div>
       </div>
       <label class="check"
-        ><input type="checkbox" id="video" checked /> Download the video (to find slides)</label
+        ><input type="checkbox" id="video" checked />
+        <span id="video-label">Download the video (to find slides)</span></label
       >
       <label class="check"
         ><input type="checkbox" id="cookies" checked /> Send my login for this site (needed for Moodle,
@@ -56,6 +63,7 @@
 
     <footer>
       <a href="#" id="open">Open LectureLab</a>
+      <a href="#" id="folder" hidden>Downloads folder</a>
       <a href="#" id="options">Settings</a>
     </footer>
     <script type="module" src="popup.js"></script>

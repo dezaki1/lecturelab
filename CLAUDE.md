@@ -45,7 +45,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     storage, SlideGrabber thread) ; screens (ctypes: find Zoom window,
                     PrintWindow/ImageGrab, monitors)
   pipeline/         ingest (import job), download (job `download_media`: yt-dlp child process
-                    for links/streams, cookies.txt from the extension -> then the import job), stages (stage bookkeeping + auto-queue transcription),
+                    for links/streams, cookies.txt from the extension -> then the import job; `save_media` =
+                    just save to the Downloads folder, no lecture), stages (stage bookkeeping + auto-queue transcription),
                     transcribe (job: runs whisper_worker child process, CPU fallback, re-segments
                     into sentence lines), whisper_worker (standalone child: ffmpeg decode +
                     faster-whisper or the "fake" engine; JSON-lines progress on stdout)

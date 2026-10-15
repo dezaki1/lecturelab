@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link2, Loader2, Search } from 'lucide-react'
+import { Download, Link2, Loader2, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -47,6 +47,17 @@ export function LinkImportDialog({ subjectId, onClose }: { subjectId: number; on
       toast.success('Download started', { description: 'Transcription follows automatically.' })
       qc.invalidateQueries({ queryKey: ['lectures'] })
       qc.invalidateQueries({ queryKey: ['subjects'] })
+      onClose()
+    },
+    onError: (e) => toast.error('Could not start the download', { description: (e as Error).message }),
+  })
+  const save = useMutation({
+    mutationFn: () => api.saveLink({ url: url.trim(), video, title: title.trim() }),
+    onSuccess: (r) => {
+      toast.success('Downloading', {
+        description: `Saved to ${r.folder} when done (see Jobs).`,
+        action: { label: 'Open folder', onClick: () => api.openDownloadsFolder().catch(() => {}) },
+      })
       onClose()
     },
     onError: (e) => toast.error('Could not start the download', { description: (e as Error).message }),
@@ -168,6 +179,14 @@ export function LinkImportDialog({ subjectId, onClose }: { subjectId: number; on
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>
             Cancel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => save.mutate()}
+            disabled={!validUrl || live || save.isPending}
+            title="Save the file to your Downloads folder without adding a lecture"
+          >
+            {save.isPending ? <Loader2 className="animate-spin" /> : <Download />} Just download
           </Button>
           <Button onClick={() => start.mutate()} disabled={!validUrl || live || start.isPending}>
             {start.isPending ? <Loader2 className="animate-spin" /> : <Link2 />} Import

@@ -1,8 +1,13 @@
 # LectureLab Video Grabber (browser extension)
 
-Like Video DownloadHelper, but it sends the video to LectureLab on your PC instead of saving a file.
-LectureLab downloads it with yt-dlp, extracts the audio, finds slides and runs the usual pipeline
-(transcription, study material, search).
+Like Video DownloadHelper, with two modes (the switch at the top of the popup):
+
+- **Add to LectureLab**: LectureLab downloads the video with yt-dlp, extracts the audio, finds
+  slides and runs the usual pipeline (transcription, study material, search).
+- **Just download**: LectureLab saves the file to your Downloads folder (video as .mp4, or audio
+  only as .m4a). No lecture is created. A notification tells you when it's done; the popup's
+  **Downloads folder** link opens the folder. Streams are saved under the page's title.
+  Another folder: set `save_dir` under `[downloads]` in `C:\Users\<you>\LectureLab\config.toml`.
 
 - **This page**: sends the page link. LectureLab works out where the video is (YouTube, Panopto,
   Vimeo, Zoom cloud recordings, plain `<video>` pages and 1000+ other sites).
@@ -12,8 +17,8 @@ LectureLab downloads it with yt-dlp, extracts the audio, finds slides and runs t
 - **Send my login**: passes your cookies for the page and the video along, so lectures behind a
   Moodle or Panopto login download too. They go only to LectureLab on this PC, are stored in
   `LectureLab\tmp` while downloading and are deleted afterwards.
-- Right-click a page, link or video → **Send to LectureLab** sends it straight to the subject you
-  used last.
+- Right-click a page, link or video → **Send to LectureLab (study it)** sends it straight to the
+  subject you used last; **Download video with LectureLab** just saves it.
 
 It talks to `http://127.0.0.1:8765` (change it under the extension's Settings if you changed the
 port). LectureLab has to be running. DRM-protected videos (Netflix and similar) can't be downloaded.

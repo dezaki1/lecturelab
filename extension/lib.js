@@ -30,13 +30,15 @@ async function call(method, path, body) {
     }
     throw new Error(msg || `HTTP ${res.status}`)
   }
-  return res.json()
+  return res.status === 204 ? null : res.json()
 }
 
 export const lecturelab = {
   subjects: () => call('GET', '/api/subjects'),
   recorder: () => call('GET', '/api/recorder'),
   send: (data) => call('POST', '/api/downloads', data),
+  save: (data) => call('POST', '/api/downloads/save', data),
+  openFolder: () => call('POST', '/api/downloads/open-folder'),
 }
 
 /** The subject used last from the extension, else the recorder's last subject, else the first. */
@@ -99,6 +101,19 @@ export async function sendToLectureLab(item, opts) {
     title: opts.title || '',
     kind: opts.kind || '',
     video: opts.video,
+    referer: item.referer || '',
+    user_agent: navigator.userAgent,
+    cookies,
+  })
+}
+
+/** Just download: LectureLab saves the file to the Downloads folder, no lecture. */
+export async function saveToDisk(item, opts) {
+  const cookies = opts.sendCookies ? await cookiesFor([item.url, item.pageUrl, item.referer]) : ''
+  return lecturelab.save({
+    url: item.url,
+    video: opts.video,
+    title: item.fileTitle || '',
     referer: item.referer || '',
     user_agent: navigator.userAgent,
     cookies,

@@ -78,6 +78,31 @@ select {
 select option {
   background: var(--bg);
 }
+.modes {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.modes label {
+  flex: 1;
+  margin: 0;
+  padding: 4px 0;
+  text-align: center;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.modes label:has(input:checked) {
+  color: #fff;
+  background: var(--accent);
+}
+.modes input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
 .row {
   display: flex;
   gap: 8px;

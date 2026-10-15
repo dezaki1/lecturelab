@@ -1,7 +1,7 @@
 // Watches network requests for videos and audio (like Video DownloadHelper) and remembers them
 // per tab, so the popup can list them. Also adds "Send to LectureLab" to the right-click menu.
 
-import { defaultSubject, lectureUrl, lecturelab, sendToLectureLab } from './lib.js'
+import { defaultSubject, lectureUrl, lecturelab, saveToDisk, sendToLectureLab } from './lib.js'
 
 const MEDIA_EXT = /\.(m3u8|mpd|mp4|m4v|webm|mkv|mov|m4a|mp3|aac|ogg|oga|opus|flac|wav)(?:$|[?#;])/i
 const MEDIA_TYPE = /^(video|audio)\/|mpegurl|dash\+xml/i
@@ -78,11 +78,9 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 chrome.runtime.onInstalled.addListener(() => {
   chrome.action.setBadgeBackgroundColor({ color: '#4f46e5' })
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({
-      id: 'send',
-      title: 'Send to LectureLab',
-      contexts: ['page', 'link', 'video', 'audio', 'frame'],
-    })
+    const contexts = ['page', 'link', 'video', 'audio', 'frame']
+    chrome.contextMenus.create({ id: 'send', title: 'Send to LectureLab (study it)', contexts })
+    chrome.contextMenus.create({ id: 'save', title: 'Download video with LectureLab', contexts })
   })
 })
 
@@ -95,19 +93,23 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     )
     return
   }
+  const { video = true, sendCookies = true } = await chrome.storage.local.get(['video', 'sendCookies'])
+  const item = { url, referer: info.pageUrl, pageUrl: tab?.url, fileTitle: info.srcUrl ? tab?.title : '' }
+  if (info.menuItemId === 'save') {
+    try {
+      await saveToDisk(item, { video, sendCookies })
+      notify('Downloading', 'LectureLab tells you when the file is in your Downloads folder.', 'folder')
+    } catch (e) {
+      notify('Could not download', e.message)
+    }
+    return
+  }
   try {
     const subjects = await lecturelab.subjects()
     const subjectId = await defaultSubject(subjects)
     if (!subjectId) throw new Error('Create a subject in LectureLab first.')
-    const {
-      kind = '',
-      video = true,
-      sendCookies = true,
-    } = await chrome.storage.local.get(['kind', 'video', 'sendCookies'])
-    const lecture = await sendToLectureLab(
-      { url, referer: info.pageUrl, pageUrl: tab?.url },
-      { subjectId, kind, video, sendCookies },
-    )
+    const { kind = '' } = await chrome.storage.local.get('kind')
+    const lecture = await sendToLectureLab(item, { subjectId, kind, video, sendCookies })
     const subject = subjects.find((s) => s.id === subjectId)
     notify('Sent to LectureLab', `Downloading into ${subject?.name ?? 'your subject'}.`, lecture.id)
   } catch (e) {
@@ -115,11 +117,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 })
 
-function notify(title, message, lectureId) {
-  const id = lectureId ? `lecture:${lectureId}` : ''
+// target: a lecture id (click opens it), "folder" (click opens Downloads) or nothing.
+function notify(title, message, target) {
+  const id = target === 'folder' ? 'folder' : target ? `lecture:${target}` : ''
   chrome.notifications.create(id, { type: 'basic', iconUrl: 'icons/icon128.png', title, message })
 }
 
 chrome.notifications.onClicked.addListener(async (id) => {
   if (id.startsWith('lecture:')) chrome.tabs.create({ url: await lectureUrl(id.slice(8)) })
+  if (id === 'folder') lecturelab.openFolder().catch(() => {})
 })

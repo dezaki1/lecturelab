@@ -282,6 +282,13 @@ Phase 3 complete (2026-10-15).
     extension loaded in Chromium: mp4, cookie-protected and HLS streams sniffed and sent, all
     four lectures reached "ready" (fake Whisper, mock LLM); a request from another site was
     refused. Not yet tried on real Moodle/Panopto pages.
+- [x] **Just download** (2026-10-15): `save_media` job (no lecture) saves to the Downloads folder
+  (Windows known folder, or `downloads.save_dir`) via `<data>/tmp/save-<job>/`; mp4/m4a preferred,
+  `--windows-filenames`, optional file name (the extension sends the tab title for streams), no
+  overwrite (" (2)"). `POST /api/downloads/save`, `/open-folder`. Popup mode switch, right-click
+  "Download video with LectureLab", "Just download" in the link dialog.
+  - Verified: pytest (direct file, audio-only .m4a, page, cookies, name clash, failure); extension
+    in Chromium saved a `<video>` file and an HLS stream (as .mp4) under the page titles.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

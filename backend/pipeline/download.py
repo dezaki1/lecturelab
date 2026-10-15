@@ -5,9 +5,13 @@ media URLs (.mp4, HLS .m3u8, DASH .mpd) that the browser extension spots while a
 yt-dlp runs as a child process (``python -m yt_dlp``) so shutdown can end it and a half-done
 download resumes from its ``.part`` file when the job runs again.
 
+``save_media`` is the same download without a lecture: the file lands in the Downloads folder
+(``downloads.save_dir``). It is fetched into ``<data>/tmp/save-<job>/`` first, so a half-done
+file never shows up there and a retry resumes it.
+
 Login-protected pages need the browser's cookies: the extension (or the UI) passes them in
 Netscape cookies.txt format. They are written to ``<data>/tmp/cookies-*.txt`` for the job and
-deleted when it succeeds; files older than two days are removed at startup.
+deleted when it succeeds; leftovers older than two days are removed at startup.
 """
 
 from __future__ import annotations
@@ -15,6 +19,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +33,7 @@ from typing import Any
 from backend.core import jobs
 from backend.core.config import get_settings
 from backend.core.db import session_scope
+from backend.core.events import bus
 from backend.core.jobs import JobContext, JobError, handler
 from backend.core.library import lecture_dir
 from backend.core.media import CREATE_NO_WINDOW
@@ -38,6 +44,7 @@ from backend.pipeline.stages import stage_failed
 log = logging.getLogger(__name__)
 
 DOWNLOAD_JOB = "download_media"
+SAVE_JOB = "save_media"
 STEM = "download"
 PROGRESS = "LLPROGRESS"
 COOKIE_HEADER = "# Netscape HTTP Cookie File"
@@ -57,14 +64,75 @@ class Source:
 
 
 def clean_tmp(now: float | None = None) -> None:
-    """Remove cookie files of downloads that never finished."""
+    """Remove cookie files and half-done saves of downloads that never finished."""
     now = time.time() if now is None else now
-    for f in get_settings().tmp_dir.glob("cookies-*.txt"):
+    tmp = get_settings().tmp_dir
+    for f in [*tmp.glob("cookies-*.txt"), *tmp.glob("save-*")]:
         try:
-            if now - f.stat().st_mtime > COOKIE_MAX_AGE_S:
+            if now - f.stat().st_mtime <= COOKIE_MAX_AGE_S:
+                continue
+            if f.is_dir():
+                shutil.rmtree(f, ignore_errors=True)
+            else:
                 f.unlink()
         except OSError:
             pass
+
+
+def downloads_folder() -> Path:
+    """Where "just download" saves files: the setting, else the user's Downloads folder."""
+    if configured := get_settings().downloads.save_dir:
+        return configured
+    if sys.platform == "win32":  # the Downloads folder can be moved, e.g. to D:
+        with contextlib.suppress(Exception):
+            return _known_folder_downloads()
+    return Path.home() / "Downloads"
+
+
+def _known_folder_downloads() -> Path:
+    import ctypes
+    from ctypes import wintypes
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    # FOLDERID_Downloads {374DE290-123F-4565-9164-39C4925E467B}
+    folder_id = GUID(
+        0x374DE290,
+        0x123F,
+        0x4565,
+        (ctypes.c_ubyte * 8)(0x91, 0x64, 0x39, 0xC4, 0x92, 0x5E, 0x46, 0x7B),
+    )
+    out = ctypes.c_wchar_p()
+    shell32 = ctypes.windll.shell32  # type: ignore[attr-defined]
+    if shell32.SHGetKnownFolderPath(ctypes.byref(folder_id), 0, None, ctypes.byref(out)) != 0:
+        raise OSError("SHGetKnownFolderPath failed")
+    try:
+        return Path(out.value or "")
+    finally:
+        ctypes.windll.ole32.CoTaskMemFree(out)  # type: ignore[attr-defined]
+
+
+def safe_filename(name: str, limit: int = 150) -> str:
+    """A title usable as a Windows file name (no <>:"/\\|?*, no trailing dots/spaces)."""
+    name = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', " ", name)
+    name = " ".join(name.split())[:limit]
+    return name.rstrip(". ")
+
+
+def unique_path(path: Path) -> Path:
+    """``name.mp4``, else ``name (2).mp4``, ``name (3).mp4``, ..."""
+    n = 2
+    candidate = path
+    while candidate.exists():
+        candidate = path.with_name(f"{path.stem} ({n}){path.suffix}")
+        n += 1
+    return candidate
 
 
 def write_cookies(text: str) -> Path | None:
@@ -204,24 +272,27 @@ def download_media(ctx: JobContext) -> None:
         raise
 
 
-def _download(ctx: JobContext) -> None:
-    settings = get_settings()
-    with session_scope() as s:
-        lecture = s.get(Lecture, ctx.lecture_id)
-        if lecture is None:
-            raise JobError("Lecture no longer exists")
-        folder = lecture_dir(lecture)
-    p = ctx.payload
-    cookie_file = settings.tmp_dir / p["cookies"] if p.get("cookies") else None
+def _payload_source(p: dict[str, Any]) -> Source:
+    cookie_file = get_settings().tmp_dir / p["cookies"] if p.get("cookies") else None
     if cookie_file is not None and not cookie_file.exists():
         cookie_file = None  # expired; public links still work
-    src = Source(p["url"], cookie_file, p.get("referer", ""), p.get("user_agent", ""))
-    cfg = settings.downloads
-    if p.get("video", True):
-        fmt = ["-f", "bv*+ba/b", "-S", f"res:{cfg.max_height}"]
+    return Source(p["url"], cookie_file, p.get("referer", ""), p.get("user_agent", ""))
+
+
+def _fetch_cmd(src: Source, output: Path, *, video: bool, keep: bool) -> list[str]:
+    """yt-dlp download command. ``keep``: the user keeps the file, so prefer formats Windows
+    plays (mp4/m4a); otherwise any container is fine since only the audio is extracted."""
+    cfg = get_settings().downloads
+    if video:
+        sort = f"res:{cfg.max_height},ext:mp4:m4a" if keep else f"res:{cfg.max_height}"
+        fmt = ["-f", "bv*+ba/b", "-S", sort]
+        if keep:
+            fmt += ["--merge-output-format", "mp4/mkv"]
+    elif keep:
+        fmt = ["-f", "ba/b", "-x", "--audio-format", "m4a"]
     else:
         fmt = ["-f", "ba/b", "-S", "+size"]
-    cmd = [
+    return [
         *_base_cmd(src), *fmt,
         "--newline", "--match-filter", "!is_live",
         "--concurrent-fragments", str(cfg.concurrent_fragments),
@@ -231,27 +302,47 @@ def _download(ctx: JobContext) -> None:
         f"download:{PROGRESS} %(progress.downloaded_bytes)s %(progress.total_bytes)s "
         "%(progress.total_bytes_estimate)s %(progress.fragment_index)s "
         "%(progress.fragment_count)s",
-        "-o", str(folder / f"{STEM}.%(ext)s"),
+        "-o", str(output),
         "--", src.url,
     ]  # fmt: skip
+
+
+def _read_info(folder: Path) -> dict[str, Any]:
+    info: dict[str, Any] = {}
+    for f in folder.glob("*.info.json"):
+        with contextlib.suppress(ValueError, OSError):
+            info = json.loads(f.read_text(encoding="utf-8"))
+        f.unlink(missing_ok=True)
+    return info
+
+
+def _nothing_saved(info: dict[str, Any], output: str) -> JobError:
+    if info.get("is_live") or "is_live" in output:
+        return JobError("This is a live stream; record it with the recorder instead")
+    return JobError("yt-dlp finished but no video was saved")
+
+
+def _download(ctx: JobContext) -> None:
+    with session_scope() as s:
+        lecture = s.get(Lecture, ctx.lecture_id)
+        if lecture is None:
+            raise JobError("Lecture no longer exists")
+        folder = lecture_dir(lecture)
+    src = _payload_source(ctx.payload)
+    cmd = _fetch_cmd(
+        src, folder / f"{STEM}.%(ext)s", video=ctx.payload.get("video", True), keep=False
+    )
     ctx.progress(0.0, "Finding the video")
     output = _run(cmd, ctx, folder / "yt-dlp.log")
 
-    info_file = folder / f"{STEM}.info.json"
-    info: dict[str, Any] = {}
-    if info_file.exists():
-        with contextlib.suppress(ValueError):
-            info = json.loads(info_file.read_text(encoding="utf-8"))
-        info_file.unlink(missing_ok=True)
+    info = _read_info(folder)
     media = downloaded_file(folder)
     if media is None:
-        if info.get("is_live") or "is_live" in output:
-            raise JobError("This is a live stream; record it with the recorder instead")
-        raise JobError("yt-dlp finished but no video was saved")
+        raise _nothing_saved(info, output)
     source = f"source{media.suffix.lower()}"
     media.replace(folder / source)
-    if cookie_file is not None:
-        cookie_file.unlink(missing_ok=True)
+    if src.cookie_file is not None:
+        src.cookie_file.unlink(missing_ok=True)
 
     with session_scope() as s:
         lecture = s.get(Lecture, ctx.lecture_id)
@@ -275,13 +366,59 @@ def _download(ctx: JobContext) -> None:
         jobs.enqueue(s, IMPORT_JOB, lecture_id=ctx.lecture_id, payload={"source": source})
 
 
-def downloaded_file(folder: Path) -> Path | None:
+def downloaded_file(folder: Path, pattern: str = f"{STEM}.*") -> Path | None:
     files = [
         f
-        for f in folder.glob(f"{STEM}.*")
+        for f in folder.glob(pattern)
         if f.is_file() and not f.name.endswith(LEFTOVER_SUFFIXES) and ".part-Frag" not in f.name
     ]
     return max(files, key=lambda f: f.stat().st_size) if files else None
+
+
+# Save job ("just download") ------------------------------------------------------------------
+
+
+@handler(SAVE_JOB)
+def save_media(ctx: JobContext) -> None:
+    settings = get_settings()
+    src = _payload_source(ctx.payload)
+    staging = settings.tmp_dir / f"save-{ctx.job_id}"
+    staging.mkdir(parents=True, exist_ok=True)
+    settings.logs_dir.mkdir(parents=True, exist_ok=True)
+    # Titles can be long; Windows paths stop at 260 characters.
+    name = safe_filename(ctx.payload.get("title") or "")
+    template = name.replace("%", "%%") if name else "%(title).150B"
+    cmd = _fetch_cmd(
+        src, staging / f"{template}.%(ext)s", video=ctx.payload.get("video", True), keep=True
+    )
+    cmd.insert(cmd.index("--"), "--windows-filenames")
+    ctx.progress(0.0, "Finding the video")
+    output = _run(cmd, ctx, settings.logs_dir / f"save-{ctx.job_id}.log")
+
+    info = _read_info(staging)
+    media = downloaded_file(staging, "*")
+    if media is None:
+        raise _nothing_saved(info, output)
+    folder = downloads_folder()
+    folder.mkdir(parents=True, exist_ok=True)
+    stem = media.stem
+    if info.get("extractor_key") == "HTML5MediaEmbed":
+        stem = stem.removesuffix(" (1)")  # first <video> found on a plain page
+    target = unique_path(folder / f"{stem}{media.suffix}")
+    shutil.move(media, target)
+    shutil.rmtree(staging, ignore_errors=True)
+    if src.cookie_file is not None:
+        src.cookie_file.unlink(missing_ok=True)
+    log.info("Saved %s", target)
+    ctx.progress(1.0, f"Saved {target.name}")
+    bus.publish(
+        "notify",
+        {
+            "title": "Download finished",
+            "message": f"{target.name} is in {folder}",
+            "level": "success",
+        },
+    )
 
 
 def _run(cmd: list[str], ctx: JobContext, log_path: Path) -> str:
