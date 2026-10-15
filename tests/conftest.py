@@ -11,6 +11,32 @@ from backend.core.config import Settings, load_settings
 
 
 @pytest.fixture(autouse=True)
+def no_real_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests must never reach a real LLM or the internet, even when code builds its own settings
+    (the CLI) and the developer's API key sits in the Credential Manager. Real HTTP connections
+    are refused except to this machine (LAN-mode tests); local Ollama's port is refused too.
+    Fake clients and the in-process TestClient transport are unaffected."""
+    from urllib.parse import urlsplit
+
+    import httpx
+    import httpx2
+
+    def guard(original):  # type: ignore[no-untyped-def]
+        def handle_request(self, request):  # type: ignore[no-untyped-def]
+            url = urlsplit(str(request.url))
+            if url.hostname not in ("127.0.0.1", "localhost", "::1") or url.port == 11434:
+                raise AssertionError(f"Test tried to reach the network: {request.url}")
+            return original(self, request)
+
+        return handle_request
+
+    for mod in (httpx, httpx2):
+        monkeypatch.setattr(
+            mod.HTTPTransport, "handle_request", guard(mod.HTTPTransport.handle_request)
+        )
+
+
+@pytest.fixture(autouse=True)
 def lan_token_store(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, str]]:
     """Keep the LAN pairing token in memory, never in the real Credential Manager."""
     from backend.core import lan

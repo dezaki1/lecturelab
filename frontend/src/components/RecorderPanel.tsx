@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CircleHelp, Mic, MicOff, Presentation, Square, Star } from 'lucide-react'
+import { CircleHelp, Mic, MicOff, Presentation, Radio, Square, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useMatch } from 'react-router'
+import { Link, useMatch } from 'react-router'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -210,6 +210,12 @@ export function RecorderPanel() {
             <CircleHelp /> Confused
           </Button>
         </div>
+        <Button size="xs" variant="ghost" className="w-full justify-start" asChild>
+          <Link to="/live">
+            <Radio className={status.live ? 'text-red-500' : undefined} />
+            {status.live ? 'Live transcript on: open' : 'Live transcript & quick questions'}
+          </Link>
+        </Button>
         <Button
           size="sm"
           variant="destructive"

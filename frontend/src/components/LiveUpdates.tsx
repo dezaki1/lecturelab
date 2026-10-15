@@ -70,6 +70,7 @@ function Listeners() {
   useEvent('planner', () => qc.invalidateQueries({ queryKey: ['plan'] }))
   useEvent('speak', () => qc.invalidateQueries({ queryKey: ['speak-sessions'] }))
   useEvent('recap', () => qc.invalidateQueries({ queryKey: ['recaps'] }))
+  useEvent('eval', () => qc.invalidateQueries({ queryKey: ['evals'] }))
   useEvent('timetable', () => {
     qc.invalidateQueries({ queryKey: ['timetable'] })
     qc.invalidateQueries({ queryKey: ['timetable-now'] })

@@ -640,3 +640,38 @@ class Recap(SQLModel, table=True):
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class EvalCase(SQLModel, table=True):
+    """A hand-checked search question with the lecture moment that answers it (evals)."""
+
+    __tablename__ = "eval_case"
+
+    id: int | None = Field(default=None, primary_key=True)
+    subject_id: int = Field(foreign_key="subject.id", index=True, ondelete="CASCADE")
+    lecture_id: int = Field(foreign_key="lecture.id", index=True, ondelete="CASCADE")
+    question: str
+    gold_start_s: float
+    gold_end_s: float
+    status: str = "candidate"  # candidate | approved | rejected
+    source: str = "auto"  # auto (from a notes section) | manual
+    section: str = ""  # the notes heading it was made from
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class EvalRun(SQLModel, table=True):
+    """One run of an eval: metrics, per-item details and what was evaluated (prompt versions)."""
+
+    __tablename__ = "eval_run"
+
+    id: int | None = Field(default=None, primary_key=True)
+    kind: str  # retrieval | grounding
+    status: str = "running"  # running | done | failed
+    error: str = ""
+    metrics: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    details: list[dict[str, Any]] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    cost_usd: float = 0.0
+    created_at: datetime = Field(default_factory=utcnow)

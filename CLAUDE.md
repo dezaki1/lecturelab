@@ -36,7 +36,7 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     zips with day/week rotation + incremental mirror of subjects/; scheduler
                     thread outside the job queue; `lecturelab backup` / `restore` CLI)
                     lan (LAN mode: LanGuard ASGI token wrapper + second uvicorn server thread)
-  capture/          sources (system audio = process loopback of every app except our own process
+  capture/          live (LiveTranscriber: tails recording.pcm, windows -> voice.stt), sources (system audio = process loopback of every app except our own process
                     tree via process_loopback (plain ctypes COM), works muted; falls back to
                     soundcard WASAPI device loopback; mic via soundcard) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
@@ -85,6 +85,7 @@ backend/            Python package (import as `backend.*`), entry point backend/
   voice/            stt (warm `whisper_worker --serve` child for spoken answers, outside the job
                     queue, idle unload), tts (Piper voices: catalogue, download, WAV cache),
                     tts_worker (child: sections -> one WAV + chapter starts; used by recaps)
+  evals/            runner (eval cases from note sections, retrieval + grounding runs, `eval` job)
   exports/          cards (Anki .apkg via genanki with stable GUIDs per card id, CSV), vault
                     (Obsidian zip: lecture notes, course overview with wikilinks + Mermaid,
                     glossary, cheat sheet), pdf (headless Edge/Chrome prints /print/... pages)
@@ -181,3 +182,6 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   answers in serve mode too. Never download Piper voices in tests.
 - Writing a file twice in quick succession sometimes fails on this machine (OSError 22, a
   brief lock): retry instead of assuming the content is wrong.
+- Tests can't reach the network: conftest patches httpx/httpx2 HTTPTransport to refuse
+  anything but loopback (and Ollama's port). The CLI and anything else that loads its own
+  settings would otherwise pick the real provider and the developer's key from the keyring.

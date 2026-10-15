@@ -253,7 +253,22 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
   the generation context (system prompt v4); My notes tab, search icon/link
   - Verified in the browser with the mock provider (photo + 2-page PDF, correction, re-index,
     search hit). Not run with real Claude vision on real handwriting.
-- [ ] **M24 Live mode & evals**
+- [x] **M24 Live mode & evals**: `capture.live.LiveTranscriber` reads the growing
+  recording.pcm beside the recorder (never inside it), cuts ~15 s windows at a real pause (else
+  at the window end, never before half a window), skips near-silent windows, transcribes via
+  the warm Whisper serve child; segments as SSE `live.segment` + `<lecture>/live.jsonl`; on/off
+  per recording (`live` flag, default setting) and mid-recording (from the last 30 s). Quick
+  questions over the last 10 min (main model, low effort) -> `live_qa.jsonl`. Live page (also
+  on the tablet). Evals: EvalCase (questions from note sections, rephrased by the cheap model,
+  hand-checked) and EvalRun; retrieval hit@1/5/10, lecture hit@5, MRR (no LLM); grounding of a
+  fixed 40-item sample by the cheap model; prompt versions per run, diff in the history;
+  `lecturelab eval make|retrieval|grounding`. Tests: network guard in conftest (no real API
+  even when code builds its own settings).
+  - Verified: real Piper speech -> process loopback -> live transcript with real Whisper on
+    the GPU (near-verbatim, cut at a sentence pause); quick question, toggling, stop; both
+    evals in the dev instance (mock AI).
+
+Phase 3 complete (2026-10-15).
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

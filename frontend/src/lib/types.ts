@@ -158,6 +158,7 @@ export interface RecorderStatus {
   devices?: Record<string, string>
   bookmarks?: { t_s: number; kind: BookmarkKind; note: string }[]
   slides?: SlideCaptureStatus | null
+  live?: boolean
 }
 
 export interface Level {
@@ -949,4 +950,62 @@ export interface Recap {
   has_audio: boolean
   created_at: string
   updated_at: string
+}
+
+export interface LiveSegment {
+  start: number
+  end: number
+  text: string
+}
+
+export interface LiveAnswer {
+  question: string
+  answer: string
+  refs: { t_s: number; label: string }[]
+  at_s: number
+  seconds: number
+}
+
+export interface LiveState {
+  recording: boolean
+  enabled_default: boolean
+  answers: LiveAnswer[]
+  lecture_id?: number
+  subject_id?: number
+  subject_name?: string
+  title?: string
+  elapsed_s?: number
+  live?: boolean
+  error?: string
+  segments?: LiveSegment[]
+}
+
+export interface EvalCase {
+  id: number
+  subject_id: number
+  lecture_id: number
+  lecture_title: string
+  question: string
+  gold: string
+  gold_start_s: number
+  passage: string
+  status: 'candidate' | 'approved' | 'rejected'
+  section: string
+}
+
+export interface EvalRunRow {
+  id: number
+  kind: 'retrieval' | 'grounding'
+  status: 'running' | 'done' | 'failed'
+  error: string
+  metrics: Record<string, number>
+  config: { prompts?: Record<string, number>; provider?: string }
+  cost_usd: number
+  created_at: string
+}
+
+export interface EvalOverview {
+  cases: EvalCase[]
+  counts: { candidate: number; approved: number; rejected: number }
+  runs: EvalRunRow[]
 }

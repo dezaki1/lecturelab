@@ -43,6 +43,9 @@ import type {
   Subject,
   SubjectInput,
   SystemInfo,
+  EvalOverview,
+  LiveAnswer,
+  LiveState,
   Recap,
   SpeakSession,
   SpeakSessionRow,
@@ -397,6 +400,17 @@ export const api = {
   recapSettings: () => request<{ auto_lecture: boolean; minutes: number }>('GET', '/api/settings/recap'),
   putRecapSettings: (body: { auto_lecture?: boolean; minutes?: number }) =>
     request<{ auto_lecture: boolean; minutes: number }>('PUT', '/api/settings/recap', body),
+
+  live: () => request<LiveState>('GET', '/api/live'),
+  toggleLive: (on: boolean) => request<LiveState>('POST', '/api/live/toggle', { on }),
+  askLive: (question: string) => request<LiveAnswer>('POST', '/api/live/ask', { question }),
+  putLiveSettings: (enabled: boolean) =>
+    request<{ enabled: boolean }>('PUT', '/api/settings/live', { enabled }),
+  evals: () => request<EvalOverview>('GET', '/api/evals'),
+  makeEvalCases: (n = 20) => request<{ made: number }>('POST', '/api/evals/cases/make', { n }),
+  patchEvalCase: (id: number, body: { status?: string; question?: string }) =>
+    request<unknown>('PATCH', `/api/evals/cases/${id}`, body),
+  runEval: (kind: 'retrieval' | 'grounding') => request<{ id: number }>('POST', '/api/evals/runs', { kind }),
 
   startRecording: (data: { subject_id?: number; mic?: boolean; slides?: boolean; kind?: string }) =>
     request<RecorderStatus>('POST', '/api/recorder/start', data),

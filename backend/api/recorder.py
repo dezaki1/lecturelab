@@ -17,6 +17,7 @@ class StartRequest(BaseModel):
     slides: bool | None = None
     title: str | None = None
     kind: str = ""
+    live: bool | None = None  # live transcript (default: the live-mode setting)
 
 
 class BookmarkRequest(BaseModel):
@@ -33,7 +34,12 @@ def status() -> dict[str, Any]:
 def start(req: StartRequest) -> dict[str, Any]:
     try:
         return get_recorder().start(
-            req.subject_id, mic=req.mic, slides=req.slides, title=req.title, kind=req.kind
+            req.subject_id,
+            mic=req.mic,
+            slides=req.slides,
+            title=req.title,
+            kind=req.kind,
+            live=req.live,
         )
     except RecorderError as e:
         raise HTTPException(409, str(e)) from e

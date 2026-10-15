@@ -361,6 +361,27 @@ class MockProvider:
             "last_answer": rating,
         }
 
+    def _EvalQuestionsOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        heads = re.findall(r"^\[(\d+)\] (.+)$", req.context, re.M)
+        return {"questions": [{"item": int(i), "question": f"what about {h}?"} for i, h in heads]}
+
+    def _EvalJudgeOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        n = len(re.findall(r"^## Item \d+", req.context, re.M))
+        verdicts = ["supported", "partly", "unsupported"]
+        return {
+            "verdicts": [
+                {"item": i, "verdict": verdicts[(i - 1) % 3], "reason": "Mock reason."}
+                for i in range(1, n + 1)
+            ]
+        }
+
+    def _LiveAnswerOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
+        question = req.instruction.rsplit("Question: ", 1)[-1].strip()
+        return {
+            "answer": f"They just said: {lines[-1][1]} (re: {question})",
+            "refs": [lines[-1][0], "nonsense"],
+        }
+
     def _HandwritingOut(self, lines, req) -> dict[str, Any]:  # type: ignore[no-untyped-def]
         page = re.search(r"page (\d+) of", req.instruction)
         n = page.group(1) if page else "1"

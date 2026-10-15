@@ -99,6 +99,43 @@ def serve(settings: Settings) -> None:
             tray.stop()
 
 
+def run_eval_cli(settings: Settings, action: str, n: int) -> None:
+    """``lecturelab eval make|retrieval|grounding``: runs now and saves the run like the UI."""
+    from backend.core.config import set_settings
+    from backend.core.db import init_db, session_scope
+    from backend.core.models import EvalRun
+    from backend.evals import runner
+
+    set_settings(settings)
+    init_db(settings.db_path)
+    with session_scope() as s:
+        if action == "make":
+            made = runner.make_candidates(s, n)
+            print(f"{made} candidate questions made; approve them on the Evals page.")
+            return
+        try:
+            if action == "retrieval":
+                metrics, details = runner.run_retrieval(s)
+                cost = 0.0
+            else:
+                metrics, details, cost = runner.run_grounding(s)
+        except runner.EvalError as e:
+            print(e)
+            return
+        s.add(
+            EvalRun(
+                kind=action,
+                status="done",
+                metrics=metrics,
+                details=details,
+                config=runner._config(),
+                cost_usd=cost,
+            )
+        )
+        s.commit()
+    print(f"{action}: " + ", ".join(f"{k}={v}" for k, v in metrics.items()))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="lecturelab")
     parser.add_argument("--data-dir", type=Path, help="override the data folder")
@@ -118,6 +155,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     p_restore.add_argument("--snapshot", help="snapshot file name (default: the newest)")
     p_restore.add_argument("--force", action="store_true", help="overwrite an existing database")
+    p_eval = sub.add_parser("eval", help="evals: make search questions, run retrieval/grounding")
+    p_eval.add_argument("action", choices=["make", "retrieval", "grounding"])
+    p_eval.add_argument("-n", type=int, default=20, help="make: how many candidate questions")
     args = parser.parse_args(argv)
 
     overrides: dict[str, object] = {}
@@ -155,6 +195,10 @@ def main(argv: list[str] | None = None) -> None:
         print(
             f"Backed up to {settings.backup.folder}: {result['snapshot']}, {copied} files copied."
         )
+        return
+
+    if args.cmd == "eval":
+        run_eval_cli(settings, args.action, args.n)
         return
 
     if args.cmd == "restore":

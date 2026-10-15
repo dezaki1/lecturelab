@@ -191,6 +191,33 @@ answer takes about a second or two, and it unloads after 5 idle minutes. While a
 transcribed, answers use the CPU. Voice answers need the microphone, which browsers only allow
 on this PC or on a trusted address (see *Tablet & phone access*). Typing always works.
 
+## Live lecture
+
+**Live lecture** (sidebar, or the link in the recorder panel while recording): the lecture as text
+about 15-20 seconds behind the lecturer, transcribed on your GPU by the same Whisper model as
+spoken answers. Switch it on per recording with **Live transcript**, or for every new recording
+on the page when nothing is recording. It starts from the last half minute when switched on
+mid-lecture. Quick questions (**What did they just say?**, **Explain the last part more
+simply**, an example, the formula, or your own question) are answered from the last 10 minutes
+in a few seconds and cite the moments they used. It also works on the tablet (Tablet & phone
+access). The full, accurate transcript is still made from the recording after it stops.
+
+## Evals
+
+**Evals** (sidebar, bottom): check that search and the generated material stay good when
+prompts or settings change.
+
+- **Search questions**: **Make 20 more from my notes** writes search questions from sections of
+  your notes; the section's place in the lecture is the right answer. Approve the realistic
+  ones, fix the wording, reject the rest. **Run search eval** (free, no AI) reports how often
+  the right moment is the first hit, in the top 5 and in the top 10 (hit@1/5/10, MRR).
+- **Grounding**: **Run grounding eval** has the cheap model check a fixed sample of 40 flashcards
+  and exam questions against the transcript passage each one cites (supported / partly /
+  unsupported / cites nothing), for about $0.01.
+- Each run records the prompt versions in use; the history shows the change against the previous
+  run and which prompts changed in between. Also from a terminal: `lecturelab eval make`,
+  `lecturelab eval retrieval`, `lecturelab eval grounding`.
+
 ## Handwritten notes
 
 The **My notes** tab of a lecture: **Upload PDF or photos** (Samsung Notes or GoodNotes exports,

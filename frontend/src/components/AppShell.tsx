@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   CalendarCheck,
   Coins,
+  FlaskConical,
   GraduationCap,
   Headphones,
   ListChecks,
@@ -10,6 +11,7 @@ import {
   Library,
   Menu,
   Mic,
+  Radio,
   NotebookPen,
   MessageSquare,
   Moon,
@@ -146,6 +148,9 @@ export function AppShell() {
           <NavLink to="/exams" className={linkClass}>
             <NotebookPen className="size-4" /> Exam simulator
           </NavLink>
+          <NavLink to="/live" className={linkClass}>
+            <Radio className="size-4" /> Live lecture
+          </NavLink>
           <NavLink to="/speak" className={linkClass}>
             <Mic className="size-4" /> Oral practice
           </NavLink>
@@ -197,6 +202,9 @@ export function AppShell() {
             </NavLink>
             <NavLink to="/usage" className={linkClass}>
               <Coins className="size-4" /> Usage
+            </NavLink>
+            <NavLink to="/evals" className={linkClass}>
+              <FlaskConical className="size-4" /> Evals
             </NavLink>
             <NavLink to="/settings" className={linkClass}>
               <Settings className="size-4" /> Settings

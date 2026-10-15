@@ -339,6 +339,30 @@ class HandwritingOut(BaseModel):
     summary: str = Field(description="What the page is about, in a few words")
 
 
+class LiveAnswerOut(BaseModel):
+    answer: str = Field(description="Short Markdown answer")
+    refs: list[str] = Field(description="Timestamps (mm:ss) of the transcript lines used")
+
+
+class EvalQuestion(BaseModel):
+    item: int = Field(description="Number of the section, as in [n]")
+    question: str
+
+
+class EvalQuestionsOut(BaseModel):
+    questions: list[EvalQuestion]
+
+
+class EvalVerdict(BaseModel):
+    item: int = Field(description="Item number")
+    verdict: Literal["supported", "partly", "unsupported"]
+    reason: str = Field(description="One short sentence")
+
+
+class EvalJudgeOut(BaseModel):
+    verdicts: list[EvalVerdict]
+
+
 class CheatSheetOut(BaseModel):
     title: str = Field(description='e.g. "Machine Learning: cheat sheet"')
     markdown: str = Field(description="The cheat sheet in Markdown (no top-level # heading)")

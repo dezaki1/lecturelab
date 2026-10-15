@@ -31,10 +31,16 @@ from backend.api import (
     weak,
 )
 from backend.api import (
+    evals as evals_api,
+)
+from backend.api import (
     jobs as jobs_api,
 )
 from backend.api import (
     lan as lan_api,
+)
+from backend.api import (
+    live as live_api,
 )
 from backend.api import (
     planner as planner_api,
@@ -96,6 +102,7 @@ def create_app(
     lan_api.apply_saved_settings(settings)
     speak_api.apply_saved_settings(settings)
     recaps.apply_saved_settings(settings)
+    live_api.apply_saved_settings(settings)
     init_db(settings.db_path)
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
@@ -152,6 +159,8 @@ def create_app(
     app.include_router(lan_api.router)
     app.include_router(speak_api.router)
     app.include_router(recaps.router)
+    app.include_router(live_api.router)
+    app.include_router(evals_api.router)
 
     app.state.lan = LanServer(app)
     _mount_frontend(app)

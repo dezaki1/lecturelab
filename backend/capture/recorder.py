@@ -19,6 +19,7 @@ from typing import Any
 
 from sqlmodel import col, select
 
+from backend.capture.live import LiveTranscriber, load_segments
 from backend.capture.mixer import Mixer
 from backend.capture.session import PCM_NAME, PcmWriter, SessionInfo, repair_pcm
 from backend.capture.slides import ScreenFactory, SlideGrabber, clock_from, default_screen
@@ -89,6 +90,9 @@ class _Active:
     disk_warned: bool = False
     stop_reason: str | None = None
     slides: SlideGrabber | None = None
+    live: LiveTranscriber | None = None
+    language: str | None = None
+    vocabulary: list[str] = field(default_factory=list)
 
 
 class RecorderService:
@@ -130,6 +134,7 @@ class RecorderService:
             "devices": a.devices,
             "bookmarks": a.session.bookmarks,
             "slides": a.slides.status() if a.slides else None,
+            "live": bool(a.live and a.live.running),
             "free_gb": round(free_gb, 1),
         }
 
@@ -141,6 +146,7 @@ class RecorderService:
         slides: bool | None = None,
         title: str | None = None,
         kind: str = "",
+        live: bool | None = None,
     ) -> dict[str, Any]:
         with self._lock:
             if self._active is not None:
@@ -168,6 +174,8 @@ class RecorderService:
                     s.add(subject)
                     s.commit()
                 subject_name = subject.name
+                language = subject.language if subject.language != "auto" else None
+                vocabulary = list(subject.vocabulary)
                 folder = lecture_dir(lecture)
                 info = SessionInfo(
                     lecture_id=lecture.id,  # type: ignore[arg-type]
@@ -210,6 +218,8 @@ class RecorderService:
                 mixer=mixer,
                 sources=sources,
                 devices=devices,
+                language=language,
+                vocabulary=vocabulary,
             )
             self._active = active
             for src in sources:
@@ -221,6 +231,8 @@ class RecorderService:
                         self.settings.slides, screen, lecture_id, folder, clock_from(active.t0)
                     )
                     active.slides.start()
+            if self.settings.live.enabled if live is None else live:
+                self._start_live(active)
             active.thread = threading.Thread(target=self._loop, args=(active,), name="recorder")
             active.thread.start()
             update_state(last_subject_id=active.subject_id)
@@ -250,6 +262,8 @@ class RecorderService:
                 src.stop()
             if a.slides is not None:
                 a.slides.stop()
+            if a.live is not None:
+                a.live.stop()
             self._finalize(a)
             self._active = None
         self._publish_state()
@@ -289,6 +303,45 @@ class RecorderService:
         label = "★ Important" if kind == BookmarkKind.important else f"? {kind.value.title()}"
         notify(f"{label} at {mins}:{secs:02d}", title="Bookmark")
         return data
+
+    def set_live(self, on: bool) -> dict[str, Any]:
+        """Switch the live transcript on or off during a recording."""
+        with self._lock:
+            a = self._active
+            if a is None:
+                raise RecorderError("Not recording")
+            if on and not (a.live and a.live.running):
+                # Start from the last half minute rather than the beginning of the lecture.
+                done = a.live.pos / a.mixer.sample_rate if a.live else 0.0
+                now = a.writer.samples / a.mixer.sample_rate
+                self._start_live(a, start_at_s=max(done, now - 30.0))
+            elif not on and a.live is not None:
+                a.live.stop()
+        self._publish_state()
+        return self.status()
+
+    def _start_live(self, a: _Active, start_at_s: float = 0.0) -> None:
+        a.live = LiveTranscriber(
+            a.lecture_id, a.folder, a.mixer.sample_rate, a.language, a.vocabulary, start_at_s
+        )
+        a.live.start()
+
+    def live_state(self) -> dict[str, Any]:
+        a = self._active
+        if a is None:
+            return {"recording": False}
+        segs = a.live.segments if a.live else load_segments(a.folder)
+        return {
+            "recording": True,
+            "lecture_id": a.lecture_id,
+            "subject_id": a.subject_id,
+            "subject_name": a.subject_name,
+            "title": a.title,
+            "elapsed_s": round(time.monotonic() - a.t0, 1),
+            "live": bool(a.live and a.live.running),
+            "error": a.live.error if a.live else "",
+            "segments": segs,
+        }
 
     def shutdown(self) -> None:
         if self.recording:

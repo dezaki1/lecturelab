@@ -155,6 +155,12 @@ class StudyConfig(BaseModel):
     max_reviews_per_day: int = 400
 
 
+class LiveConfig(BaseModel):
+    enabled: bool = False  # live transcript for new recordings (also switchable mid-recording)
+    window_s: float = 15.0  # audio per live transcription step (text lags about this much)
+    ask_minutes: float = 10.0  # how much of the live transcript quick questions see
+
+
 class VoiceConfig(BaseModel):
     voice: str = "en_US-lessac-medium"  # Piper voice for the examiner and audio recaps
     rate: float = 1.0  # speaking speed (1.0 = the voice's natural pace)
@@ -221,6 +227,7 @@ class Settings(BaseSettings):
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
     lan: LanConfig = Field(default_factory=LanConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
+    live: LiveConfig = Field(default_factory=LiveConfig)
     recap: RecapConfig = Field(default_factory=RecapConfig)
 
     @classmethod
