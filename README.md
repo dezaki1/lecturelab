@@ -45,8 +45,11 @@ The app listens on `http://127.0.0.1:8765` only. Data is stored in `%USERPROFILE
   menu, or press **Ctrl+Shift+F9** anywhere (starts with the last-used subject; press again to stop).
 - **Bookmarks** while recording: **Ctrl+Shift+F10** = important, **Ctrl+Shift+F11** = confused
   (also buttons in the panel / tray). Clicking a bookmark later plays from 5 s before it.
-- LectureLab records **all system audio** (whatever you hear, i.e. Zoom), plus your mic if you
-  enable it. It follows the default output device when you switch headphones/speakers.
+- LectureLab records **all system audio** (every app's sound, i.e. Zoom), plus your mic if you
+  enable it. It takes the sound directly from the apps, so it records even when the laptop is
+  muted or at volume 0, and whichever speakers or headphones you use. (On Windows older than
+  10 version 2004 it records the default output device instead, which some drivers silence at
+  volume 0. Set `system_capture = "device"` under `[recorder]` in `config.toml` to force that.)
 - Audio is written to disk every few seconds. If the app or PC crashes, the recording up to that
   point is recovered automatically the next time you start LectureLab.
 - When you stop, the recording is encoded to AAC (`audio.m4a`, ~30 MB per 90 min).

@@ -37,6 +37,10 @@ class RecorderConfig(BaseModel):
     sample_rate: int = 48_000
     fsync_interval_s: float = 3.0
     device_poll_s: float = 2.0
+    # "apps": process loopback of every app except LectureLab (Windows 10 2004+), recorded
+    # independent of the volume slider and mute; "device": loopback of the default output
+    # (silent at volume 0 with many drivers). "apps" falls back to "device" when unavailable.
+    system_capture: str = "apps"
     # Writer stays this far behind wall clock so normal capture jitter is absorbed, not padded.
     latency_margin_s: float = 0.25
     # A source buffering more than this is considered drifted and trimmed to the newest audio.

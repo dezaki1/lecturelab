@@ -36,7 +36,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     zips with day/week rotation + incremental mirror of subjects/; scheduler
                     thread outside the job queue; `lecturelab backup` / `restore` CLI)
                     lan (LAN mode: LanGuard ASGI token wrapper + second uvicorn server thread)
-  capture/          sources (soundcard WASAPI capture) -> mixer (wall-clock alignment, silence
+  capture/          sources (system audio = process loopback of every app except our own process
+                    tree via process_loopback (plain ctypes COM), works muted; falls back to
+                    soundcard WASAPI device loopback; mic via soundcard) -> mixer (wall-clock alignment, silence
                     padding) -> session (raw PCM + session.json, fsync) ; recorder (service,
                     crash recovery) ; encode (job: PCM -> audio.m4a) ; hotkeys (pynput) ; tray ;
                     slides (change detector on 64x36 thumbnails with learned video mask, slide

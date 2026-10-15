@@ -1,14 +1,16 @@
-"""SoundcardSource against a fake ``soundcard`` module (no real audio devices in tests)."""
+"""Capture sources against a fake ``soundcard`` module and a fake process loopback (no real
+audio devices in tests)."""
 
 from __future__ import annotations
 
+import os
 import sys
 import time
 import types
 
 import numpy as np
 
-from backend.capture.sources import SoundcardSource
+from backend.capture.sources import ProcessLoopbackSource, SoundcardSource
 
 
 class _Device:
@@ -79,3 +81,65 @@ def test_reopens_after_device_error(monkeypatch) -> None:
         src.stop()
     assert seen[0] == "USB headset" and seen[-1] == "Speakers"
     assert src.buffer.available() > 0
+
+
+class _FakeLoopback:
+    """Stands in for process loopback: 0.3-valued samples, optionally failing after a while."""
+
+    def __init__(self, fail_after: int | None = None) -> None:
+        self.reads = 0
+        self.fail_after = fail_after
+        self.closed = False
+
+    def read(self) -> np.ndarray:
+        self.reads += 1
+        if self.fail_after is not None and self.reads > self.fail_after:
+            raise OSError("AUDCLNT_E_SERVICE_NOT_RUNNING")
+        return np.full(480, 0.3, dtype=np.float32)
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def _system_source(monkeypatch, opener):  # type: ignore[no-untyped-def]
+    speakers = _Device("speakers", "Speakers")
+    monkeypatch.setitem(
+        sys.modules, "soundcard", _fake_soundcard({"speaker": speakers, "all": [speakers]})
+    )
+    seen: list[str] = []
+    device = SoundcardSource("loopback", 48000, poll_s=0.05, on_device=lambda _, d: seen.append(d))
+    src = ProcessLoopbackSource(48000, device, lambda _, d: seen.append(d), opener=opener)
+    return src, seen
+
+
+def test_process_loopback_records_all_apps(monkeypatch) -> None:
+    fake = _FakeLoopback()
+    pids: list[int] = []
+    src, seen = _system_source(monkeypatch, lambda pid, rate: pids.append(pid) or fake)
+    src.start()
+    time.sleep(0.2)
+    src.stop()
+    assert pids == [os.getpid()]  # everything except LectureLab itself
+    assert seen == [ProcessLoopbackSource.DEVICE_NAME] and src.name == "system"
+    assert {round(float(x), 2) for x in np.unique(src.buffer.take(10**7))} == {0.3} and fake.closed
+
+
+def test_falls_back_to_the_output_device(monkeypatch) -> None:
+    def unavailable(pid, rate):  # type: ignore[no-untyped-def]
+        raise OSError("Process loopback unavailable: 0x80070490")  # older Windows
+
+    src, seen = _system_source(monkeypatch, unavailable)
+    src.start()
+    time.sleep(0.2)
+    src.stop()
+    assert seen == ["Speakers"]
+    assert {round(float(x), 2) for x in np.unique(src.buffer.take(10**7))} == {0.1}
+
+    # Failing mid-recording: switch to the device and keep going.
+    fake = _FakeLoopback(fail_after=3)
+    src, seen = _system_source(monkeypatch, lambda pid, rate: fake)
+    src.start()
+    time.sleep(0.3)
+    src.stop()
+    assert seen == [ProcessLoopbackSource.DEVICE_NAME, "Speakers"] and fake.closed
+    assert {round(float(x), 2) for x in np.unique(src.buffer.take(10**7))} == {0.1, 0.3}

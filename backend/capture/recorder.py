@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -21,7 +22,7 @@ from sqlmodel import col, select
 from backend.capture.mixer import Mixer
 from backend.capture.session import PCM_NAME, PcmWriter, SessionInfo, repair_pcm
 from backend.capture.slides import ScreenFactory, SlideGrabber, clock_from, default_screen
-from backend.capture.sources import CaptureSource, SoundcardSource
+from backend.capture.sources import CaptureSource, ProcessLoopbackSource, SoundcardSource
 from backend.core import jobs
 from backend.core.config import Settings
 from backend.core.db import session_scope
@@ -54,8 +55,11 @@ def default_sources(
     settings: Settings, mic: bool, on_device: Callable[[str, str], None]
 ) -> list[CaptureSource]:
     rc = settings.recorder
+    device = SoundcardSource("loopback", rc.sample_rate, rc.device_poll_s, on_device)
     sources: list[CaptureSource] = [
-        SoundcardSource("loopback", rc.sample_rate, rc.device_poll_s, on_device)
+        ProcessLoopbackSource(rc.sample_rate, device, on_device)
+        if rc.system_capture == "apps" and sys.platform == "win32"
+        else device
     ]
     if mic:
         sources.append(SoundcardSource("mic", rc.sample_rate, rc.device_poll_s, on_device))

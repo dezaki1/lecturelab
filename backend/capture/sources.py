@@ -8,6 +8,7 @@ sample rate and channel count, and pads silent loopback periods with zeros itsel
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import threading
 import time
@@ -118,6 +119,80 @@ class SoundcardSource:
             except Exception as e:  # device unplugged / invalidated
                 log.warning("%s capture error on %s: %s; reopening", self.name, dev_name, e)
                 self._stop.wait(0.5)
+
+
+class ProcessLoopbackSource:
+    """System audio as every app's sound except LectureLab's (process loopback).
+
+    Unlike device loopback this keeps recording when the laptop is muted or at volume 0, and
+    it doesn't care which output device is in use. Falls back to ``fallback`` (device loopback)
+    when Windows doesn't offer process loopback (before Windows 10 2004) or it fails to open.
+    """
+
+    DEVICE_NAME = "All apps (independent of volume)"
+
+    def __init__(
+        self,
+        sample_rate: int,
+        fallback: SoundcardSource,
+        on_device: DeviceCallback | None = None,
+        opener: Callable[[int, int], object] | None = None,
+    ) -> None:
+        self.name = "system"
+        self.sample_rate = sample_rate
+        self.fallback = fallback
+        self.on_device = on_device
+        self.buffer = fallback.buffer = SourceBuffer()  # the fallback writes to the same buffer
+        self.device = ""
+        self._stop = fallback._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._opener = opener
+
+    def start(self) -> None:
+        self._thread = threading.Thread(target=self._run, name="capture-system", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=3)
+
+    def _open(self):  # type: ignore[no-untyped-def]
+        if self._opener is not None:
+            return self._opener(os.getpid(), self.sample_rate)
+        from backend.capture.process_loopback import ProcessLoopback
+
+        return ProcessLoopback(os.getpid(), self.sample_rate, exclude=True)
+
+    def _run(self) -> None:
+        import soundcard  # noqa: F401  (COM order, see SoundcardSource._run; also the fallback)
+
+        com = _co_initialize()
+        try:
+            try:
+                capture = self._open()
+            except Exception as e:
+                log.warning("Process loopback unavailable (%s); recording the output device", e)
+                self.fallback._capture()
+                self.device = self.fallback.device
+                return
+            self.device = self.DEVICE_NAME
+            log.info("Capturing system audio from all apps (process loopback)")
+            if self.on_device:
+                self.on_device(self.name, self.device)
+            try:
+                while not self._stop.wait(0.02):
+                    data = capture.read()  # type: ignore[attr-defined]
+                    if data.size:
+                        self.buffer.push(data)
+            except Exception as e:
+                log.warning("Process loopback failed (%s); switching to the output device", e)
+                self.fallback._capture()
+            finally:
+                capture.close()  # type: ignore[attr-defined]
+        finally:
+            if com:
+                _co_uninitialize()
 
 
 def _co_initialize() -> bool:
