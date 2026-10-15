@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 Difficulty = Literal["easy", "medium", "hard"]
 
@@ -71,6 +71,16 @@ class CardOut(BaseModel):
     tags: list[str]
     difficulty: Difficulty
     refs: list[Ref]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _lenient_type(cls, v: object) -> object:
+        """The model sometimes writes "Cloze", "front-back", "Q&A"...: one odd card used to fail
+        (and retry) the whole flashcard call. The JSON schema it sees is unchanged."""
+        t = str(v).strip().lower()
+        if t in ("basic", "cloze", "reversed"):
+            return t
+        return "cloze" if "cloze" in t else "reversed" if "revers" in t else "basic"
 
 
 class FlashcardsOut(BaseModel):

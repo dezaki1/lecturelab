@@ -4,7 +4,7 @@
     {
       "name": "lecturelab-dev",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--no-sync", "lecturelab", "--data-dir", "data/dev", "serve", "--no-browser", "--no-tray", "--no-hotkeys", "--port", "8766"],
+      "runtimeArgs": ["run", "--no-sync", "python", "-m", "backend.main", "--data-dir", "data/dev", "serve", "--no-browser", "--no-tray", "--no-hotkeys", "--port", "8766"],
       "port": 8766
     },
     {

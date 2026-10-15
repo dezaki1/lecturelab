@@ -107,7 +107,9 @@ Data lives in `%USERPROFILE%\LectureLab` (override: `LECTURELAB_DATA_DIR` or `--
 `lecturelab.db`, `config.toml`, `logs/`, `subjects/<slug>/<YYYY-MM-DD>_<slug>/`, `trash/`.
 
 Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
-`lecturelab --data-dir data/dev serve --no-browser --no-tray --no-hotkeys --port 8766`.
+`python -m backend.main --data-dir data/dev serve --no-browser --no-tray --no-hotkeys --port 8766`
+(not lecturelab.exe: a running exe can't be replaced, and the user's `start.ps1` then failed to
+start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't replace it).
 
 ## Conventions
 

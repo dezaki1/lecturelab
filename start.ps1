@@ -41,6 +41,14 @@ if ($needBuild) {
     } finally { Pop-Location }
 }
 
+# Update the environment first. This fails when lecturelab.exe is in use (another LectureLab
+# window, or a dev instance started from it): then start with what is installed instead of
+# not starting at all. The code itself is always the current one (editable install).
+& uv sync --inexact
 $serveArgs = @('run', 'lecturelab', 'serve')
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning 'Could not update the environment (a file is in use); starting with the installed version.'
+    $serveArgs = @('run', '--no-sync', 'lecturelab', 'serve')
+}
 if ($NoBrowser) { $serveArgs += '--no-browser' }
 & uv @serveArgs
