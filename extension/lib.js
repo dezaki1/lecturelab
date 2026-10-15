@@ -38,6 +38,7 @@ export const lecturelab = {
   recorder: () => call('GET', '/api/recorder'),
   send: (data) => call('POST', '/api/downloads', data),
   save: (data) => call('POST', '/api/downloads/save', data),
+  probe: (data) => call('POST', '/api/downloads/probe', data),
   openFolder: () => call('POST', '/api/downloads/open-folder'),
 }
 
@@ -118,6 +119,27 @@ export async function saveToDisk(item, opts) {
     user_agent: navigator.userAgent,
     cookies,
   })
+}
+
+/** What a link holds (title, length, quality, size, thumbnail), cached for this browser session. */
+export async function previewOf(item, sendCookies) {
+  const key = `preview:${item.url}`
+  const cached = (await chrome.storage.session.get(key))[key]
+  if (cached) return cached
+  const cookies = sendCookies ? await cookiesFor([item.url, item.pageUrl, item.referer]) : ''
+  const info = await lecturelab.probe({
+    url: item.url,
+    preview: true,
+    referer: item.referer || '',
+    user_agent: navigator.userAgent,
+    cookies,
+  })
+  try {
+    await chrome.storage.session.set({ [key]: info })
+  } catch {
+    /* storage full: just don't cache */
+  }
+  return info
 }
 
 export async function lectureUrl(id) {

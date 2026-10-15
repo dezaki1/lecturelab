@@ -16,6 +16,7 @@ deleted when it succeeds; leftovers older than two days are removed at startup.
 
 from __future__ import annotations
 
+import base64
 import contextlib
 import json
 import logging
@@ -24,9 +25,11 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from http.cookiejar import LoadError, MozillaCookieJar
 from pathlib import Path
 from typing import Any
 
@@ -186,10 +189,18 @@ def _error_line(output: str) -> str:
 # Probe ---------------------------------------------------------------------------------------
 
 
-def probe_url(src: Source, timeout_s: float | None = None) -> dict[str, Any]:
-    """Ask yt-dlp what's behind a link without downloading it. Raises JobError."""
+def probe_url(
+    src: Source, timeout_s: float | None = None, *, preview: bool = False
+) -> dict[str, Any]:
+    """Ask yt-dlp what's behind a link without downloading it. Raises JobError.
+
+    ``preview``: also fill in what yt-dlp doesn't know (length, resolution, size of plain
+    files) and, when the site has no thumbnail, a JPEG frame from inside the video.
+    """
     timeout_s = timeout_s or get_settings().downloads.probe_timeout_s
-    cmd = [*_base_cmd(src), "--dump-single-json", "--skip-download", "--", src.url]
+    # The format picked here is only what a preview frame is read from: small is fast.
+    fmt = ["-f", "bv*[height<=720]/wv*/b*"] if preview else []
+    cmd = [*_base_cmd(src), *fmt, "--dump-single-json", "--skip-download", "--", src.url]
     try:
         out = subprocess.run(
             cmd,
@@ -217,7 +228,10 @@ def probe_url(src: Source, timeout_s: float | None = None) -> dict[str, Any]:
                 f"This is a playlist with {len(entries)} videos; open a single video instead"
             )
         info = entries[0]
-    return summarize(info)
+    summary = summarize(info)
+    if preview and not summary["is_live"]:
+        summary.update(preview_details(info, summary, src.cookie_file))
+    return summary
 
 
 def summarize(info: dict[str, Any]) -> dict[str, Any]:
@@ -235,7 +249,122 @@ def summarize(info: dict[str, Any]) -> dict[str, Any]:
         "has_video": has_video,
         "has_audio": has_audio,
         "started_at": started_at_from(info),
+        "height": max((f.get("height") or 0 for f in formats), default=0) or None,
+        "filesize": _filesize(info),
     }
+
+
+def _filesize(info: dict[str, Any]) -> int | None:
+    parts = info.get("requested_formats") or [info]
+    sizes = [f.get("filesize") or f.get("filesize_approx") for f in parts]
+    return int(sum(sizes)) if sizes and all(sizes) else None
+
+
+# Preview -------------------------------------------------------------------------------------
+
+PREVIEW_WIDTH = 480
+PREVIEW_TIMEOUT_S = 25.0
+# ffmpeg may only fetch over the network (a page could hand yt-dlp a file:// URL).
+FFMPEG_PROTOCOLS = "http,https,tcp,tls,crypto"
+
+
+def _cookie_header(cookie_file: Path | None, url: str) -> str:
+    """The Cookie header a browser would send for ``url`` (ffmpeg's own -cookies matching
+    ignores Domain cookies when the URL has a port)."""
+    if cookie_file is None or not cookie_file.exists():
+        return ""
+    jar = MozillaCookieJar()
+    try:
+        jar.load(str(cookie_file), ignore_discard=True, ignore_expires=True)
+    except (OSError, LoadError):
+        return ""
+    for c in jar:
+        if c.expires == 0:  # browser session cookie (as yt-dlp reads it), not expired
+            c.expires, c.discard = None, True
+    req = urllib.request.Request(url)
+    jar.add_cookie_header(req)
+    return req.get_header("Cookie") or ""
+
+
+def _stream(info: dict[str, Any], cookie_file: Path | None) -> tuple[str, list[str]] | None:
+    """URL of the picked (video) format and the ffmpeg input options to fetch it like yt-dlp."""
+    fmt = next((f for f in info.get("requested_formats") or [] if f.get("vcodec") != "none"), info)
+    url = fmt.get("url") or ""
+    if not url.startswith(("http://", "https://")):
+        return None
+    opts = ["-protocol_whitelist", FFMPEG_PROTOCOLS, "-rw_timeout", "15000000"]
+    headers = dict(fmt.get("http_headers") or info.get("http_headers") or {})
+    if cookie := _cookie_header(cookie_file, url):
+        headers["Cookie"] = cookie
+    if headers:
+        opts += ["-headers", "".join(f"{k}: {v}\r\n" for k, v in headers.items())]
+    return url, opts
+
+
+def _media_probe(url: str, opts: list[str]) -> dict[str, Any]:
+    cmd = [get_settings().ffprobe, "-v", "error", *opts, "-show_format", "-show_streams",
+           "-of", "json", url]  # fmt: skip
+    try:
+        out = subprocess.run(
+            cmd, capture_output=True, timeout=PREVIEW_TIMEOUT_S, creationflags=CREATE_NO_WINDOW,
+            check=False,
+        )  # fmt: skip
+        return json.loads(out.stdout or b"{}") if out.returncode == 0 else {}
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return {}
+
+
+def _frame(url: str, opts: list[str], at: float) -> bytes:
+    # No -ss at 0: even "-ss 0" seeks, which fails on servers without range requests.
+    seek = ["-ss", f"{at:.1f}"] if at > 0 else []
+    cmd = [get_settings().ffmpeg, "-v", "error", "-nostdin", *opts, *seek, "-i", url,
+           "-frames:v", "1", "-vf", f"scale='min({PREVIEW_WIDTH},iw)':-2",
+           "-q:v", "5", "-f", "mjpeg", "pipe:1"]  # fmt: skip
+    try:
+        out = subprocess.run(
+            cmd, capture_output=True, timeout=PREVIEW_TIMEOUT_S, creationflags=CREATE_NO_WINDOW,
+            check=False,
+        )  # fmt: skip
+    except (OSError, subprocess.TimeoutExpired):
+        return b""
+    return out.stdout if out.returncode == 0 else b""
+
+
+def preview_details(
+    info: dict[str, Any], summary: dict[str, Any], cookie_file: Path | None = None
+) -> dict[str, Any]:
+    """Length/resolution/size from the stream itself, and a frame if there's no thumbnail.
+
+    Best effort: anything that fails is simply left out of the preview.
+    """
+    stream = _stream(info, cookie_file)
+    if stream is None:
+        return {}
+    url, opts = stream
+    extra: dict[str, Any] = {}
+    if not (summary["duration"] and summary["height"]):
+        meta = _media_probe(url, opts)
+        streams = meta.get("streams") or []
+        fmt = meta.get("format") or {}
+        if not summary["duration"] and fmt.get("duration"):
+            extra["duration"] = float(fmt["duration"])
+        heights = [int(s.get("height") or 0) for s in streams if s.get("codec_type") == "video"]
+        if not summary["height"] and any(heights):
+            extra["height"] = max(heights)
+        progressive = (info.get("protocol") or "").startswith("http")  # not a playlist
+        if progressive and not summary["filesize"] and int(fmt.get("size") or 0) > 0:
+            extra["filesize"] = int(fmt["size"])
+        if streams and not heights:
+            extra["has_video"] = False  # e.g. a direct .m4a link
+    if summary["thumbnail"] or not extra.get("has_video", summary["has_video"]):
+        return extra
+    duration = extra.get("duration") or summary["duration"] or 0
+    # A tenth in skips title cards and intros; long lectures need no more than 5 minutes.
+    at = min(duration * 0.1, 300.0) if duration else 5.0
+    jpeg = _frame(url, opts, at) or (_frame(url, opts, 0.0) if at else b"")
+    if jpeg:
+        extra["thumbnail"] = "data:image/jpeg;base64," + base64.b64encode(jpeg).decode()
+    return extra
 
 
 def clean_title(info: dict[str, Any]) -> str:

@@ -113,7 +113,8 @@ export function LinkImportDialog({ subjectId, onClose }: { subjectId: number; on
                 {[
                   info.extractor,
                   info.duration ? formatDuration(info.duration) : null,
-                  info.has_video ? 'video' : 'audio only',
+                  info.has_video ? (info.height ? `${info.height}p` : 'video') : 'audio only',
+                  info.filesize ? `${(info.filesize / 1e6).toFixed(0)} MB` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}

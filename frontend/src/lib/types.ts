@@ -1022,4 +1022,6 @@ export type LinkInfo = {
   has_video: boolean
   has_audio: boolean
   started_at: string | null
+  height: number | null
+  filesize: number | null
 }

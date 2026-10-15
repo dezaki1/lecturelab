@@ -289,6 +289,15 @@ Phase 3 complete (2026-10-15).
   "Download video with LectureLab", "Just download" in the link dialog.
   - Verified: pytest (direct file, audio-only .m4a, page, cookies, name clash, failure); extension
     in Chromium saved a `<video>` file and an HLS stream (as .mp4) under the page titles.
+- [x] **Download preview** (2026-10-15): `/api/downloads/probe` with `preview: true` asks yt-dlp for
+  a small format, then ffprobe/ffmpeg read that stream with yt-dlp's headers plus a Cookie header
+  from the cookies.txt (ffmpeg's -cookies drops Domain cookies on URLs with a port): length,
+  resolution, size (progressive only) and, when the site has no thumbnail, a JPEG frame at 10%
+  (max 5 min; frame 0 without -ss as fallback for servers without range requests). Popup:
+  thumbnails with duration badge, cached per URL for the browser session; click plays direct
+  files inline, else shows the frame large. The link dialog shows the frame/quality/size too.
+  - Verified: pytest (direct, HLS, page, cookie-protected, WebM without ranges, audio); popup in
+    Chromium: previews in ~1.5 s, inline playback, HLS frame.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

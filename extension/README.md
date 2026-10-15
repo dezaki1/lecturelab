@@ -9,6 +9,10 @@ Like Video DownloadHelper, with two modes (the switch at the top of the popup):
   **Downloads folder** link opens the folder. Streams are saved under the page's title.
   Another folder: set `save_dir` under `[downloads]` in `C:\Users\<you>\LectureLab\config.toml`.
 
+- **Preview**: every entry shows a frame from inside the video with its length, quality and size,
+  so you can check it's the right one before downloading. Click the picture: plain video files
+  play right in the popup; for streams and pages you get the frame bigger. LectureLab makes the
+  preview (with your login, like the download), so it has to be running.
 - **This page**: sends the page link. LectureLab works out where the video is (YouTube, Panopto,
   Vimeo, Zoom cloud recordings, plain `<video>` pages and 1000+ other sites).
 - **Found while playing**: videos, audio and HLS/DASH streams (`.m3u8`/`.mpd`) the page loaded

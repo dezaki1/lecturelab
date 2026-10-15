@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from functools import partial
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -76,13 +77,19 @@ def _check_url(url: str) -> str:
     return url
 
 
+class ProbeIn(LinkIn):
+    # Also measure the stream and grab a frame when the site has no thumbnail (a few seconds).
+    preview: bool = False
+
+
 @router.post("/probe")
-async def probe(body: LinkIn) -> dict:
+async def probe(body: ProbeIn) -> dict:
     url = _check_url(body.url)
     cookie_file = write_cookies(body.cookies) if body.cookies else None
     try:
         return await run_in_threadpool(
-            probe_url, Source(url, cookie_file, body.referer, body.user_agent)
+            partial(probe_url, preview=body.preview),
+            Source(url, cookie_file, body.referer, body.user_agent),
         )
     except jobs.JobError as e:
         raise HTTPException(422, str(e)) from e

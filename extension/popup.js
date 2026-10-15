@@ -1,4 +1,12 @@
-import { defaultSubject, lectureUrl, lecturelab, saveToDisk, sendToLectureLab, serverUrl } from './lib.js'
+import {
+  defaultSubject,
+  lectureUrl,
+  lecturelab,
+  previewOf,
+  saveToDisk,
+  sendToLectureLab,
+  serverUrl,
+} from './lib.js'
 
 const $ = (id) => document.getElementById(id)
 const mode = () => document.querySelector('input[name="mode"]:checked').value
@@ -35,8 +43,93 @@ function options() {
   }
 }
 
+function formatDuration(s) {
+  s = Math.round(s)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = String(s % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
+}
+
+// Direct files the popup can play itself; streams (HLS/DASH) and pages show the frame instead.
+const playable = (item) => item.kind === 'Video' || item.kind === 'Audio'
+
+/** Thumbnail, length, quality and size, from LectureLab (it reads the stream like the download). */
+async function loadPreview(item, thumb, detail, fallback) {
+  let p
+  try {
+    p = await previewOf(item, $('cookies').checked)
+  } catch (e) {
+    thumb.textContent = 'No preview'
+    if (!item.kind) {
+      detail.textContent = e.message.startsWith('No video found')
+        ? 'No video found here. Play it and pick one below.'
+        : e.message
+      thumb.closest('li').classList.add('none')
+    }
+    return
+  }
+  const parts = [
+    p.duration ? formatDuration(p.duration) : null,
+    p.height ? `${p.height}p` : p.has_video === false ? 'audio' : null,
+    // A sniffed stream's own size is its playlist's; only direct files' sizes count.
+    formatSize(p.filesize || (playable(item) ? item.size : 0)) || null,
+  ].filter(Boolean)
+  detail.textContent = parts.join(' · ') || fallback
+  if (!item.kind && p.title) thumb.closest('li').querySelector('.title').textContent = p.title
+  thumb.textContent = ''
+  if (p.thumbnail) {
+    const img = document.createElement('img')
+    img.src = p.thumbnail
+    img.alt = ''
+    img.referrerPolicy = 'no-referrer'
+    img.onerror = () => img.replaceWith(playable(item) ? '▶' : 'No preview')
+    thumb.append(img)
+    thumb.dataset.image = p.thumbnail
+  } else {
+    thumb.textContent = p.has_video === false ? '♪' : playable(item) ? '▶' : 'No preview'
+  }
+  if (p.duration) {
+    const badge = document.createElement('span')
+    badge.className = 'duration'
+    badge.textContent = formatDuration(p.duration)
+    thumb.append(badge)
+  }
+}
+
+/** Click on the thumbnail: play a direct file inline, else show the frame bigger. */
+function togglePreview(item, li, thumb) {
+  const open = li.querySelector('.preview')
+  if (open) return open.remove()
+  const box = document.createElement('div')
+  box.className = 'preview'
+  if (playable(item)) {
+    const media = document.createElement(item.kind === 'Audio' ? 'audio' : 'video')
+    media.src = item.url
+    media.controls = true
+    media.autoplay = true
+    media.onerror = () => {
+      box.textContent = 'This video only plays on its page. The frame above is what LectureLab sees.'
+    }
+    box.append(media)
+  } else if (thumb.dataset.image) {
+    const img = document.createElement('img')
+    img.src = thumb.dataset.image
+    img.alt = ''
+    box.append(img)
+  } else {
+    return
+  }
+  li.append(box)
+}
+
 function itemRow(item, tags, name, detail) {
   const li = document.createElement('li')
+  const thumb = document.createElement('div')
+  thumb.className = 'thumb'
+  thumb.textContent = '…'
+  thumb.title = 'Preview'
+  thumb.addEventListener('click', () => togglePreview(item, li, thumb))
   const info = document.createElement('div')
   info.className = 'info'
   const line = document.createElement('div')
@@ -47,15 +140,17 @@ function itemRow(item, tags, name, detail) {
     tag.textContent = t
     line.append(tag)
   }
-  line.append(name)
+  const title = document.createElement('span')
+  title.className = 'title'
+  title.textContent = name
+  line.append(title)
   line.title = item.url
   info.append(line)
-  if (detail) {
-    const d = document.createElement('div')
-    d.className = 'muted small name'
-    d.textContent = detail
-    info.append(d)
-  }
+  const d = document.createElement('div')
+  d.className = 'muted small name'
+  d.textContent = 'Loading preview…'
+  info.append(d)
+  loadPreview(item, thumb, d, detail)
   const btn = document.createElement('button')
   const label = () => (btn.textContent = ACTION[mode()])
   label()
@@ -89,7 +184,7 @@ function itemRow(item, tags, name, detail) {
       btn.disabled = false
     }
   })
-  li.append(info, btn)
+  li.append(thumb, info, btn)
   return li
 }
 

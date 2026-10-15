@@ -418,7 +418,7 @@ export const api = {
   stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
   bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),
 
-  probeLink: (url: string) => request<LinkInfo>('POST', '/api/downloads/probe', { url }),
+  probeLink: (url: string) => request<LinkInfo>('POST', '/api/downloads/probe', { url, preview: true }),
   importLink: (data: { url: string; subject_id: number; title?: string; kind?: string; video?: boolean }) =>
     request<Lecture>('POST', '/api/downloads', data),
   saveLink: (data: { url: string; video?: boolean; title?: string }) =>

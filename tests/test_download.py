@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import io
 import shutil
 import subprocess
 import threading
@@ -12,6 +14,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from backend.core.config import Settings
 from backend.core.jobs import Worker
@@ -57,6 +60,23 @@ def site(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
         check=True,
     )  # fmt: skip
     (root / "page.html").write_text(PAGE, encoding="utf-8")
+    (root / "hls").mkdir()
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(root / "lecture.mp4"), "-c", "copy",
+         "-f", "hls", "-hls_time", "1", "-hls_playlist_type", "vod",
+         str(root / "hls" / "index.m3u8")],
+        check=True,
+    )  # fmt: skip
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-i", str(root / "lecture.mp4"), "-c:v", "libvpx-vp9",
+         "-deadline", "realtime", "-c:a", "libopus", str(root / "lecture.webm")],
+        check=True,
+    )  # fmt: skip
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+         "-c:a", "aac", str(root / "talk.m4a")],
+        check=True,
+    )  # fmt: skip
     (root / "empty.html").write_text("<html><body>No video</body></html>", encoding="utf-8")
     server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(root)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -250,3 +270,61 @@ def test_unique_path(tmp_path: Path) -> None:
     (tmp_path / "a (2).mp4").touch()
     assert unique_path(tmp_path / "a.mp4").name == "a (3).mp4"
     assert unique_path(tmp_path / "b.mp4").name == "b.mp4"
+
+
+def _jpeg_size(data_url: str) -> tuple[int, int]:
+    assert data_url.startswith("data:image/jpeg;base64,")
+    with Image.open(io.BytesIO(base64.b64decode(data_url.split(",", 1)[1]))) as img:
+        return img.size
+
+
+def test_preview_of_a_direct_file(client: TestClient, site: str) -> None:
+    r = client.post("/api/downloads/probe", json={"url": f"{site}/lecture.mp4", "preview": True})
+    assert r.status_code == 200, r.text
+    info = r.json()
+    assert info["duration"] == pytest.approx(3, abs=0.2)
+    assert info["height"] == 120
+    assert info["filesize"] > 1000
+    assert _jpeg_size(info["thumbnail"]) == (160, 120)
+
+    plain = client.post("/api/downloads/probe", json={"url": f"{site}/lecture.mp4"}).json()
+    assert plain["thumbnail"] is None, "no frame unless asked"
+
+
+def test_preview_of_streams_pages_and_private_files(client: TestClient, site: str) -> None:
+    hls = client.post(
+        "/api/downloads/probe", json={"url": f"{site}/hls/index.m3u8", "preview": True}
+    ).json()
+    assert hls["duration"] == pytest.approx(3, abs=0.5)
+    assert hls["filesize"] is None, "a playlist's size isn't the video's"
+    assert _jpeg_size(hls["thumbnail"]) == (160, 120)
+
+    page = client.post(
+        "/api/downloads/probe", json={"url": f"{site}/page.html", "preview": True}
+    ).json()
+    assert page["title"] == "VL Algorithms - Week 3"
+    assert _jpeg_size(page["thumbnail"]) == (160, 120)
+
+    cookies = "127.0.0.1\tFALSE\t/\tFALSE\t0\tsession\tabc\n"
+    private = client.post(
+        "/api/downloads/probe",
+        json={"url": f"{site}/private/lecture.mp4", "preview": True, "cookies": cookies},
+    ).json()
+    assert _jpeg_size(private["thumbnail"]) == (160, 120)
+
+
+def test_preview_without_range_requests(client: TestClient, site: str) -> None:
+    # http.server can't serve byte ranges, so seeking into a WebM fails: falls back to frame 0.
+    info = client.post(
+        "/api/downloads/probe", json={"url": f"{site}/lecture.webm", "preview": True}
+    ).json()
+    assert _jpeg_size(info["thumbnail"]) == (160, 120)
+
+
+def test_preview_of_audio(client: TestClient, site: str) -> None:
+    info = client.post(
+        "/api/downloads/probe", json={"url": f"{site}/talk.m4a", "preview": True}
+    ).json()
+    assert info["has_video"] is False
+    assert info["thumbnail"] is None
+    assert info["duration"] == pytest.approx(3, abs=0.2)
