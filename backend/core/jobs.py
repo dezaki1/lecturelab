@@ -57,6 +57,7 @@ HANDLERS: dict[str, Handler] = {}
 LABELS = {
     "encode_recording": "Saving recording",
     "import_media": "Importing",
+    "download_media": "Downloading",
     "transcribe": "Transcription",
     "generate": "Study material",
     "index": "Search indexing",

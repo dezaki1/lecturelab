@@ -15,6 +15,7 @@ import type {
   Materials,
   Note,
   Lecture,
+  LinkInfo,
   HandwrittenNotes,
   HandwrittenPage,
   LanStatus,
@@ -416,6 +417,10 @@ export const api = {
     request<RecorderStatus>('POST', '/api/recorder/start', data),
   stopRecording: () => request<{ lecture_id: number; duration_s: number }>('POST', '/api/recorder/stop'),
   bookmark: (kind: BookmarkKind) => request<Bookmark>('POST', '/api/recorder/bookmark', { kind }),
+
+  probeLink: (url: string) => request<LinkInfo>('POST', '/api/downloads/probe', { url }),
+  importLink: (data: { url: string; subject_id: number; title?: string; kind?: string; video?: boolean }) =>
+    request<Lecture>('POST', '/api/downloads', data),
 }
 
 /** Stream a file to the import endpoint (raw body), reporting upload progress 0..1. */

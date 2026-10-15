@@ -270,6 +270,19 @@ and deadlines as .ics (no TickTick account yet); backups to a folder the user ch
 
 Phase 3 complete (2026-10-15).
 
+- [x] **Import from link + browser extension** (2026-10-15): `pipeline.download` runs yt-dlp
+  (`python -m yt_dlp`, tracked child, resumes `.part` files) for page links and direct
+  .mp4/.m3u8/.mpd streams, video capped at 1080p or audio only, then hands `source.<ext>` to the
+  import job; title/date from yt-dlp's info (title stays "default" so generation can improve
+  it); live streams refused. `/api/downloads/probe` + `/api/downloads` (Origin check, PC-only).
+  UI: "Import from link" on the subject page. `extension/`: MV3 popup lists the page and the
+  media it saw (segments and tiny files skipped), sends cookies as cookies.txt, right-click
+  "Send to LectureLab".
+  - Verified: pytest against a local server (direct mp4, `<video>` page, cookie-protected file);
+    extension loaded in Chromium: mp4, cookie-protected and HLS streams sniffed and sent, all
+    four lectures reached "ready" (fake Whisper, mock LLM); a request from another site was
+    refused. Not yet tried on real Moodle/Panopto pages.
+
 ## Decisions (from SPEC §13, 2026-10-08)
 
 - LLM: tiered Claude (Sonnet for notes/cards/questions/chat, Haiku for cheap passes), Ollama offline.

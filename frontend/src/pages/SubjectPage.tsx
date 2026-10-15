@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarDays, Download, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
+import { CalendarDays, Download, Link2, MessageSquare, Pencil, Trash2, Upload, User } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 
 import { IMPORT_ACCEPT, useImport } from '@/components/ImportDialog'
 import { LectureList } from '@/components/LectureList'
+import { LinkImportDialog } from '@/components/LinkImportDialog'
 import { ConceptMap } from '@/components/hub/ConceptMap'
 import { CheatSheetPanel } from '@/components/hub/CheatSheet'
 import { WeakSpotsPanel } from '@/components/hub/WeakSpots'
@@ -44,6 +45,8 @@ export function SubjectPage() {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const { openImport } = useImport()
+  const [linkImport, setLinkImport] = useState(false)
+  const { data: system } = useQuery({ queryKey: ['system'], queryFn: api.system })
   const startChat = useStartChat()
   const fileInput = useRef<HTMLInputElement>(null)
 
@@ -161,7 +164,12 @@ export function SubjectPage() {
           <TabsTrigger value="materials">Materials</TabsTrigger>
         </TabsList>
         <TabsContent value="lectures" className="mt-4">
-          <div className="flex items-center justify-end">
+          <div className="flex items-center justify-end gap-2">
+            {!system?.remote && (
+              <Button variant="outline" size="sm" onClick={() => setLinkImport(true)}>
+                <Link2 /> Import from link
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
               <Upload /> Import
             </Button>
@@ -178,6 +186,7 @@ export function SubjectPage() {
             />
           </div>
           <LectureList subjectId={subject.id} />
+          {linkImport && <LinkImportDialog subjectId={subject.id} onClose={() => setLinkImport(false)} />}
         </TabsContent>
         <TabsContent value="overview" className="mt-4">
           {hub && <OverviewPanel subjectId={subject.id} hub={hub} />}

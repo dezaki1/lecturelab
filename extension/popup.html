@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LectureLab</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icons/icon32.png" alt="" width="20" height="20" />
+      <strong>LectureLab</strong>
+      <span id="status" class="status">Connecting…</span>
+    </header>
+
+    <p id="error" class="error" hidden></p>
+
+    <section id="form" hidden>
+      <label>
+        Subject
+        <select id="subject"></select>
+      </label>
+      <div class="row">
+        <label class="grow">
+          Title <span class="muted">(optional)</span>
+          <input id="title" placeholder="Taken from the video" />
+        </label>
+        <label>
+          Type
+          <select id="kind">
+            <option value="">–</option>
+            <option>VL</option>
+            <option>VO</option>
+            <option>UE</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
+      <label class="check"
+        ><input type="checkbox" id="video" checked /> Download the video (to find slides)</label
+      >
+      <label class="check"
+        ><input type="checkbox" id="cookies" checked /> Send my login for this site (needed for Moodle,
+        Panopto…)</label
+      >
+
+      <h2>This page</h2>
+      <ul id="page" class="items"></ul>
+
+      <h2>Found while playing <span id="count" class="muted"></span></h2>
+      <ul id="media" class="items"></ul>
+      <p id="empty" class="muted small">
+        Nothing yet. Start the video on the page and it shows up here. If the page itself works above, prefer
+        that.
+      </p>
+    </section>
+
+    <footer>
+      <a href="#" id="open">Open LectureLab</a>
+      <a href="#" id="options">Settings</a>
+    </footer>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

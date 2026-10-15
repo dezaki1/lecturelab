@@ -15,6 +15,7 @@ from backend.api import (
     cards,
     chat,
     documents,
+    downloads,
     exams,
     exports,
     hub,
@@ -71,6 +72,7 @@ from backend.pipeline import (  # noqa: F401  (job handlers)
     transcribe,
 )
 from backend.pipeline import documents as document_jobs  # noqa: F401
+from backend.pipeline import download as download_jobs
 from backend.pipeline import slides as slide_jobs  # noqa: F401
 from backend.pipeline import subject_hub as hub_jobs  # noqa: F401
 from backend.pipeline.hints import backfill as hint_backfill
@@ -107,6 +109,7 @@ def create_app(
     rec = RecorderService(settings, source_factory, screen_factory)
     set_recorder(rec)
     ingest.clean_tmp()
+    download_jobs.clean_tmp()
     with session_scope() as s:
         if n := search_index.backfill(s):
             log.info("Queued search indexing for %d lecture(s)", n)
@@ -142,6 +145,7 @@ def create_app(
     app.include_router(lectures.router)
     app.include_router(recorder.router)
     app.include_router(imports.router)
+    app.include_router(downloads.router)
     app.include_router(materials.router)
     app.include_router(settings_api.router)
     app.include_router(chat.router)

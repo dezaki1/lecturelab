@@ -44,7 +44,8 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     slides (change detector on 64x36 thumbnails with learned video mask, slide
                     storage, SlideGrabber thread) ; screens (ctypes: find Zoom window,
                     PrintWindow/ImageGrab, monitors)
-  pipeline/         ingest (import job), stages (stage bookkeeping + auto-queue transcription),
+  pipeline/         ingest (import job), download (job `download_media`: yt-dlp child process
+                    for links/streams, cookies.txt from the extension -> then the import job), stages (stage bookkeeping + auto-queue transcription),
                     transcribe (job: runs whisper_worker child process, CPU fallback, re-segments
                     into sentence lines), whisper_worker (standalone child: ffmpeg decode +
                     faster-whisper or the "fake" engine; JSON-lines progress on stdout)
@@ -97,6 +98,8 @@ frontend/           React + TS + Vite + Tailwind v4 + shadcn/ui (radix-nova), Ta
 tests/              pytest; fixtures/lecture.m4a + lecture.txt = 2-min TTS sample lecture
                     (regenerate with scripts/make_fixture.ps1)
 scripts/            seed data
+extension/          MV3 browser extension (Chrome/Edge, no build step): sniffs media requests per
+                    tab, sends page/stream links + cookies to POST /api/downloads
 ```
 
 Data lives in `%USERPROFILE%\LectureLab` (override: `LECTURELAB_DATA_DIR` or `--data-dir`):
@@ -182,6 +185,9 @@ Preview/dev instance that doesn't touch real data: `.claude/launch.json` runs
   answers in serve mode too. Never download Piper voices in tests.
 - Writing a file twice in quick succession sometimes fails on this machine (OSError 22, a
   brief lock): retry instead of assuming the content is wrong.
+- Import from link: /api/downloads fetches any URL, so it is in `lan.BLOCKED` and refuses
+  browser requests whose Origin is another website (extension origins and our own host pass).
+  Tests run real yt-dlp against a local http.server, never the internet.
 - Tests can't reach the network: conftest patches httpx/httpx2 HTTPTransport to refuse
   anything but loopback (and Ollama's port). The CLI and anything else that loads its own
   settings would otherwise pick the real provider and the developer's key from the keyring.
