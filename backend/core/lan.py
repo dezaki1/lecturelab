@@ -180,21 +180,41 @@ async def _respond(
 # Addresses ------------------------------------------------------------------------------------
 
 
-def lan_addresses() -> list[str]:
-    """Private IPv4 addresses of this PC, the default route's first."""
-    found: list[str] = []
+def default_route_address() -> str | None:
+    """This PC's address on the network its internet traffic goes through (Wi-Fi/LAN)."""
     with contextlib.suppress(OSError), socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect(("10.255.255.255", 1))  # UDP: no packet is sent, this only picks the route
-        found.append(s.getsockname()[0])
+        s.connect(("8.8.8.8", 53))  # UDP: nothing is sent, this only picks the route
+        return str(s.getsockname()[0])
+    return None
+
+
+def order_addresses(default: str | None, others: list[str]) -> list[str]:
+    """The default route's address first, whatever its kind: a university Wi-Fi hands out
+    public addresses (e.g. JKU's 140.78.x.x). Then other private ones, which are often virtual
+    adapters (Hyper-V, VirtualBox) a tablet can't reach."""
+    out: list[str] = []
+    for a in [default, *others]:
+        if not a or a in out:
+            continue
+        ip = ipaddress.ip_address(a)
+        if ip.is_loopback or ip.is_link_local or ip.is_unspecified:
+            continue
+        if a != default and not ip.is_private:
+            continue
+        out.append(a)
+    return out
+
+
+def lan_addresses() -> list[str]:
+    others: list[str] = []
     with contextlib.suppress(OSError):
         for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-            found.append(str(info[4][0]))
-    out = []
-    for a in found:
-        ip = ipaddress.ip_address(a)
-        if ip.is_private and not ip.is_loopback and not ip.is_link_local and a not in out:
-            out.append(a)
-    return out
+            others.append(str(info[4][0]))
+    return order_addresses(default_route_address(), others)
+
+
+def is_public(address: str) -> bool:
+    return not ipaddress.ip_address(address).is_private
 
 
 # The second server ----------------------------------------------------------------------------

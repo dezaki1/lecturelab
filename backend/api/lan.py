@@ -36,20 +36,26 @@ def _server(request: Request) -> lan.LanServer:
 def _status(srv: lan.LanServer) -> dict[str, Any]:
     cfg = get_settings().lan
     port = srv.port or cfg.port
-    urls = [f"http://{ip}:{port}/" for ip in lan.lan_addresses()]
+    addresses = lan.lan_addresses()
+    urls = [f"http://{ip}:{port}/" for ip in addresses]
     out: dict[str, Any] = {
         "enabled": cfg.enabled,
         "running": srv.running,
         "port": port,
         "error": srv.error,
         "urls": urls,
+        # Not a home network (e.g. university Wi-Fi): others on it may reach the port, traffic
+        # is unencrypted, and such networks usually block device-to-device connections anyway.
+        "public_network": bool(addresses) and lan.is_public(addresses[0]),
         "pair_url": None,
         "qr_svg": None,
     }
     if srv.running and urls:
         pair = f"{urls[0]}?token={lan.ensure_token()}"
         out["pair_url"] = pair
-        out["qr_svg"] = segno.make(pair, error="m").svg_inline(scale=5, border=2)
+        # viewBox (omitsize) so the page can scale it without cropping; 4-module quiet zone,
+        # which phone cameras need to find the code.
+        out["qr_svg"] = segno.make(pair, error="m").svg_inline(scale=5, border=4, omitsize=True)
     return out
 
 

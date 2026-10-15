@@ -46,6 +46,7 @@ export interface LanStatus {
   port: number
   error: string
   urls: string[]
+  public_network: boolean
   pair_url: string | null
   qr_svg: string | null
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, KeyRound, Loader2, TabletSmartphone, XCircle } from 'lucide-react'
+import { Copy, KeyRound, Loader2, TabletSmartphone, TriangleAlert, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -60,7 +60,7 @@ export function LanSettings() {
         <div className="flex flex-wrap items-start gap-5">
           {s.qr_svg && (
             <div
-              className="shrink-0 rounded-md bg-white p-1 [&_svg]:size-44"
+              className="shrink-0 rounded-md bg-white [&_svg]:block [&_svg]:size-56"
               aria-label="Pairing QR code"
               role="img"
               dangerouslySetInnerHTML={{ __html: s.qr_svg }}
@@ -69,6 +69,17 @@ export function LanSettings() {
           <div className="min-w-0 flex-1 space-y-2">
             {s.urls.length ? (
               <>
+                {s.public_network && (
+                  <p className="flex gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-amber-700 dark:text-amber-300">
+                    <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                    <span>
+                      This PC is on a public network (e.g. university Wi-Fi), not a home network. Such
+                      networks usually block connections between devices, so pairing may not work, and other
+                      people on it could reach this port (they would still need the pairing code). Use it at
+                      home, or switch it off here.
+                    </span>
+                  </p>
+                )}
                 <p>
                   Scan the code with the tablet&apos;s camera, or open this link on it (it contains the
                   pairing code, so don&apos;t share it):

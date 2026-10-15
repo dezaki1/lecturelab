@@ -81,6 +81,7 @@ def test_lan_server_start_stop(settings: Settings, local: TestClient) -> None:
         assert ok.status_code == 200
         if st["urls"]:
             assert st["pair_url"].endswith(f"?token={token}") and st["qr_svg"].startswith("<svg")
+            assert "viewBox=" in st["qr_svg"] and "width=" not in st["qr_svg"]  # scales, no crop
         assert local.get("/api/lan").json()["running"]
     finally:
         st = local.put("/api/lan", json={"enabled": False}).json()
@@ -98,3 +99,18 @@ def test_port_in_use(settings: Settings, local: TestClient) -> None:
         st = local.put("/api/lan", json={"enabled": True, "port": port}).json()
         assert not st["running"] and st["error"]
     local.put("/api/lan", json={"enabled": False})
+
+
+def test_address_order() -> None:
+    # University Wi-Fi with a public address is the real network; virtual adapters come after.
+    assert lan.order_addresses("140.78.231.249", ["192.168.64.1", "192.168.56.1"]) == [
+        "140.78.231.249",
+        "192.168.64.1",
+        "192.168.56.1",
+    ]
+    assert lan.is_public("140.78.231.249") and not lan.is_public("192.168.0.100")
+    # Home Wi-Fi: no duplicates; loopback, link-local and other public addresses are dropped.
+    assert lan.order_addresses(
+        "192.168.0.100", ["192.168.0.100", "127.0.0.1", "169.254.3.4", "8.8.4.4", "10.0.0.5"]
+    ) == ["192.168.0.100", "10.0.0.5"]
+    assert lan.order_addresses(None, ["192.168.56.1"]) == ["192.168.56.1"]  # offline
