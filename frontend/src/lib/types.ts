@@ -1010,3 +1010,18 @@ export interface EvalOverview {
   counts: { candidate: number; approved: number; rejected: number }
   runs: EvalRunRow[]
 }
+
+/** What yt-dlp found behind a link (POST /api/downloads/probe). */
+export type LinkInfo = {
+  title: string
+  duration: number | null
+  thumbnail: string | null
+  extractor: string
+  webpage_url: string
+  is_live: boolean
+  has_video: boolean
+  has_audio: boolean
+  started_at: string | null
+  height: number | null
+  filesize: number | null
+}

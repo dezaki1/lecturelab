@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LectureLab extension settings</title>
+    <link rel="stylesheet" href="popup.css" />
+    <style>
+      body {
+        width: auto;
+        max-width: 480px;
+      }
+    </style>
+  </head>
+  <body>
+    <label>
+      LectureLab address
+      <input id="server" placeholder="http://127.0.0.1:8765" />
+    </label>
+    <p class="muted small">
+      The LectureLab app on this PC. Change it only if you set a different <code>port</code> in config.toml.
+    </p>
+    <button id="save">Save</button> <span id="result" class="small"></span>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

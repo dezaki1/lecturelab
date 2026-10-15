@@ -202,6 +202,16 @@ class BackupConfig(BaseModel):
     keep_weekly: int = 4
 
 
+class DownloadConfig(BaseModel):
+    """Import from a link (yt-dlp)."""
+
+    max_height: int = 1080  # video resolution cap; slides stay readable at 720-1080p
+    concurrent_fragments: int = 4  # parallel HLS/DASH segment downloads
+    probe_timeout_s: float = 60.0
+    # "Just download" target; None = the Windows Downloads folder.
+    save_dir: Path | None = None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="LECTURELAB_", env_nested_delimiter="__")
 
@@ -229,6 +239,7 @@ class Settings(BaseSettings):
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     live: LiveConfig = Field(default_factory=LiveConfig)
     recap: RecapConfig = Field(default_factory=RecapConfig)
+    downloads: DownloadConfig = Field(default_factory=DownloadConfig)
 
     @classmethod
     def settings_customise_sources(

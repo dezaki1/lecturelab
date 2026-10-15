@@ -7,7 +7,8 @@ same app on all interfaces (``lan.port``, default 8770), wrapped in ``LanGuard``
   pairing link ``/?token=...`` once, e.g. by scanning the QR code in Settings) or as
   ``Authorization: Bearer``. Without it: 401, and pages show a short "not paired" notice,
 - some things stay PC-only (403): settings changes and API keys, LAN mode itself, starting or
-  stopping recordings, and adding calendar links (the server would fetch any URL),
+  stopping recordings, adding calendar links and importing from links (the server would
+  fetch any URL),
 - requests through the guard carry ``scope["lan"] = True`` (``/api/system`` reports it, so the
   UI hides PC-only controls).
 
@@ -46,6 +47,7 @@ BLOCKED = (
     ("WRITE", "/api/settings"),
     ("WRITE", "/api/recorder"),
     ("WRITE", "/api/timetable"),
+    ("*", "/api/downloads"),
 )
 PUBLIC_PREFIXES = ("/assets/", "/icons/")
 PUBLIC_FILES = ("/manifest.webmanifest", "/sw.js", "/favicon.svg")
