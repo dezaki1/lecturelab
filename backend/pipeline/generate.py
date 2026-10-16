@@ -849,7 +849,10 @@ def _finish(lecture_id: int, errors: dict[str, str], kinds: list[str]) -> None:
             if errors
             else None
         )
-        lecture.meta = {**lecture.meta, "generated_at": utcnow().isoformat()}
+        meta = {**lecture.meta, "generated_at": utcnow().isoformat()}
+        if ok and set(kinds) == set(ALL_KINDS):
+            meta.pop("moved_from", None)  # rewritten for its (new) subject
+        lecture.meta = meta
         s.add(lecture)
         s.commit()
         if ok:

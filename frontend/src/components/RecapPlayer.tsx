@@ -91,6 +91,16 @@ export function RecapPlayer({ recap: r, onRemake }: { recap: Recap; onRemake?: (
 
   return (
     <div className="space-y-3">
+      {r.error && (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+          {r.error}
+          {onRemake && (
+            <Button size="xs" variant="outline" onClick={onRemake}>
+              <RefreshCw /> Remake
+            </Button>
+          )}
+        </p>
+      )}
       <audio
         ref={audio}
         controls

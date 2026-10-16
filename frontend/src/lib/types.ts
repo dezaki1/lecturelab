@@ -80,6 +80,7 @@ export interface Lecture {
   notice: string
   cleanup: { changed: number; model: string; prompt_version: string; at: string } | null
   cleanup_error: string
+  moved_from: { subject_id: number; name: string; at: string } | null
   cost_usd: number
   bookmark_count: number
   job_progress: number | null

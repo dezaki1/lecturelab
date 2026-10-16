@@ -41,6 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { HandwrittenNotes } from '@/components/HandwrittenNotes'
 import { LectureRecap } from '@/components/LectureRecap'
+import { MovedNotice } from '@/components/MovedNotice'
 import { api } from '@/lib/api'
 import { downloadPdf } from '@/lib/download'
 import { formatDateTime, formatDuration } from '@/lib/dates'
@@ -292,6 +293,7 @@ export function LecturePage() {
         )}
       </div>
 
+      <MovedNotice lecture={lecture} subjectName={subject?.name} />
       <TranscriptionPanel lecture={lecture} />
       <GenerationPanel lecture={lecture} />
 

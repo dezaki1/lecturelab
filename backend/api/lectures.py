@@ -12,7 +12,7 @@ from backend.capture.recorder import get_recorder
 from backend.core import jobs as jobs_mod
 from backend.core.db import get_session
 from backend.core.events import bus
-from backend.core.library import abs_path, move_lecture, trash_lecture_folder
+from backend.core.library import abs_path, trash_lecture_folder
 from backend.core.models import (
     Bookmark,
     BookmarkKind,
@@ -26,6 +26,7 @@ from backend.core.models import (
     Subject,
     TranscriptSegment,
 )
+from backend.pipeline import lecture_ops
 from backend.pipeline.cleanup import queue_cleanup, revert
 from backend.pipeline.stages import TRANSCRIBE_JOB
 from backend.search.index import INDEX_JOB, remove_lecture_index
@@ -60,6 +61,7 @@ class LectureRead(BaseModel):
     notice: str = ""  # e.g. "No speech detected in this recording."
     cleanup: dict | None = None  # last cleanup run: changed lines, model, time
     cleanup_error: str = ""
+    moved_from: dict | None = None  # {subject_id, name, at} until regenerated or dismissed
     cost_usd: float = 0.0
     bookmark_count: int = 0
     job_progress: float | None = None
@@ -75,6 +77,7 @@ class LectureUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=300)
     kind: str | None = None
     subject_id: int | None = None
+    dismiss_moved: bool | None = None  # hide the "regenerate for the new subject" notice
 
 
 class BookmarkCreate(BaseModel):
@@ -116,6 +119,7 @@ def _to_read(
         "notice": lecture.meta.get("notice", ""),
         "cleanup": lecture.meta.get("cleanup"),
         "cleanup_error": lecture.meta.get("cleanup_error", ""),
+        "moved_from": lecture.meta.get("moved_from"),
         "bookmark_count": bookmark_count,
         "job_progress": job.progress if job else None,
         "job_message": job.message if job else "",
@@ -199,12 +203,14 @@ def patch_lecture(
         subject = session.get(Subject, changes["subject_id"])
         if subject is None:
             raise HTTPException(404, "Subject not found")
-        move_lecture(lecture, subject)
+        lecture_ops.move(session, lecture, subject)  # re-homes everything made from it
     if "title" in changes:
         lecture.title = changes["title"].strip()
         lecture.meta = {**lecture.meta, "title_is_default": False}
     if "kind" in changes:
         lecture.kind = changes["kind"]
+    if changes.get("dismiss_moved"):
+        lecture.meta = {k: v for k, v in lecture.meta.items() if k != "moved_from"}
     session.add(lecture)
     session.commit()
     session.refresh(lecture)
@@ -235,8 +241,11 @@ def delete_lecture(lecture_id: int, session: Session = Depends(get_session)) -> 
     session.flush()
     for doc in session.exec(select(Material).where(Material.lecture_id == lecture_id)).all():
         session.delete(doc)
+    subject_id, day = lecture.subject_id, lecture.started_at.astimezone().date()
     session.delete(lecture)
     session.commit()
+    # Course overview, cheat sheet, week recaps and plan were built with this lecture too.
+    lecture_ops.refresh_subjects(session, [subject_id], day)
     return Response(status_code=204)
 
 

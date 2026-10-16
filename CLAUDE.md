@@ -194,3 +194,7 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
 - Tests can't reach the network: conftest patches httpx/httpx2 HTTPTransport to refuse
   anything but loopback (and Ollama's port). The CLI and anything else that loads its own
   settings would otherwise pick the real provider and the developer's key from the keyring.
+- Moving a lecture to another subject or deleting it goes through `pipeline.lecture_ops`
+  (re-homes every row with a lecture_id + subject_id, rebases stored file paths, rebuilds both
+  subjects' hub/cheat sheet/plan, flags week recaps). New tables with both columns belong in
+  `lecture_ops.LECTURE_ROWS`; new stored paths under the lecture folder need a rebase there.

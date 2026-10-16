@@ -116,8 +116,10 @@ export const api = {
 
   lectures: (subjectId: number) => request<Lecture[]>('GET', `/api/lectures?subject_id=${subjectId}`),
   lecture: (id: number) => request<LectureDetail>('GET', `/api/lectures/${id}`),
-  updateLecture: (id: number, data: Partial<Pick<Lecture, 'title' | 'kind' | 'subject_id'>>) =>
-    request<LectureDetail>('PATCH', `/api/lectures/${id}`, data),
+  updateLecture: (
+    id: number,
+    data: Partial<Pick<Lecture, 'title' | 'kind' | 'subject_id'>> & { dismiss_moved?: boolean },
+  ) => request<LectureDetail>('PATCH', `/api/lectures/${id}`, data),
   deleteLecture: (id: number) => request<void>('DELETE', `/api/lectures/${id}`),
   addBookmark: (lectureId: number, data: { t_s: number; kind: BookmarkKind; note?: string }) =>
     request<Bookmark>('POST', `/api/lectures/${lectureId}/bookmarks`, data),

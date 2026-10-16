@@ -153,6 +153,8 @@ def topics_with_mastery(
                     "sections": p.get("sections") or [],
                 }
             )
+        if t.get("places") and not places:
+            continue  # its lectures left the subject (moved or deleted); the hub is rebuilding
         recall = [retrievability(sch, c, now) for c in cards.values()]
         got = [scores[q] for q in questions if q in scores]
         out.append(
