@@ -198,3 +198,4 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   (re-homes every row with a lecture_id + subject_id, rebases stored file paths, rebuilds both
   subjects' hub/cheat sheet/plan, flags week recaps). New tables with both columns belong in
   `lecture_ops.LECTURE_ROWS`; new stored paths under the lecture folder need a rebase there.
+  `lecture_ops.repair` runs at startup and fixes lectures moved by older versions (idempotent).

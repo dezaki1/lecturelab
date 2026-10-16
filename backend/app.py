@@ -69,6 +69,7 @@ from backend.pipeline import (  # noqa: F401  (job handlers)
     cleanup,
     generate,
     ingest,
+    lecture_ops,
     transcribe,
 )
 from backend.pipeline import documents as document_jobs  # noqa: F401
@@ -115,6 +116,8 @@ def create_app(
             log.info("Queued search indexing for %d lecture(s)", n)
         if n := hint_backfill(s):
             log.info("Scanned %d lecture(s) for exam hints", n)
+        if fixed := lecture_ops.repair(s):
+            log.info("Moved lectures repaired: %s", fixed)
         if n := deadline_backfill(s):
             log.info("Collected %d deadline suggestion(s) from announcements", n)
     if n := recover_interrupted():

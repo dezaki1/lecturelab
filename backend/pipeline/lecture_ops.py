@@ -182,3 +182,92 @@ def refresh_subjects(s: Session, subject_ids: list[int], lecture_day: date) -> N
         planner.build(s)
     except Exception:  # the plan rebuilds itself on the next read anyway
         log.exception("Study plan rebuild failed")
+
+
+def _relocate(path: str | None, folder: str) -> str | None:
+    """A path under some old lecture folder (subjects/<slug>/<name>/...) -> the same file under
+    ``folder``, if it exists there (lectures moved before move() rebased paths)."""
+    if not path:
+        return path
+    from backend.core.library import abs_path
+
+    p = path.replace("\\", "/")
+    f = folder.replace("\\", "/").rstrip("/")
+    if p.startswith(f + "/"):
+        return path
+    parts = p.split("/")
+    if len(parts) < 4 or parts[0] != "subjects" or parts[2] != f.split("/")[-1]:
+        return path
+    candidate = "/".join([f, *parts[3:]])
+    return candidate if abs_path(candidate).exists() else path
+
+
+def repair(s: Session) -> dict[int, int]:
+    """Fix lectures moved by earlier versions: rows still in the old subject and file paths
+    still pointing at the old folder. Idempotent; returns {lecture_id: rows fixed}."""
+    lectures = {x.id: x for x in s.exec(select(Lecture)).all()}
+    old_subjects: dict[int, set[int]] = {}
+    fixed: dict[int, int] = {}
+    for model in LECTURE_ROWS:
+        pairs = s.exec(
+            select(model.lecture_id, model.subject_id)  # type: ignore[attr-defined]
+            .where(col(model.lecture_id).is_not(None))  # type: ignore[attr-defined]
+            .distinct()
+        ).all()
+        for lid, sid in pairs:
+            lec = lectures.get(lid)
+            if lec is None or sid is None or sid == lec.subject_id:
+                continue
+            n = s.exec(  # type: ignore[call-overload]
+                update(model)
+                .where(model.lecture_id == lid, model.subject_id == sid)  # type: ignore[attr-defined]
+                .values(subject_id=lec.subject_id)
+            ).rowcount
+            fixed[lid] = fixed.get(lid, 0) + n
+            old_subjects.setdefault(lid, set()).add(sid)
+    for sl in s.exec(select(Slide)).all():
+        lec = lectures.get(sl.lecture_id)
+        new = _relocate(sl.image_path, lec.folder) if lec else sl.image_path
+        if lec and new != sl.image_path:
+            sl.image_path = new  # type: ignore[assignment]
+            s.add(sl)
+            fixed[lec.id] = fixed.get(lec.id, 0) + 1  # type: ignore[index]
+    for m in s.exec(select(Material).where(col(Material.lecture_id).is_not(None))).all():
+        lec = lectures.get(m.lecture_id)  # type: ignore[arg-type]
+        if lec is None:
+            continue
+        new = _relocate(m.file_path, lec.folder)
+        pages = (m.analysis or {}).get("pages") or []
+        new_pages = [{**p, "image": _relocate(p.get("image"), lec.folder)} for p in pages]
+        if new != m.file_path or new_pages != pages:
+            m.file_path = new  # type: ignore[assignment]
+            if pages:
+                m.analysis = {**m.analysis, "pages": new_pages}
+            s.add(m)
+            fixed[lec.id] = fixed.get(lec.id, 0) + 1  # type: ignore[index]
+    for r in s.exec(select(Recap).where(col(Recap.lecture_id).is_not(None))).all():
+        lec = lectures.get(r.lecture_id)  # type: ignore[arg-type]
+        new = _relocate(r.audio_path, lec.folder) if lec else r.audio_path
+        if lec and new != r.audio_path:
+            r.audio_path = new or ""
+            s.add(r)
+    for lid, olds in old_subjects.items():
+        lec = lectures[lid]
+        old = s.get(Subject, min(olds))
+        if "moved_from" not in lec.meta:
+            lec.meta = {
+                **lec.meta,
+                "moved_from": {
+                    "subject_id": min(olds),
+                    "name": old.name if old else "",
+                    "at": utcnow().isoformat(),
+                },
+            }
+            s.add(lec)
+    s.commit()
+    for lid, olds in old_subjects.items():
+        lec = lectures[lid]
+        refresh_subjects(s, [*olds, lec.subject_id], lec.started_at.astimezone().date())
+    if fixed:
+        log.info("Repaired lectures moved by an earlier version: %s", fixed)
+    return fixed

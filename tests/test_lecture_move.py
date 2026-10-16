@@ -152,3 +152,29 @@ def test_rebase() -> None:
         rebase("subjects\\ml\\a\\b.jpg", "subjects/ml/a", "subjects/rl/a") == "subjects/rl/a/b.jpg"
     )
     assert rebase(None, "a", "b") is None
+
+
+def test_repair_lectures_moved_by_old_versions(client: TestClient) -> None:
+    from backend.core.library import move_lecture as old_style_move
+    from backend.core.models import Subject
+    from backend.pipeline import lecture_ops
+
+    lid, wrong, right = _setup(client)
+    with session_scope() as s:  # what earlier versions did: only the folder and the lecture
+        lec, target = s.get(Lecture, lid), s.get(Subject, right)
+        assert lec is not None and target is not None
+        old_style_move(lec, target)
+        s.add(lec)
+        s.commit()
+        assert _subjects_of(lid) == {wrong}
+        slide = s.exec(select(Slide).where(Slide.lecture_id == lid)).one()
+        assert not abs_path(slide.image_path).exists()  # broken image
+    with session_scope() as s:
+        fixed = lecture_ops.repair(s)
+    assert fixed[lid] > 0 and _subjects_of(lid) == {right}
+    with session_scope() as s:
+        slide = s.exec(select(Slide).where(Slide.lecture_id == lid)).one()
+        assert abs_path(slide.image_path).read_bytes() == b"jpg"
+    assert client.get(f"/api/lectures/{lid}").json()["moved_from"]["subject_id"] == wrong
+    with session_scope() as s:
+        assert lecture_ops.repair(s) == {}  # idempotent
