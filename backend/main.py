@@ -9,13 +9,13 @@ import sys
 import threading
 import time
 import urllib.request
-import webbrowser
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 import uvicorn
 
-from backend.core.config import Settings, load_settings
+from backend.core.config import Settings, load_settings, set_settings
+from backend.core.window import open_ui
 
 log = logging.getLogger("lecturelab")
 
@@ -45,8 +45,8 @@ def _already_running(settings: Settings) -> bool:
 def serve(settings: Settings) -> None:
     url = f"http://{settings.host}:{settings.port}"
     if _already_running(settings):
-        print(f"LectureLab is already running at {url}; opening the browser.")
-        webbrowser.open(url)
+        print(f"LectureLab is already running at {url}; opening it.")
+        open_ui(url)
         return
 
     from backend.app import create_app
@@ -70,7 +70,7 @@ def serve(settings: Settings) -> None:
             time.sleep(0.1)
         log.info("LectureLab running at %s (data: %s)", url, settings.data_dir)
         if settings.open_browser:
-            webbrowser.open(url)
+            open_ui(url)
 
     threading.Thread(target=after_start, daemon=True).start()
 
@@ -101,7 +101,6 @@ def serve(settings: Settings) -> None:
 
 def run_eval_cli(settings: Settings, action: str, n: int) -> None:
     """``lecturelab eval make|retrieval|grounding``: runs now and saves the run like the UI."""
-    from backend.core.config import set_settings
     from backend.core.db import init_db, session_scope
     from backend.core.models import EvalRun
     from backend.evals import runner
@@ -136,6 +135,47 @@ def run_eval_cli(settings: Settings, action: str, n: int) -> None:
     print(f"{action}: " + ", ".join(f"{k}={v}" for k, v in metrics.items()))
 
 
+def make_shortcuts(remove: bool = False) -> list[str]:
+    """Desktop + Start-menu shortcuts that start LectureLab without a terminal window."""
+    import os
+    import subprocess
+
+    repo = Path(__file__).resolve().parents[1]
+    env = {
+        **os.environ,
+        "LL_TARGET": str(repo / ".venv" / "Scripts" / "pythonw.exe"),
+        "LL_DIR": str(repo),
+        "LL_ICON": str(repo / "scripts" / "lecturelab.ico"),
+        "LL_REMOVE": "1" if remove else "",
+    }
+    # Paths go in through the environment, so spaces and quotes in them need no escaping.
+    script = r"""
+$places = @([Environment]::GetFolderPath('Desktop'),
+            [Environment]::GetFolderPath('Programs'))
+$shell = New-Object -ComObject WScript.Shell
+foreach ($dir in $places) {
+  $path = Join-Path $dir 'LectureLab.lnk'
+  if ($env:LL_REMOVE) { Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue; continue }
+  $lnk = $shell.CreateShortcut($path)
+  $lnk.TargetPath = $env:LL_TARGET
+  $lnk.Arguments = '-m backend.launcher'
+  $lnk.WorkingDirectory = $env:LL_DIR
+  $lnk.IconLocation = $env:LL_ICON
+  $lnk.Description = 'LectureLab: record, transcribe and study your lectures'
+  $lnk.Save()
+  $path
+}
+"""
+    out = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return [line for line in out.stdout.splitlines() if line.strip()]
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="lecturelab")
     parser.add_argument("--data-dir", type=Path, help="override the data folder")
@@ -155,6 +195,10 @@ def main(argv: list[str] | None = None) -> None:
     )
     p_restore.add_argument("--snapshot", help="snapshot file name (default: the newest)")
     p_restore.add_argument("--force", action="store_true", help="overwrite an existing database")
+    p_short = sub.add_parser(
+        "shortcut", help="create Desktop + Start-menu shortcuts (no terminal window needed)"
+    )
+    p_short.add_argument("--remove", action="store_true", help="remove them again")
     p_eval = sub.add_parser("eval", help="evals: make search questions, run retrieval/grounding")
     p_eval.add_argument("action", choices=["make", "retrieval", "grounding"])
     p_eval.add_argument("-n", type=int, default=20, help="make: how many candidate questions")
@@ -195,6 +239,16 @@ def main(argv: list[str] | None = None) -> None:
         print(
             f"Backed up to {settings.backup.folder}: {result['snapshot']}, {copied} files copied."
         )
+        return
+
+    if args.cmd == "shortcut":
+        made = make_shortcuts(args.remove)
+        if args.remove:
+            print("Removed the shortcuts.")
+        else:
+            print("Created:")
+            for path in made:
+                print(f"  {path}")
         return
 
     if args.cmd == "eval":

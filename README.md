@@ -138,6 +138,22 @@ the cards you keep forgetting and the answers that lost points. **Practice my we
 writes new questions aimed at exactly those mistakes (about $0.03-0.06 with Claude) and opens
 them on the Practice page.
 
+## Start without PowerShell
+
+Run once:
+
+```powershell
+uv run lecturelab shortcut
+```
+
+This puts a **LectureLab** shortcut on the Desktop and in the Start menu (pin it to the taskbar
+if you like). It starts LectureLab without a terminal window, updates the interface if the code
+changed, and opens it in its own app window (Edge, no tabs or address bar). Clicking it while
+LectureLab is running just opens the window again. Quit from the tray icon (**Quit**), which also
+stops a running recording safely. Startup problems show a message; details are in
+`logs\launcher.log`. `uv run lecturelab shortcut --remove` removes the shortcuts.
+Set `app_window = false` in `config.toml` to use a normal browser tab instead.
+
 ## Backup
 
 **Settings → Backup**: choose a folder (a folder inside OneDrive syncs to the cloud) and turn on

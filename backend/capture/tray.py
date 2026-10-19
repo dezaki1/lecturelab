@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import webbrowser
 from collections.abc import Callable, Iterator
 
 from PIL import Image, ImageDraw
@@ -118,7 +117,9 @@ class Tray:
         self._run_safely(lambda: self.recorder.bookmark(kind))
 
     def _open(self) -> None:
-        webbrowser.open(self.url)
+        from backend.core.window import open_ui
+
+        open_ui(self.url)
 
     def _quit(self) -> None:
         self._run_safely(self.recorder.shutdown)

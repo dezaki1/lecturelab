@@ -221,6 +221,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8765
     open_browser: bool = True
+    app_window: bool = True  # open as an app window (Edge/Chrome --app) instead of a browser tab
     tray: bool = True
     ffmpeg: str = "ffmpeg"
     ffprobe: str = "ffprobe"

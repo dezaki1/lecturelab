@@ -26,7 +26,9 @@ Migrations run automatically on startup.
 ## Layout
 
 ```
-backend/            Python package (import as `backend.*`), entry point backend/main.py
+backend/            Python package (import as `backend.*`), entry point backend/main.py;
+                    launcher.py = windowless start for the shortcut (`pythonw -m backend.launcher`,
+                    `lecturelab shortcut`), core/window.open_ui = Edge/Chrome --app window
   app.py            FastAPI factory; serves frontend/dist + SPA fallback
   api/              routers: system (health, SSE /api/events), subjects, ...
   core/             config (pydantic-settings + <data>/config.toml), db (SQLite WAL, Alembic),
