@@ -78,6 +78,20 @@ use **Import** on a subject page. Pick the subject, adjust titles, and import. O
 kept (as `audio.m4a`) plus one picture per slide found in a video; your original files are
 left untouched. The lecture date is taken from the file's metadata.
 
+If the timetable has a *different* course at the recording's time, the lecture page asks
+whether it belongs there: **Move to …** (also fine while it is still being transcribed; it
+moves before the notes are written) or **It belongs here**.
+
+### Two lectures at the same time: record the second one on a tablet
+
+On the Galaxy Tab (or any Android device), join the second Zoom there and use the built-in
+**Screen recorder** (quick settings): set *Sound* to **Media sounds** (not the microphone)
+and a lower *Video quality* (720p is plenty and keeps files small). Afterwards copy the
+video to the PC (USB, cloud folder) or upload it straight from the tablet: with *Tablet &
+phone access* paired, open the subject page there and use **Import**. Slides are taken from
+the video automatically; the date comes from the file, so the timetable check above catches a
+file imported into the wrong course.
+
 ## Transcripts
 
 After transcription, a quick pass with the cheap Claude model fixes misheard technical terms

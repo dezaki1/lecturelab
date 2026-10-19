@@ -81,6 +81,14 @@ export interface Lecture {
   cleanup: { changed: number; model: string; prompt_version: string; at: string } | null
   cleanup_error: string
   moved_from: { subject_id: number; name: string; at: string } | null
+  slot_suggestion: {
+    subject_id: number
+    subject_name: string
+    summary: string
+    kind: string
+    start: string
+  } | null
+  move_queued: number | null
   cost_usd: number
   bookmark_count: number
   job_progress: number | null

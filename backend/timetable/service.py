@@ -448,3 +448,48 @@ def _zoom_window_open() -> bool:
 
 def uploaded_path(src: TimetableSource) -> Path | None:
     return abs_path(src.file_path) if src.file_path else None
+
+
+def slot_for(s: Session, start: datetime, end: datetime) -> dict[str, Any] | None:
+    """The mapped, not ignored timetable slot a recording from ``start`` to ``end`` belongs to:
+    the one it overlaps most, if that covers at least half the recording (or 20 minutes)."""
+    if end <= start:
+        end = start + timedelta(minutes=1)
+    best, best_overlap = None, 0.0
+    for ev in events_between(s, start, end):
+        if ev["ignored"] or not ev["subject_id"]:
+            continue
+        overlap = (min(end, ev["end"]) - max(start, ev["start"])).total_seconds()
+        if overlap > best_overlap:
+            best, best_overlap = ev, overlap
+    need = min((end - start).total_seconds() / 2, 20 * 60)
+    return best if best is not None and best_overlap >= need else None
+
+
+def suggest_subject(s: Session, lecture: Any) -> dict[str, Any] | None:
+    """If the timetable says this lecture happened during another subject's slot, what to show
+    on the lecture page ("Recorded during ...: move it there?"). None if it fits."""
+    start = lecture.started_at
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=UTC)
+    slot = slot_for(s, start, start + timedelta(seconds=lecture.duration_s or 0))
+    if slot is None or slot["subject_id"] == lecture.subject_id:
+        return None
+    return {
+        "subject_id": slot["subject_id"],
+        "subject_name": slot["subject_name"],
+        "summary": slot["summary"],
+        "kind": slot["kind"],
+        "start": slot["start"].isoformat(),
+    }
+
+
+def remember_suggestion(s: Session, lecture: Any) -> None:
+    """Store the other-subject guess on the lecture (the page shows it with a Move button)."""
+    try:
+        hint = suggest_subject(s, lecture)
+    except Exception:  # the timetable is only a hint: never break an import or a recording
+        log.exception("Timetable check failed")
+        return
+    meta = {k: v for k, v in lecture.meta.items() if k != "slot_suggestion"}
+    lecture.meta = {**meta, "slot_suggestion": hint} if hint else meta

@@ -201,6 +201,11 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   subjects' hub/cheat sheet/plan, flags week recaps). New tables with both columns belong in
   `lecture_ops.LECTURE_ROWS`; new stored paths under the lecture folder need a rebase there.
   `lecture_ops.repair` runs at startup and fixes lectures moved by older versions (idempotent).
+  A subject change while the lecture is processing queues `lecture_ops.MOVE_JOB` (FIFO, so it
+  runs before the pending transcribe/generate) and sets `meta.move_queued`.
+- Imports and finished captures store `meta.slot_suggestion` when the timetable has another
+  subject's slot at that time (`timetable.service.suggest_subject`); `dismiss_slot` sets
+  `meta.slot_dismissed` so it never comes back.
 - uv's `.venv\Scripts\pythonw.exe` is a CONSOLE trampoline (it starts the base python.exe):
   never point a shortcut at it directly. Shortcuts run `wscript scripts\LectureLab.vbs`, which
   starts it with window style 0 (hidden).

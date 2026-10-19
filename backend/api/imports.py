@@ -29,6 +29,7 @@ from backend.pipeline.ingest import (
     move_upload,
     title_from_filename,
 )
+from backend.timetable.service import remember_suggestion
 
 router = APIRouter(prefix="/api/imports", tags=["imports"])
 
@@ -94,6 +95,7 @@ async def import_file(
                 started_at=guess_started_at(info, last_modified),
             )
             lecture.duration_s = info.duration
+            remember_suggestion(s, lecture)  # imported into the wrong subject?
             s.add(lecture)
             s.commit()
             source = move_upload(tmp, lecture_dir(lecture), ext)

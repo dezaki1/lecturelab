@@ -30,6 +30,10 @@ def capture_done(lecture_id: int, audio: Path, duration: float | None, notify_ti
         lecture.error = None
         if auto:
             lecture.stages = {**lecture.stages, "transcribe": "pending"}
+        if "slot_suggestion" not in lecture.meta and not lecture.meta.get("slot_dismissed"):
+            from backend.timetable.service import remember_suggestion
+
+            remember_suggestion(s, lecture)
         s.add(lecture)
         s.commit()
         subject_id, title = lecture.subject_id, lecture.title

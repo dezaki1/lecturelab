@@ -24,6 +24,7 @@ from sqlmodel import Session, col, select
 
 from backend.ai.providers import active_provider_name, is_configured
 from backend.core.events import bus
+from backend.core.jobs import JobContext, handler
 from backend.core.library import move_lecture as move_folder
 from backend.core.models import (
     ChatThread,
@@ -44,6 +45,8 @@ from backend.core.models import (
 )
 
 log = logging.getLogger(__name__)
+
+MOVE_JOB = "move_lecture"
 
 # Rows that belong to a lecture and carry its subject.
 LECTURE_ROWS = (
@@ -103,14 +106,17 @@ def move(s: Session, lecture: Lecture, subject: Subject) -> dict[str, Any]:
     for r in s.exec(select(Recap).where(Recap.lecture_id == lid)).all():
         r.audio_path = rebase(r.audio_path, old_folder, new_folder) or ""
         s.add(r)
-    lecture.meta = {
-        **lecture.meta,
-        "moved_from": {
+    has_material = s.exec(
+        select(Note.id).where(Note.lecture_id == lid, col(Note.is_current))
+    ).first()
+    meta = {k: v for k, v in lecture.meta.items() if k not in ("move_queued", "slot_suggestion")}
+    if has_material:  # written for the old subject: offer to rewrite it
+        meta["moved_from"] = {
             "subject_id": old_id,
             "name": old.name if old else "",
             "at": utcnow().isoformat(),
-        },
-    }
+        }
+    lecture.meta = meta
     s.add(lecture)
     s.commit()
     log.info("Moved lecture %s from subject %s to %s: %s", lid, old_id, subject.id, moved)
@@ -271,3 +277,16 @@ def repair(s: Session) -> dict[int, int]:
     if fixed:
         log.info("Repaired lectures moved by an earlier version: %s", fixed)
     return fixed
+
+
+@handler(MOVE_JOB)
+def move_job(ctx: JobContext) -> None:
+    """A move requested while the lecture was being processed; runs between its steps."""
+    from backend.core.db import session_scope
+
+    with session_scope() as s:
+        lecture = s.get(Lecture, ctx.lecture_id)
+        subject = s.get(Subject, ctx.payload["subject_id"])
+        if lecture is None or subject is None or lecture.subject_id == subject.id:
+            return
+        move(s, lecture, subject)

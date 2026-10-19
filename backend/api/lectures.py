@@ -62,6 +62,10 @@ class LectureRead(BaseModel):
     cleanup: dict | None = None  # last cleanup run: changed lines, model, time
     cleanup_error: str = ""
     moved_from: dict | None = None  # {subject_id, name, at} until regenerated or dismissed
+    # The timetable says it happened during another subject's slot: {subject_id, subject_name,
+    # summary, kind, start}, until moved or dismissed.
+    slot_suggestion: dict | None = None
+    move_queued: int | None = None  # subject the lecture moves to once its current step is done
     cost_usd: float = 0.0
     bookmark_count: int = 0
     job_progress: float | None = None
@@ -78,6 +82,7 @@ class LectureUpdate(BaseModel):
     kind: str | None = None
     subject_id: int | None = None
     dismiss_moved: bool | None = None  # hide the "regenerate for the new subject" notice
+    dismiss_slot: bool | None = None  # "it's in the right subject": hide the timetable hint
 
 
 class BookmarkCreate(BaseModel):
@@ -120,6 +125,8 @@ def _to_read(
         "cleanup": lecture.meta.get("cleanup"),
         "cleanup_error": lecture.meta.get("cleanup_error", ""),
         "moved_from": lecture.meta.get("moved_from"),
+        "slot_suggestion": lecture.meta.get("slot_suggestion"),
+        "move_queued": lecture.meta.get("move_queued"),
         "bookmark_count": bookmark_count,
         "job_progress": job.progress if job else None,
         "job_message": job.message if job else "",
@@ -198,17 +205,36 @@ def patch_lecture(
     if "kind" in changes and changes["kind"] not in KINDS:
         raise HTTPException(422, f"kind must be one of {sorted(KINDS)}")
     if "subject_id" in changes and changes["subject_id"] != lecture.subject_id:
-        if _is_busy(lecture) or lecture.status == LectureStatus.processing:
-            raise HTTPException(409, "Wait until recording and processing have finished")
+        if _is_busy(lecture):
+            raise HTTPException(409, "Stop the recording first")
         subject = session.get(Subject, changes["subject_id"])
         if subject is None:
             raise HTTPException(404, "Subject not found")
-        lecture_ops.move(session, lecture, subject)  # re-homes everything made from it
+        lecture.meta = {
+            k: v for k, v in lecture.meta.items() if k not in ("slot_suggestion", "move_queued")
+        }
+        if lecture.status == LectureStatus.processing:
+            # A step is running: move as the next job (one job at a time), before the later
+            # steps (transcription, study material) are queued, so they happen in the new subject.
+            lecture.meta = {**lecture.meta, "move_queued": subject.id}
+            jobs_mod.enqueue(
+                session,
+                lecture_ops.MOVE_JOB,
+                lecture_id=lecture.id,
+                payload={"subject_id": subject.id},
+            )
+        else:
+            lecture_ops.move(session, lecture, subject)  # re-homes everything made from it
     if "title" in changes:
         lecture.title = changes["title"].strip()
         lecture.meta = {**lecture.meta, "title_is_default": False}
     if "kind" in changes:
         lecture.kind = changes["kind"]
+    if changes.get("dismiss_slot"):
+        lecture.meta = {
+            **{k: v for k, v in lecture.meta.items() if k != "slot_suggestion"},
+            "slot_dismissed": True,
+        }
     if changes.get("dismiss_moved"):
         lecture.meta = {k: v for k, v in lecture.meta.items() if k != "moved_from"}
     session.add(lecture)
