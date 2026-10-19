@@ -201,3 +201,6 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   subjects' hub/cheat sheet/plan, flags week recaps). New tables with both columns belong in
   `lecture_ops.LECTURE_ROWS`; new stored paths under the lecture folder need a rebase there.
   `lecture_ops.repair` runs at startup and fixes lectures moved by older versions (idempotent).
+- uv's `.venv\Scripts\pythonw.exe` is a CONSOLE trampoline (it starts the base python.exe):
+  never point a shortcut at it directly. Shortcuts run `wscript scripts\LectureLab.vbs`, which
+  starts it with window style 0 (hidden).

@@ -143,7 +143,12 @@ def make_shortcuts(remove: bool = False) -> list[str]:
     repo = Path(__file__).resolve().parents[1]
     env = {
         **os.environ,
-        "LL_TARGET": str(repo / ".venv" / "Scripts" / "pythonw.exe"),
+        # wscript + a .vbs that runs the app hidden: uv's venv pythonw.exe is a console
+        # trampoline and would show an empty terminal (closing it stopped the app).
+        "LL_TARGET": str(
+            Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32" / "wscript.exe"
+        ),
+        "LL_ARGS": f'"{repo / "scripts" / "LectureLab.vbs"}"',
         "LL_DIR": str(repo),
         "LL_ICON": str(repo / "scripts" / "lecturelab.ico"),
         "LL_REMOVE": "1" if remove else "",
@@ -158,7 +163,7 @@ foreach ($dir in $places) {
   if ($env:LL_REMOVE) { Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue; continue }
   $lnk = $shell.CreateShortcut($path)
   $lnk.TargetPath = $env:LL_TARGET
-  $lnk.Arguments = '-m backend.launcher'
+  $lnk.Arguments = $env:LL_ARGS
   $lnk.WorkingDirectory = $env:LL_DIR
   $lnk.IconLocation = $env:LL_ICON
   $lnk.Description = 'LectureLab: record, transcribe and study your lectures'
