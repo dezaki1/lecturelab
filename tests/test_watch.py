@@ -286,3 +286,24 @@ def test_watch_is_pc_only(client: TestClient) -> None:
     assert _blocked("POST", "/api/downloads/watch/report")
     r = client.get("/api/downloads/watch/state", headers={"Origin": "https://evil.example"})
     assert r.status_code == 403
+
+
+def test_reused_lecture_id_is_not_mistaken_for_the_recording(
+    client: TestClient,
+    site: str,  # noqa: F811
+) -> None:
+    """Deleting lectures frees their ids and SQLite gives them to new lectures: a recording must
+    not take someone else's lecture (2026-10-20: two recordings pointed at lecture 43)."""
+    _setup(client)
+    _report(client, [])
+    _report(client, [{"episode_id": LATER, "url": f"{site}/lecture.mp4"}])
+    with session_scope() as s:
+        from backend.core.models import WatchedRecording
+
+        rec = s.get(WatchedRecording, LATER)
+        rec.lecture_id = 2  # the user's own lecture, no episode id
+        s.add(rec)
+        s.commit()
+    client.post("/api/downloads/watch/decide", json={"get": [LATER]}, headers=EXT)
+    assert _report(client, [{"episode_id": LATER, "url": f"{site}/lecture.mp4"}])["queued"] == 1
+    assert client.get("/api/lectures/2").json()["title"] == "Intro"  # untouched

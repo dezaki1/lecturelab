@@ -125,7 +125,7 @@ def _same_length(s: Session, course: WatchedCourse, duration: float, taken: set[
 
 def _needs_link(s: Session, rec: WatchedRecording) -> bool:
     return rec.status == "wanted" or (
-        rec.status == "queued" and bool(_download_failed(s, rec.lecture_id))
+        rec.status == "queued" and bool(_download_failed(s, rec))
     )
 
 
@@ -189,9 +189,18 @@ def _queue(
     )
 
 
-def _download_failed(s: Session, lecture_id: int | None) -> bool | None:
+def _lecture_of(s: Session, rec: WatchedRecording) -> Lecture | None:
+    """The recording's lecture, if it still exists. SQLite hands a deleted lecture's id to the
+    next new one, so the id alone isn't enough: the lecture must carry the episode id."""
+    lecture = s.get(Lecture, rec.lecture_id) if rec.lecture_id else None
+    if lecture is None or (lecture.meta.get("opencast") or {}).get("episode") != rec.episode_id:
+        return None
+    return lecture
+
+
+def _download_failed(s: Session, rec: WatchedRecording) -> bool | None:
     """None if the lecture is gone (deleted: never bring it back)."""
-    lecture = s.get(Lecture, lecture_id) if lecture_id else None
+    lecture = _lecture_of(s, rec)
     if lecture is None:
         return None
     return lecture.stages.get("capture") == "failed"
@@ -255,11 +264,11 @@ def report(
         elif rec.course_id != course.id:
             continue  # the same episode linked from another course: filed there already
         if rec.status == "queued":
-            failed = _download_failed(s, rec.lecture_id)
+            failed = _download_failed(s, rec)
             if failed is None:
                 rec.status = "skipped"
             elif failed and url:  # the old link expired: same lecture, fresh link
-                lecture = s.get(Lecture, rec.lecture_id)
+                lecture = _lecture_of(s, rec)
                 retry_download(s, lecture, url, stored_url=rec.page_url, audio_url=audio_url)  # type: ignore[arg-type]
                 queued.append(lecture)  # type: ignore[arg-type]
         if rec.status == "wanted" and url:
@@ -299,7 +308,7 @@ def decide(s: Session, get: list[str], skip: list[str]) -> int:
         if rec is None:
             continue
         if rec.status == "queued":
-            lecture = s.get(Lecture, rec.lecture_id) if rec.lecture_id else None
+            lecture = _lecture_of(s, rec)
             if lecture is not None and lecture.status != "failed":
                 continue
             rec.lecture_id = None
