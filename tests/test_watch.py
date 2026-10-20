@@ -74,6 +74,7 @@ def _setup(c: TestClient) -> int:
 
 def test_backlog_is_reviewed_new_recordings_download(
     client: TestClient,
+    settings: Settings,
     site: str,  # noqa: F811
 ) -> None:
     sid = _setup(client)
@@ -126,6 +127,7 @@ def test_backlog_is_reviewed_new_recordings_download(
     assert detail["has_audio"] and detail["kind"] == "VL"
     assert detail["title"] == "HS 7 14.10.2026"  # not the file's name ("lecture")
     assert detail["started_at"].startswith("2026-10-14")  # from the title, not the download
+    assert any(p.name.startswith("2026-10-14_") for p in (settings.subjects_dir).rglob("*"))
     with session_scope() as s:
         from backend.core.models import Lecture
 

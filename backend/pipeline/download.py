@@ -424,9 +424,8 @@ def queue_download(
         title=title or f"Video from {urlsplit(url).hostname}",
         title_is_default=not title if title_is_default is None else title_is_default,
         kind=kind,
+        started_at=started_at,  # also names the folder: the lecture's day, not today
     )
-    if started_at is not None:
-        lecture.started_at = started_at
     lecture.meta = {**lecture.meta, **(meta or {}), "download": {"url": stored_url or url}}
     s.add(lecture)
     s.commit()
