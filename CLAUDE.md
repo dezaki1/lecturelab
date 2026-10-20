@@ -209,6 +209,9 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
 - uv's `.venv\Scripts\pythonw.exe` is a CONSOLE trampoline (it starts the base python.exe):
   never point a shortcut at it directly. Shortcuts run `wscript scripts\LectureLab.vbs`, which
   starts it with window style 0 (hidden).
+- Never start the user's app from Claude's own shell (`start`, `wscript ...`): it then lives in
+  Claude's process tree and died mid-lecture when the Claude app restarted its service
+  (2026-10-20). Start it as the user would: `explorer.exe "%USERPROFILE%\Desktop\LectureLab.lnk"`.
 - One app per data folder: `serve` (and the launcher, before updating/building) holds
   `<data>/.lecturelab.lock` (`util.instance_lock`). Two copies started by a double-click once
   ran the same encode job twice and broke a recording.
