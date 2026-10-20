@@ -85,6 +85,9 @@ class TranscriptionConfig(BaseModel):
     cpu_threads: int = 0  # 0 = ctranslate2 default
     beam_size: int = 5
     vad: bool = True
+    # GPU: transcribe this many speech pieces at once (2-4x faster; ~3 GB VRAM with the default
+    # model). Halves itself when the GPU runs out of memory; 0 or 1 = one at a time.
+    batch_size: int = 8
     # Auto-start transcription when a recording/import has been encoded.
     auto: bool = True
     # Where Whisper models are stored; defaults to <data_dir>/models.

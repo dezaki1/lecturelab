@@ -113,8 +113,7 @@ def retry_job(job_id: int, session: Session = Depends(get_session)) -> dict[str,
     job.started_at = job.finished_at = None
     session.add(job)
     session.commit()
-    if jobs.worker is not None:
-        jobs.worker.wake()
+    jobs.wake_all()
     bus.publish("job", {"id": job.id, "status": "queued", "lecture_id": job.lecture_id})
     return {"id": job.id, "status": "queued"}
 

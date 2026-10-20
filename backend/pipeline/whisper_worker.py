@@ -91,17 +91,50 @@ def run_faster_whisper(args: dict[str, Any]) -> dict[str, Any]:
         type="status", message="Detecting language" if not args.get("language") else "Transcribing"
     )
     t0 = time.monotonic()
-    segments_iter, info = model.transcribe(
-        audio,
-        language=args.get("language"),
-        beam_size=args.get("beam_size", 5),
-        vad_filter=args.get("vad", True),
-        word_timestamps=True,
+    options: dict[str, Any] = {
+        "language": args.get("language"),
+        "beam_size": args.get("beam_size", 5),
+        "vad_filter": args.get("vad", True),
+        "word_timestamps": True,
         # Long lectures: don't feed previous text back in (avoids repetition loops); the
         # subject vocabulary is passed as hotwords, which are prepended to every window.
-        condition_on_previous_text=False,
-        hotwords=args.get("hotwords") or None,
-    )
+        "condition_on_previous_text": False,
+        "hotwords": args.get("hotwords") or None,
+    }
+    # Batches of speech pieces at once keep the GPU busy (one 30 s window at a time leaves it
+    # mostly idle). Out of GPU memory: halve the batch and start over; 1 = the plain way.
+    batch = int(args.get("batch_size") or 0) if args["device"] == "cuda" else 0
+    while True:
+        try:
+            segments, info = _transcribe(model, audio, options, batch)
+            break
+        except RuntimeError as e:
+            if batch > 1 and "out of memory" in str(e).lower():
+                batch //= 2
+                emit(type="status", message=f"Short of GPU memory: batches of {batch}")
+                continue
+            raise
+    elapsed = time.monotonic() - t0
+    return {
+        "language": info.language,
+        "language_probability": round(info.language_probability, 3),
+        "duration": info.duration,
+        "segments": segments,
+        "elapsed_s": round(elapsed, 1),
+        "load_s": round(load_s, 1),
+        "batch_size": batch if batch > 1 else 1,
+    }
+
+
+def _transcribe(model, audio, options: dict[str, Any], batch: int):  # type: ignore[no-untyped-def]
+    if batch > 1:
+        from faster_whisper import BatchedInferencePipeline
+
+        segments_iter, info = BatchedInferencePipeline(model).transcribe(
+            audio, batch_size=batch, **options
+        )
+    else:
+        segments_iter, info = model.transcribe(audio, **options)
     emit(type="status", message="Transcribing", language=info.language)
     segments = []
     last_emit = 0.0
@@ -128,15 +161,7 @@ def run_faster_whisper(args: dict[str, Any]) -> dict[str, Any]:
         if info.duration and now - last_emit > 1.0:
             last_emit = now
             emit(type="progress", fraction=min(seg.end / info.duration, 0.999))
-    elapsed = time.monotonic() - t0
-    return {
-        "language": info.language,
-        "language_probability": round(info.language_probability, 3),
-        "duration": info.duration,
-        "segments": segments,
-        "elapsed_s": round(elapsed, 1),
-        "load_s": round(load_s, 1),
-    }
+    return segments, info
 
 
 def run_fake(args: dict[str, Any]) -> dict[str, Any]:

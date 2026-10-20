@@ -124,9 +124,7 @@ def _same_length(s: Session, course: WatchedCourse, duration: float, taken: set[
 
 
 def _needs_link(s: Session, rec: WatchedRecording) -> bool:
-    return rec.status == "wanted" or (
-        rec.status == "queued" and bool(_download_failed(s, rec))
-    )
+    return rec.status == "wanted" or (rec.status == "queued" and bool(_download_failed(s, rec)))
 
 
 def course_due(s: Session, course: WatchedCourse, now: datetime) -> bool:

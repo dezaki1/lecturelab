@@ -119,8 +119,15 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
 - Datetimes are tz-aware UTC (`models.utcnow()`); sqlmodel's UTCDateTime rejects naive ones.
 - Paths stored in the DB are relative to `settings.data_dir`.
 - Subject `slug` = folder name; never changes after creation (renaming only changes `name`).
-- Long work goes through `core.jobs` (`@handler("kind")`, `enqueue(...)`). Only one job runs at
-  a time. GPU/CPU-heavy handlers must run the heavy part in a child process.
+- Long work goes through `core.jobs` (`@handler("kind")`, `enqueue(...)`). Two lanes: "main"
+  (everything else, one at a time) and "side" (`jobs.SIDE_LANE`: slide OCR, CPU only), so OCR of
+  one lecture runs while another is transcribed. Never two jobs on the same lecture at once (24
+  places write `lecture.stages`), and lecture jobs not in `BEFORE_SLIDE_TEXT` wait while that
+  lecture's OCR is queued or running. Tests' `Worker()` (no lane) still runs everything in id
+  order. GPU/CPU-heavy handlers must run the heavy part in a child process.
+- Whisper on the GPU runs batched (`transcription.batch_size`, faster-whisper's
+  BatchedInferencePipeline; halves itself on CUDA out-of-memory). OCR groups pictures of the same
+  slide (only additions, `ocr_worker.runs`) and reads the last of each group, 3 at a time.
 - Push state changes to the UI with `core.events.bus.publish(type, data)`; frontend listens via
   `useEvent(type, fn)` (one shared EventSource).
 - Tests: never call real LLM APIs or real audio devices; use fakes. `client` fixture gives a

@@ -76,6 +76,15 @@ LABELS = {
 SELF_NOTIFYING = {"generate"}
 
 
+# Lanes. Reading slide text (OCR) only uses the CPU, so it runs on a second lane: while the GPU
+# transcribes one lecture, the CPU reads the next one's slides. Two jobs never work on the same
+# lecture at once (they would overwrite each other's stage updates), and jobs that use a
+# lecture's slide text wait until its OCR is done.
+SIDE_LANE = {"slides"}
+BEFORE_SLIDE_TEXT = {"download_media", "import_media", "encode_recording", "transcribe"}
+_claim_lock = threading.Lock()
+
+
 def handler(kind: str) -> Callable[[Handler], Handler]:
     def register(fn: Handler) -> Handler:
         HANDLERS[kind] = fn
@@ -107,8 +116,7 @@ def enqueue(
     session.commit()
     session.refresh(job)
     bus.publish("job", _job_event(job.id, job.status, 0.0, "", lecture_id))  # type: ignore[arg-type]
-    if worker is not None:
-        worker.wake()
+    wake_all()
     return job
 
 
@@ -136,15 +144,21 @@ def _kill_children() -> None:
 
 
 class Worker:
-    def __init__(self, poll_s: float = 2.0) -> None:
+    """Runs queued jobs one at a time. ``lane``: None takes every job in order (tests); "main"
+    everything but SIDE_LANE jobs, "side" only those (see SIDE_LANE)."""
+
+    def __init__(self, poll_s: float = 2.0, lane: str | None = None) -> None:
         self._poll_s = poll_s
+        self.lane = lane
         self._wake = threading.Event()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
 
-    def start(self) -> None:
-        self.requeue_interrupted()
-        self._thread = threading.Thread(target=self._loop, name="job-worker", daemon=True)
+    def start(self, requeue: bool = True) -> None:
+        if requeue:
+            self.requeue_interrupted()
+        name = f"job-worker-{self.lane}" if self.lane else "job-worker"
+        self._thread = threading.Thread(target=self._loop, name=name, daemon=True)
         self._thread.start()
 
     def stop(self, timeout: float = 5.0) -> None:
@@ -172,10 +186,8 @@ class Worker:
         """Run queued jobs until none are left. Returns how many ran (used by tests)."""
         n = 0
         while not self._stop.is_set():
-            with session_scope() as s:
-                job = s.exec(
-                    select(Job).where(Job.status == JobStatus.queued).order_by(col(Job.id))
-                ).first()
+            with _claim_lock, session_scope() as s:
+                job = self._next(s)
                 if job is None:
                     return n
                 job.status = JobStatus.running
@@ -188,6 +200,26 @@ class Worker:
             self._execute(ctx)
             n += 1
         return n
+
+    def _next(self, s: Session) -> Job | None:
+        queued = s.exec(
+            select(Job).where(Job.status == JobStatus.queued).order_by(col(Job.id))
+        ).all()
+        if self.lane is None:
+            return queued[0] if queued else None
+        running = s.exec(select(Job).where(Job.status == JobStatus.running)).all()
+        busy = {j.lecture_id for j in running if j.lecture_id is not None}
+        reading = {j.lecture_id for j in [*queued, *running] if j.kind in SIDE_LANE}
+        for job in queued:
+            side = job.kind in SIDE_LANE
+            if side != (self.lane == "side"):
+                continue
+            if job.lecture_id is not None and job.lecture_id in busy:
+                continue
+            if not side and job.lecture_id in reading and job.kind not in BEFORE_SLIDE_TEXT:
+                continue
+            return job
+        return None
 
     def _execute(self, ctx: JobContext) -> None:
         bus.publish("job", _job_event(ctx.job_id, "running", 0.0, "", ctx.lecture_id))
@@ -249,17 +281,27 @@ class Worker:
 
 
 worker: Worker | None = None
+side_worker: Worker | None = None
+
+
+def wake_all() -> None:
+    for w in (worker, side_worker):
+        if w is not None:
+            w.wake()
 
 
 def start_worker() -> Worker:
-    global worker
-    worker = Worker()
-    worker.start()
+    global worker, side_worker
+    worker = Worker(lane="main")
+    side_worker = Worker(lane="side")
+    worker.start()  # re-queues jobs a shutdown interrupted, before either lane looks
+    side_worker.start(requeue=False)
     return worker
 
 
 def stop_worker() -> None:
-    global worker
-    if worker is not None:
-        worker.stop()
-        worker = None
+    global worker, side_worker
+    for w in (side_worker, worker):
+        if w is not None:
+            w.stop()
+    worker = side_worker = None
