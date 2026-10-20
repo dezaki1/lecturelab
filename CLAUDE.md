@@ -209,3 +209,9 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
 - uv's `.venv\Scripts\pythonw.exe` is a CONSOLE trampoline (it starts the base python.exe):
   never point a shortcut at it directly. Shortcuts run `wscript scripts\LectureLab.vbs`, which
   starts it with window style 0 (hidden).
+- One app per data folder: `serve` (and the launcher, before updating/building) holds
+  `<data>/.lecturelab.lock` (`util.instance_lock`). Two copies started by a double-click once
+  ran the same encode job twice and broke a recording.
+- Windows Controlled Folder Access can refuse new files (FileNotFoundError on create). A failed
+  session.json save never ends a recording (`_save_session`); recorder start and the launcher
+  check `util.write_problem` first and show `write_blocked`'s explanation.

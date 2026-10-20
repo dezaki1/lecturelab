@@ -91,6 +91,58 @@ def test_errors(rec: TestClient, monkeypatch) -> None:
     assert r.status_code == 409 and "GB free" in r.json()["detail"]
 
 
+def test_blocked_session_file_does_not_end_recording(
+    rec: TestClient, settings: Settings, monkeypatch
+) -> None:
+    """2026-10-20: Controlled Folder Access started refusing new files mid-lecture; the failed
+    session.json save crashed the recorder and the rest of the lecture was lost."""
+    sid = _subject(rec)
+    settings.recorder.fsync_interval_s = 0.1  # the loop's periodic save runs during the test
+    rec.post("/api/recorder/start", json={"subject_id": sid})
+
+    def blocked(self, folder: Path) -> None:
+        raise FileNotFoundError(2, "No such file or directory", str(folder / "session.json.tmp"))
+
+    monkeypatch.setattr(recorder_mod.SessionInfo, "save", blocked)
+    time.sleep(0.5)
+    assert rec.post("/api/recorder/bookmark", json={"kind": "important"}).status_code == 200
+    time.sleep(0.5)
+    assert rec.get("/api/recorder").json()["recording"] is True
+    stopped = rec.post("/api/recorder/stop").json()
+    assert stopped["duration_s"] > 0.8
+    assert Worker().run_pending() >= 1
+    assert rec.get(f"/api/lectures/{stopped['lecture_id']}").json()["has_audio"]
+
+
+def test_start_refuses_when_folder_not_writable(rec: TestClient, monkeypatch) -> None:
+    sid = _subject(rec)
+    monkeypatch.setattr(recorder_mod, "write_problem", lambda folder: "Controlled Folder Access")
+    r = rec.post("/api/recorder/start", json={"subject_id": sid})
+    assert r.status_code == 409 and "Controlled Folder Access" in r.json()["detail"]
+
+
+def test_write_problem(tmp_path: Path) -> None:
+    from backend.core.util import write_problem
+
+    assert write_problem(tmp_path / "new") is None
+    assert list((tmp_path / "new").iterdir()) == []
+
+
+def test_instance_lock(tmp_path: Path) -> None:
+    """A second copy of the app (double-click on the shortcut) must not get the lock."""
+    from backend.core.util import instance_lock
+
+    path = tmp_path / ".lecturelab.lock"
+    held = instance_lock(path)
+    assert held is not None and instance_lock(path) is held  # launcher, then serve
+    probe = (
+        "import sys; from pathlib import Path; from backend.core.util import instance_lock;"
+        "sys.exit(0 if instance_lock(Path(sys.argv[1])) is None else 1)"
+    )
+    other = subprocess.run([sys.executable, "-c", probe, str(path)], cwd=Path(__file__).parents[1])
+    assert other.returncode == 0, "another process got the lock"
+
+
 def test_move_and_delete_lecture(rec: TestClient, settings: Settings) -> None:
     a, b = _subject(rec, "A"), _subject(rec, "B")
     lid = rec.post("/api/recorder/start", json={"subject_id": a}).json()["lecture_id"]

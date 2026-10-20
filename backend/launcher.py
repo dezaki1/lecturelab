@@ -75,25 +75,30 @@ def update(log) -> None:  # type: ignore[no-untyped-def]
 
 def main() -> None:
     from backend.core.config import load_settings
+    from backend.core.util import write_problem
 
     settings = load_settings(None)
     logs = settings.logs_dir
-    logs.mkdir(parents=True, exist_ok=True)
+    # pythonw has nowhere to print: without this, a blocked data folder (Controlled Folder
+    # Access) meant the app silently never started.
+    if problem := write_problem(logs):
+        message(f"LectureLab can't start.\n\n{problem}")
+        return
     log = open(logs / "launcher.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
     # pythonw has no console: send print()/stray output to the log instead of nowhere.
     sys.stdout = sys.stderr = log
     try:
         from backend.core.config import set_settings
-        from backend.core.window import open_ui
+        from backend.core.util import instance_lock
         from backend.main import _already_running
-
-        set_settings(settings)
-        if _already_running(settings):
-            open_ui(f"http://{settings.host}:{settings.port}")
-            return
-        update(log)
         from backend.main import main as cli
 
+        set_settings(settings)
+        # Only the copy that gets the lock updates and builds; for any other click serve()
+        # just opens the window (waiting for the copy that is still starting).
+        lock = settings.data_dir / ".lecturelab.lock"
+        if not _already_running(settings) and instance_lock(lock) is not None:
+            update(log)
         cli(["serve"])
     except SystemExit:
         pass

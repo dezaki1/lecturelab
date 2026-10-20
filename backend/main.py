@@ -15,6 +15,7 @@ from pathlib import Path
 import uvicorn
 
 from backend.core.config import Settings, load_settings, set_settings
+from backend.core.util import instance_lock
 from backend.core.window import open_ui
 
 log = logging.getLogger("lecturelab")
@@ -46,6 +47,17 @@ def serve(settings: Settings) -> None:
     url = f"http://{settings.host}:{settings.port}"
     if _already_running(settings):
         print(f"LectureLab is already running at {url}; opening it.")
+        open_ui(url)
+        return
+    # The health check misses a copy that is still starting (a double-click on the shortcut):
+    # two copies ran the same jobs on one database and two encoders broke a recording.
+    lock = instance_lock(settings.data_dir / ".lecturelab.lock")
+    if lock is None:
+        print(f"LectureLab is already starting at {url}; opening it.")
+        for _ in range(120):
+            if _already_running(settings):
+                break
+            time.sleep(0.5)
         open_ui(url)
         return
 

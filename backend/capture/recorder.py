@@ -38,6 +38,7 @@ from backend.core.models import (
     Subject,
 )
 from backend.core.state import load_state, update_state
+from backend.core.util import write_blocked, write_problem
 
 log = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class _Active:
     stop_event: threading.Event = field(default_factory=threading.Event)
     thread: threading.Thread | None = None
     disk_warned: bool = False
+    save_warned: bool = False
     stop_reason: str | None = None
     slides: SlideGrabber | None = None
     live: LiveTranscriber | None = None
@@ -154,6 +156,8 @@ class RecorderService:
             rc = self.settings.recorder
             mic = rc.mic_default if mic is None else mic
             self._check_disk_before_start()
+            if problem := write_problem(self.settings.data_dir / "subjects"):
+                raise RecorderError(problem)
             if subject_id is None:  # hotkey, tray, auto-record: the timetable knows what's on
                 slot = self._timetable_slot()
                 if slot is not None:
@@ -297,7 +301,7 @@ class RecorderService:
                 s.refresh(bm)
                 data = {"id": bm.id, "lecture_id": a.lecture_id, "t_s": t_s, "kind": kind.value}
             a.session.bookmarks.append({"t_s": t_s, "kind": kind.value, "note": note})
-            a.session.save(a.folder)
+            self._save_session(a)
         bus.publish("recorder.bookmark", data)
         mins, secs = divmod(int(t_s), 60)
         label = "★ Important" if kind == BookmarkKind.important else f"? {kind.value.title()}"
@@ -389,7 +393,7 @@ class RecorderService:
                     next_sync = now + rc.fsync_interval_s
                     a.writer.sync()
                     a.session.samples_written = a.writer.samples
-                    a.session.save(a.folder)
+                    self._save_session(a)
                 if now >= next_disk:
                     next_disk = now + DISK_CHECK_S
                     self._check_disk_during(a)
@@ -429,11 +433,26 @@ class RecorderService:
             a.disk_warned = True
             notify(f"Only {free_gb:.1f} GB free on the data drive.", level="warning")
 
+    def _save_session(self, a: _Active) -> None:
+        """session.json is only crash-recovery metadata: a failed save (Controlled Folder Access,
+        a scanner holding the file) must not end the recording. recording.pcm is already open,
+        so the audio keeps going."""
+        try:
+            a.session.save(a.folder)
+        except OSError as e:
+            if not a.save_warned:
+                a.save_warned = True
+                log.warning("Could not save the session file (%s); recording continues", e)
+                notify(write_blocked(a.folder) + " The recording continues.", level="warning")
+
     def _finalize(self, a: _Active) -> None:
-        a.writer.close()
+        try:
+            a.writer.close()
+        except OSError:
+            log.exception("Closing the recording file failed")
         a.session.samples_written = a.writer.samples
         a.session.stopped = True
-        a.session.save(a.folder)
+        self._save_session(a)
         duration = a.writer.samples / a.mixer.sample_rate
         log.info(
             "Recording stopped: lecture %s, %.1f s (silence padded: %s)",
