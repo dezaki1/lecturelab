@@ -554,7 +554,9 @@ def _download(ctx: JobContext) -> None:
         if lecture is None:
             raise JobError("Lecture no longer exists")
         title = clean_title(info)
-        if lecture.meta.get("title_is_default") and title:
+        # A Moodle recording's own title ("HS 1 - 15.10.2026") beats its file name ("concat");
+        # generation names it properly later.
+        if lecture.meta.get("title_is_default") and title and not ctx.payload.get("stored_url"):
             lecture.title = title[:200]
         if not ctx.payload.get("keep_date") and (when := started_at_from(info)):
             lecture.started_at = when

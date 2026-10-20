@@ -124,6 +124,7 @@ def test_backlog_is_reviewed_new_recordings_download(
     lec = next(x for x in lectures if x["id"] not in (1, 2))
     detail = client.get(f"/api/lectures/{lec['id']}").json()
     assert detail["has_audio"] and detail["kind"] == "VL"
+    assert detail["title"] == "HS 7 14.10.2026"  # not the file's name ("lecture")
     assert detail["started_at"].startswith("2026-10-14")  # from the title, not the download
     with session_scope() as s:
         from backend.core.models import Lecture
