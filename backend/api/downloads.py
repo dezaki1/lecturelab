@@ -182,7 +182,8 @@ class RecordingIn(BaseModel):
     title: str = ""
     oc_title: str = ""
     duration_s: float = 0.0
-    url: str = ""  # signed media link, works without cookies
+    url: str = ""  # signed media link (the slides video), works without cookies
+    audio_url: str = ""  # the camera video when the sound is on that one
     page_url: str = ""
 
 
@@ -213,8 +214,9 @@ def watch_state() -> dict:
 @router.post("/watch/report")
 def watch_report(body: WatchReportIn) -> dict:
     for r in body.recordings:
-        if r.url:
-            _check_url(r.url)
+        for u in (r.url, r.audio_url):
+            if u:
+                _check_url(u)
     with session_scope() as s:
         try:
             return watch.report(s, body.host, body.moodle_id, body.model_dump())

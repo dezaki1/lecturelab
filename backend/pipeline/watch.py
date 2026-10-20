@@ -166,7 +166,9 @@ def state(s: Session, now: datetime | None = None) -> dict[str, Any]:
     return {"scan": any(c["due"] for c in out), "courses": out}
 
 
-def _queue(s: Session, course: WatchedCourse, rec: WatchedRecording, url: str) -> Lecture:
+def _queue(
+    s: Session, course: WatchedCourse, rec: WatchedRecording, url: str, audio_url: str
+) -> Lecture:
     subject = s.get(Subject, course.subject_id)
     if subject is None:
         raise ValueError("The course's subject no longer exists")
@@ -183,6 +185,7 @@ def _queue(s: Session, course: WatchedCourse, rec: WatchedRecording, url: str) -
         started_at=_started_at(s, course.subject_id, rec.recorded_on, kind),
         # The subject comes from the Moodle course: no "recorded during X's slot?" question.
         meta={"opencast": {"episode": rec.episode_id}, "slot_dismissed": True},
+        audio_url=audio_url,
     )
 
 
@@ -228,6 +231,7 @@ def report(
         if not eid:
             continue
         url = str(item.get("url") or "")
+        audio_url = str(item.get("audio_url") or "")
         rec = s.get(WatchedRecording, eid)
         if rec is None:
             rec = WatchedRecording(
@@ -256,10 +260,10 @@ def report(
                 rec.status = "skipped"
             elif failed and url:  # the old link expired: same lecture, fresh link
                 lecture = s.get(Lecture, rec.lecture_id)
-                retry_download(s, lecture, url, stored_url=rec.page_url)  # type: ignore[arg-type]
+                retry_download(s, lecture, url, stored_url=rec.page_url, audio_url=audio_url)  # type: ignore[arg-type]
                 queued.append(lecture)  # type: ignore[arg-type]
         if rec.status == "wanted" and url:
-            lecture = _queue(s, course, rec, url)
+            lecture = _queue(s, course, rec, url, audio_url)
             rec.status, rec.lecture_id = "queued", lecture.id
             queued.append(lecture)
         s.add(rec)
@@ -287,11 +291,19 @@ def report(
 
 
 def decide(s: Session, get: list[str], skip: list[str]) -> int:
-    """The user's choice on the review list. Wanted ones get their link at the next scan."""
+    """The user's choice on the review list. Wanted ones get their link at the next scan. A
+    downloaded one can be asked for again once its lecture is deleted or failed (cancelled)."""
     changed = 0
     for eid, status in [*((e, "wanted") for e in get), *((e, "skipped") for e in skip)]:
         rec = s.get(WatchedRecording, eid)
-        if rec is not None and rec.status in ("review", "skipped", "wanted"):
+        if rec is None:
+            continue
+        if rec.status == "queued":
+            lecture = s.get(Lecture, rec.lecture_id) if rec.lecture_id else None
+            if lecture is not None and lecture.status != "failed":
+                continue
+            rec.lecture_id = None
+        if rec.status in ("review", "skipped", "wanted", "queued"):
             rec.status = status
             s.add(rec)
             changed += 1

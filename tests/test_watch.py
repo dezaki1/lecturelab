@@ -3,18 +3,27 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
+import threading
+from collections.abc import Iterator
 from datetime import date, timedelta
+from functools import partial
+from http.server import ThreadingHTTPServer
 
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.core.config import Settings
 from backend.core.db import session_scope
 from backend.core.jobs import Worker
 from backend.core.lan import _blocked
 from backend.core.library import create_lecture
 from backend.core.models import LectureSource, LectureStatus, Subject, WatchedCourse, utcnow
 from backend.pipeline import watch
-from tests.test_download import site  # noqa: F401  (module fixture: mp4 on a local server)
+from tests.test_download import (
+    Handler,
+    site,  # noqa: F401  (module fixture: mp4 on a local server)
+)
 
 pytestmark = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg not on PATH")
 
@@ -169,6 +178,66 @@ def test_expired_link_is_retried_and_deleted_lectures_stay_gone(
     assert client.delete(f"/api/lectures/{lecture_id}").status_code == 204
     assert _report(client, [{"episode_id": LATER, "url": f"{site}/lecture.mp4"}])["queued"] == 0
     assert LATER in _state(client)["courses"][0]["known"]
+
+
+@pytest.fixture(scope="module")
+def split_site(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    """Opencast's two videos: slides without sound, camera with the sound."""
+    root = tmp_path_factory.mktemp("opencast")
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi",
+         "-i", "testsrc=size=160x120:rate=10:duration=3", "-c:v", "libx264", "-an",
+         str(root / "slides.mp4")],
+        check=True,
+    )  # fmt: skip
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y",
+         "-f", "lavfi", "-i", "color=c=gray:size=160x120:rate=10:duration=3",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=3",
+         "-shortest", "-c:v", "libx264", "-c:a", "aac", str(root / "camera.mp4")],
+        check=True,
+    )  # fmt: skip
+    server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(root)))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_address[1]}"
+    server.shutdown()
+
+
+def test_slides_video_gets_the_camera_sound(
+    client: TestClient, settings: Settings, split_site: str
+) -> None:
+    """The bug of 2026-10-20: the camera video was downloaded, so no slides were found. Now the
+    slides video is downloaded and the sound comes from the camera file."""
+    sid = _setup(client)
+    _report(client, [])
+    got = _report(
+        client,
+        [
+            {
+                "episode_id": NEW,
+                "title": "HS 1 - 15.10.2026",
+                "url": f"{split_site}/slides.mp4",
+                "audio_url": f"{split_site}/camera.mp4",
+            }
+        ],
+    )
+    assert got["queued"] == 1
+    Worker().run_pending()
+    lec = next(
+        x for x in client.get("/api/lectures", params={"subject_id": sid}).json() if x["id"] > 2
+    )
+    detail = client.get(f"/api/lectures/{lec['id']}").json()
+    assert detail["status"] != "failed", detail.get("error")
+    assert detail["has_audio"] and 2.5 < detail["duration_s"] < 3.5
+    folder = next(p for p in settings.subjects_dir.rglob("*") if (p / "audio.m4a").exists())
+    assert not list(folder.glob("download*")), "leftover download files"
+
+    # Asked for again after deleting it (e.g. it was wrong): a new download.
+    assert client.delete(f"/api/lectures/{lec['id']}").status_code == 204
+    client.post("/api/downloads/watch/decide", json={"get": [NEW]}, headers=EXT)
+    assert NEW not in _state(client)["courses"][0]["known"]
+    got = _report(client, [{"episode_id": NEW, "url": f"{split_site}/slides.mp4"}])
+    assert got["queued"] == 1
 
 
 def test_login_error_and_scheduling(client: TestClient) -> None:

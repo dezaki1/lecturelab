@@ -408,10 +408,12 @@ def queue_download(
     stored_url: str = "",
     started_at: datetime | None = None,
     meta: dict[str, Any] | None = None,
+    audio_url: str = "",
 ) -> Lecture:
     """A new lecture plus its download job. ``stored_url`` is what the lecture remembers instead
     of ``url`` (a signed media link expires and shouldn't sit in the database); ``started_at``
-    wins over the date yt-dlp finds."""
+    wins over the date yt-dlp finds; ``audio_url``: take the sound from this file instead (an
+    Opencast slides video whose sound is on the camera video)."""
     title = title.strip()
     video = get_settings().slides.from_video if video is None else video
     lecture = create_lecture(
@@ -437,12 +439,15 @@ def queue_download(
         "cookies": cookie_file.name if cookie_file else None,
         "stored_url": stored_url,
         "keep_date": started_at is not None,
+        "audio_url": audio_url,
     }
     jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
     return lecture
 
 
-def retry_download(s: Any, lecture: Lecture, url: str, *, stored_url: str = "") -> None:
+def retry_download(
+    s: Any, lecture: Lecture, url: str, *, stored_url: str = "", audio_url: str = ""
+) -> None:
     """Download a failed lecture again from a fresh link (the old signed link expired)."""
     lecture.status = LectureStatus.processing
     lecture.stages = {**lecture.stages, "capture": "running"}
@@ -454,6 +459,7 @@ def retry_download(s: Any, lecture: Lecture, url: str, *, stored_url: str = "") 
         "video": get_settings().slides.from_video,
         "stored_url": stored_url,
         "keep_date": True,
+        "audio_url": audio_url,
     }
     jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
 
@@ -534,6 +540,10 @@ def _download(ctx: JobContext) -> None:
     media = downloaded_file(folder)
     if media is None:
         raise _nothing_saved(info, output)
+    for f in folder.glob("*.info.json"):
+        f.unlink(missing_ok=True)
+    if audio_url := ctx.payload.get("audio_url"):
+        media = _with_sound(ctx, src, media, audio_url, folder)
     source = f"source{media.suffix.lower()}"
     media.replace(folder / source)
     if src.cookie_file is not None:
@@ -560,6 +570,35 @@ def _download(ctx: JobContext) -> None:
         s.add(lecture)
         s.commit()
         jobs.enqueue(s, IMPORT_JOB, lecture_id=ctx.lecture_id, payload={"source": source})
+
+
+def _with_sound(ctx: JobContext, src: Source, video: Path, audio_url: str, folder: Path) -> Path:
+    """Download the file with the sound and join it to ``video``'s picture (no re-encoding)."""
+    ctx.progress(0.0, "Downloading the sound")
+    sound_src = Source(audio_url, src.cookie_file, src.referer, src.user_agent)
+    cmd = _fetch_cmd(sound_src, folder / f"{STEM}-sound.%(ext)s", video=False, keep=False)
+    _run(cmd, ctx, folder / "yt-dlp-sound.log")
+    for f in folder.glob("*.info.json"):
+        f.unlink(missing_ok=True)
+    sound = downloaded_file(folder, f"{STEM}-sound.*")
+    if sound is None:
+        raise JobError("The sound track wasn't saved")
+    joined = folder / f"{STEM}-joined.mkv"
+    ctx.progress(1.0, "Joining slides and sound")
+    try:
+        proc = subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-i", str(video), "-i", str(sound),
+             "-map", "0:v:0", "-map", "1:a:0", "-c", "copy", str(joined)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            creationflags=CREATE_NO_WINDOW, timeout=1800,
+        )  # fmt: skip
+    except FileNotFoundError as e:
+        raise JobError("ffmpeg not found") from e
+    if proc.returncode != 0 or not joined.exists():
+        raise JobError(f"Joining slides and sound failed: {proc.stderr.strip()[-300:]}")
+    video.unlink(missing_ok=True)
+    sound.unlink(missing_ok=True)
+    return joined
 
 
 def downloaded_file(folder: Path, pattern: str = f"{STEM}.*") -> Path | None:

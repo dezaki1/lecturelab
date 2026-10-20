@@ -48,14 +48,24 @@ function episodeIn(html) {
   }
 }
 
-/** The video that carries the sound (the slides/screen stream at JKU), closest to 720p. */
-function videoUrl(episode) {
-  const streams = episode.streams || []
-  const stream = streams.find((s) => s.role === 'mainAudio') || streams[0]
+const mp4s = (stream) => {
   const mp4 = stream?.sources?.mp4
-  const list = Array.isArray(mp4) ? [...mp4] : Object.values(mp4 || {})
-  list.sort((a, b) => Math.abs((a.res?.h || 0) - HEIGHT) - Math.abs((b.res?.h || 0) - HEIGHT))
-  return list[0]?.src || ''
+  return Array.isArray(mp4) ? [...mp4] : Object.values(mp4 || {})
+}
+
+/** Opencast records two videos: the slides/screen ("presentation") and the camera
+ * ("presenter"). The sound is on one of them ("mainAudio"), which one depends on the room. The
+ * video LectureLab wants is the slides one (~720p); if the sound is on the camera, its smallest
+ * file comes along as `audio_url` and LectureLab puts the two together. */
+function videoUrls(episode) {
+  const streams = episode.streams || []
+  const sound = streams.find((s) => s.role === 'mainAudio') || streams[0]
+  const slides = streams.find((s) => s.content === 'presentation') || sound
+  const video = mp4s(slides).sort(
+    (a, b) => Math.abs((a.res?.h || 0) - HEIGHT) - Math.abs((b.res?.h || 0) - HEIGHT),
+  )[0]
+  const audio = slides === sound ? null : mp4s(sound).sort((a, b) => (a.res?.h || 0) - (b.res?.h || 0))[0]
+  return { url: video?.src || '', audio_url: audio?.src || '' }
 }
 
 function links(html, base, re) {
@@ -85,7 +95,7 @@ async function scanCourse(course) {
       title: title || episode.metadata.title || '',
       oc_title: episode.metadata.title || '',
       duration_s: episode.metadata.duration || 0,
-      url: known.has(id) ? '' : videoUrl(episode),
+      ...(known.has(id) ? { url: '', audio_url: '' } : videoUrls(episode)),
       page_url: pageUrl,
     })
   }
