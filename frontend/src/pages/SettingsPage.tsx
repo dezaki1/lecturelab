@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 
 import { BackupSettings } from '@/components/BackupSettings'
 import { LanSettings } from '@/components/LanSettings'
+import { MoodleWatchSettings } from '@/components/MoodleWatch'
 import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { TimetableSettings } from '@/components/TimetableSettings'
 import { VoiceSettings } from '@/components/VoiceSettings'
@@ -166,6 +167,8 @@ export function SettingsPage() {
       <SlideCaptureSettings />
 
       <TimetableSettings />
+
+      <MoodleWatchSettings />
 
       <VoiceSettings />
 

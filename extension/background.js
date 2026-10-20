@@ -2,6 +2,7 @@
 // per tab, so the popup can list them. Also adds "Send to LectureLab" to the right-click menu.
 
 import { defaultSubject, lectureUrl, lecturelab, saveToDisk, sendToLectureLab } from './lib.js'
+import { watchTick } from './watch.js'
 
 const MEDIA_EXT = /\.(m3u8|mpd|mp4|m4v|webm|mkv|mov|m4a|mp3|aac|ogg|oga|opus|flac|wav)(?:$|[?#;])/i
 const MEDIA_TYPE = /^(video|audio)\/|mpegurl|dash\+xml/i
@@ -126,4 +127,14 @@ function notify(title, message, target) {
 chrome.notifications.onClicked.addListener(async (id) => {
   if (id.startsWith('lecture:')) chrome.tabs.create({ url: await lectureUrl(id.slice(8)) })
   if (id === 'folder') lecturelab.openFolder().catch(() => {})
+})
+
+// Watched Moodle courses ----------------------------------------------------------------------
+// Ask LectureLab once a minute whether a course is due (a local call; it keeps the schedule).
+// Create the alarm only if missing: re-creating it on every service-worker start would reset it.
+chrome.alarms.get('watch', (alarm) => {
+  if (!alarm) chrome.alarms.create('watch', { periodInMinutes: 1, delayInMinutes: 0.2 })
+})
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'watch') watchTick()
 })

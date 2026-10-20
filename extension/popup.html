@@ -14,6 +14,27 @@
 
     <p id="error" class="error" hidden></p>
 
+    <section id="watch" class="watch" hidden>
+      <h2>New recordings from this course</h2>
+      <p id="watch-status" class="muted small"></p>
+      <div id="watch-fields" class="row">
+        <label class="grow">
+          Into subject
+          <select id="watch-subject"></select>
+        </label>
+        <label>
+          Type
+          <select id="watch-kind">
+            <option value="">From title</option>
+            <option>VL</option>
+            <option>VO</option>
+            <option>UE</option>
+          </select>
+        </label>
+      </div>
+      <button id="watch-btn">Watch this course</button>
+    </section>
+
     <section id="form" hidden>
       <div class="modes" role="radiogroup" aria-label="What to do">
         <label><input type="radio" name="mode" value="study" checked /> Add to LectureLab</label>

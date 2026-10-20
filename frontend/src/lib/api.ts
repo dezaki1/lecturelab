@@ -1,5 +1,6 @@
 import type {
   Bookmark,
+  WatchOverview,
   BookmarkKind,
   AttemptResult,
   ChatMessage,
@@ -160,6 +161,13 @@ export const api = {
   putBackup: (body: { folder?: string; enabled?: boolean; interval_hours?: number }) =>
     request<BackupStatus>('PUT', '/api/settings/backup', body),
   runBackup: () => request<BackupResult>('POST', '/api/settings/backup/run'),
+  watch: () => request<WatchOverview>('GET', '/api/downloads/watch'),
+  watchDecide: (body: { get?: string[]; skip?: string[] }) =>
+    request<{ changed: number }>('POST', '/api/downloads/watch/decide', body),
+  watchCheck: () => request<void>('POST', '/api/downloads/watch/check'),
+  watchCourse: (body: { host: string; moodle_id: number; name: string; subject_id: number; kind: string }) =>
+    request<{ id: number }>('PUT', '/api/downloads/watch/courses', body),
+  unwatchCourse: (id: number) => request<void>('DELETE', `/api/downloads/watch/courses/${id}`),
   cheatsheet: (subjectId: number) => request<CheatSheet>('GET', `/api/subjects/${subjectId}/cheatsheet`),
   buildCheatsheet: (subjectId: number, body: { pages: number; instructions: string }) =>
     request<{ queued: boolean }>('POST', `/api/subjects/${subjectId}/cheatsheet`, body),

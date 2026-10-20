@@ -37,6 +37,14 @@ port). LectureLab has to be running. DRM-protected videos (Netflix and similar) 
 
 After `git pull`, click the reload arrow on the extension card.
 
+## Watching a Moodle course
+
+On a Moodle course page the popup shows **Watch this course**. LectureLab then lists the
+recordings already online for you to pick, and downloads new ones by itself (see the main
+README). The extension asks LectureLab once a minute whether a check is due (a local call,
+`alarms` permission); only then does it read the course page with your Moodle login. The video
+links it sends are Opencast's signed links, which work without cookies.
+
 ## YouTube
 
 YouTube needs a JavaScript runtime for yt-dlp. Install Deno once: `winget install DenoLand.Deno`,

@@ -21,14 +21,14 @@ from backend.core import jobs
 from backend.core.config import get_settings
 from backend.core.db import session_scope
 from backend.core.events import bus
-from backend.core.library import create_lecture
-from backend.core.models import LectureSource, LectureStatus, Subject
+from backend.core.models import Subject
+from backend.pipeline import watch
 from backend.pipeline.download import (
-    DOWNLOAD_JOB,
     SAVE_JOB,
     Source,
     downloads_folder,
     probe_url,
+    queue_download,
     write_cookies,
 )
 
@@ -107,33 +107,21 @@ def start_download(body: DownloadIn) -> dict:
     free = shutil.disk_usage(settings.data_dir).free
     if free < settings.recorder.min_free_gb * 1e9:
         raise HTTPException(507, f"Not enough disk space: {free / 1e9:.1f} GB free")
-    title = body.title.strip()
-    video = settings.slides.from_video if body.video is None else body.video
     with session_scope() as s:
         subject = s.get(Subject, body.subject_id)
         if subject is None:
             raise HTTPException(404, "Subject not found")
-        lecture = create_lecture(
+        lecture = queue_download(
             s,
             subject,
-            source=LectureSource.import_,
-            status=LectureStatus.processing,
-            title=title or f"Video from {urlsplit(url).hostname}",
-            title_is_default=not title,
+            url,
+            title=body.title,
             kind=body.kind,
+            video=body.video,
+            referer=body.referer,
+            user_agent=body.user_agent,
+            cookies=body.cookies,
         )
-        lecture.meta = {**lecture.meta, "download": {"url": url}}
-        s.add(lecture)
-        s.commit()
-        cookie_file = write_cookies(body.cookies) if body.cookies else None
-        payload = {
-            "url": url,
-            "video": video,
-            "referer": body.referer,
-            "user_agent": body.user_agent,
-            "cookies": cookie_file.name if cookie_file else None,
-        }
-        jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
         result = lecture_read(s, lecture)
     bus.publish("lecture", {"id": result["id"], "subject_id": body.subject_id})
     return result
@@ -176,3 +164,94 @@ def open_folder() -> None:
     if not hasattr(os, "startfile"):
         raise HTTPException(501, "Opening folders only works on Windows")
     os.startfile(folder)
+
+
+# Watched Moodle courses (the extension scans them; see pipeline.watch) -----------------------
+
+
+class WatchCourseIn(BaseModel):
+    host: str = "moodle.jku.at"
+    moodle_id: int
+    name: str = ""
+    subject_id: int
+    kind: str = ""
+
+
+class RecordingIn(BaseModel):
+    episode_id: str
+    title: str = ""
+    oc_title: str = ""
+    duration_s: float = 0.0
+    url: str = ""  # signed media link, works without cookies
+    page_url: str = ""
+
+
+class WatchReportIn(BaseModel):
+    host: str = "moodle.jku.at"
+    moodle_id: int
+    error: str = ""  # e.g. the Moodle login expired
+    recordings: list[RecordingIn] = []
+
+
+class DecideIn(BaseModel):
+    get: list[str] = []
+    skip: list[str] = []
+
+
+@router.get("/watch")
+def watch_overview() -> dict:
+    with session_scope() as s:
+        return watch.overview(s)
+
+
+@router.get("/watch/state")
+def watch_state() -> dict:
+    with session_scope() as s:
+        return watch.state(s)
+
+
+@router.post("/watch/report")
+def watch_report(body: WatchReportIn) -> dict:
+    for r in body.recordings:
+        if r.url:
+            _check_url(r.url)
+    with session_scope() as s:
+        try:
+            return watch.report(s, body.host, body.moodle_id, body.model_dump())
+        except LookupError as e:
+            raise HTTPException(404, str(e)) from e
+
+
+@router.put("/watch/courses")
+def watch_course(body: WatchCourseIn) -> dict:
+    if body.kind not in KINDS:
+        raise HTTPException(422, f"kind must be one of {sorted(KINDS)}")
+    with session_scope() as s:
+        try:
+            course = watch.upsert_course(
+                s, body.host, body.moodle_id, body.name, body.subject_id, body.kind
+            )
+        except LookupError as e:
+            raise HTTPException(404, str(e)) from e
+        return {"id": course.id, "subject_id": course.subject_id}
+
+
+@router.delete("/watch/courses/{course_id}", status_code=204)
+def unwatch_course(course_id: int) -> None:
+    with session_scope() as s:
+        try:
+            watch.remove_course(s, course_id)
+        except LookupError as e:
+            raise HTTPException(404, str(e)) from e
+
+
+@router.post("/watch/decide")
+def watch_decide(body: DecideIn) -> dict:
+    with session_scope() as s:
+        return {"changed": watch.decide(s, body.get, body.skip)}
+
+
+@router.post("/watch/check", status_code=204)
+def watch_check() -> None:
+    """Check all watched courses at the extension's next tick (within a minute)."""
+    watch.request_scan()

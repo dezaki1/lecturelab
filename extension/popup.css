@@ -218,6 +218,15 @@ button:disabled {
 button.done {
   background: var(--ok);
 }
+.watch {
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.watch h2 {
+  margin-top: 0;
+}
 .muted {
   color: var(--muted);
   font-weight: 400;

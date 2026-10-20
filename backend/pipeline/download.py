@@ -32,15 +32,16 @@ from datetime import UTC, datetime
 from http.cookiejar import LoadError, MozillaCookieJar
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from backend.core import jobs
 from backend.core.config import get_settings
 from backend.core.db import session_scope
 from backend.core.events import bus
 from backend.core.jobs import JobContext, JobError, handler
-from backend.core.library import lecture_dir
+from backend.core.library import create_lecture, lecture_dir
 from backend.core.media import CREATE_NO_WINDOW
-from backend.core.models import Lecture
+from backend.core.models import Lecture, LectureSource, LectureStatus, Subject
 from backend.pipeline.ingest import IMPORT_JOB
 from backend.pipeline.stages import stage_failed
 
@@ -392,6 +393,71 @@ def started_at_from(info: dict[str, Any]) -> datetime | None:
 # Download job --------------------------------------------------------------------------------
 
 
+def queue_download(
+    s: Any,
+    subject: Subject,
+    url: str,
+    *,
+    title: str = "",
+    title_is_default: bool | None = None,
+    kind: str = "",
+    video: bool | None = None,
+    referer: str = "",
+    user_agent: str = "",
+    cookies: str = "",
+    stored_url: str = "",
+    started_at: datetime | None = None,
+    meta: dict[str, Any] | None = None,
+) -> Lecture:
+    """A new lecture plus its download job. ``stored_url`` is what the lecture remembers instead
+    of ``url`` (a signed media link expires and shouldn't sit in the database); ``started_at``
+    wins over the date yt-dlp finds."""
+    title = title.strip()
+    video = get_settings().slides.from_video if video is None else video
+    lecture = create_lecture(
+        s,
+        subject,
+        source=LectureSource.import_,
+        status=LectureStatus.processing,
+        title=title or f"Video from {urlsplit(url).hostname}",
+        title_is_default=not title if title_is_default is None else title_is_default,
+        kind=kind,
+    )
+    if started_at is not None:
+        lecture.started_at = started_at
+    lecture.meta = {**lecture.meta, **(meta or {}), "download": {"url": stored_url or url}}
+    s.add(lecture)
+    s.commit()
+    cookie_file = write_cookies(cookies) if cookies else None
+    payload = {
+        "url": url,
+        "video": video,
+        "referer": referer,
+        "user_agent": user_agent,
+        "cookies": cookie_file.name if cookie_file else None,
+        "stored_url": stored_url,
+        "keep_date": started_at is not None,
+    }
+    jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
+    return lecture
+
+
+def retry_download(s: Any, lecture: Lecture, url: str, *, stored_url: str = "") -> None:
+    """Download a failed lecture again from a fresh link (the old signed link expired)."""
+    lecture.status = LectureStatus.processing
+    lecture.stages = {**lecture.stages, "capture": "running"}
+    lecture.error = None
+    s.add(lecture)
+    s.commit()
+    payload = {
+        "url": url,
+        "video": get_settings().slides.from_video,
+        "stored_url": stored_url,
+        "keep_date": True,
+    }
+    jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
+
+
 @handler(DOWNLOAD_JOB)
 def download_media(ctx: JobContext) -> None:
     try:
@@ -480,13 +546,14 @@ def _download(ctx: JobContext) -> None:
         title = clean_title(info)
         if lecture.meta.get("title_is_default") and title:
             lecture.title = title[:200]
-        if when := started_at_from(info):
+        if not ctx.payload.get("keep_date") and (when := started_at_from(info)):
             lecture.started_at = when
+        stored = ctx.payload.get("stored_url") or ""
         lecture.meta = {
             **lecture.meta,
             "download": {
-                "url": src.url,
-                "webpage_url": info.get("webpage_url") or src.url,
+                "url": stored or src.url,
+                "webpage_url": stored or info.get("webpage_url") or src.url,
                 "extractor": info.get("extractor_key") or "",
             },
         }

@@ -1,3 +1,4 @@
+import { moodleCourse } from './watch.js'
 import {
   defaultSubject,
   lectureUrl,
@@ -188,6 +189,63 @@ function itemRow(item, tags, name, detail) {
   return li
 }
 
+/** Best guess for a Moodle course's subject: most shared words with its title. */
+function guessSubject(title, subjects) {
+  const words = (s) => new Set(s.toLowerCase().match(/[a-zäöüß]{3,}/g) || [])
+  const t = words(title)
+  let best = null
+  let score = 0
+  for (const s of subjects) {
+    const n = [...words(s.name)].filter((w) => t.has(w)).length
+    if (n > score) [best, score] = [s, n]
+  }
+  return best
+}
+
+// "Kurs: 365.075, VL Machine Learning: Supervised Techniques, ..., 2026W | JKU Moodle"
+const courseName = (title) => title.replace(/^(Kurs|Course):\s*/, '').replace(/\s*\|[^|]*$/, '')
+
+async function watchSection(course, tabTitle, subjects) {
+  const name = courseName(tabTitle)
+  const show = (watched) => {
+    $('watch-status').textContent = watched
+      ? `Watching: new recordings go to ${watched.subject_name} by themselves` +
+        (watched.last_scan_at ? ` (checked ${new Date(watched.last_scan_at).toLocaleTimeString()}).` : '.')
+      : 'LectureLab checks this course for new Opencast recordings (hourly while the browser is open) and downloads them into the subject below.'
+    $('watch-btn').textContent = watched ? 'Save' : 'Watch this course'
+  }
+  for (const s of subjects) $('watch-subject').append(new Option(s.name, String(s.id)))
+  const overview = await lecturelab.watch()
+  const watched = overview.courses.find((c) => c.host === course.host && c.moodle_id === course.moodleId)
+  const kindInTitle = /\b(VL|VO|UE)\b/.exec(name)?.[1] || ''
+  $('watch-subject').value = String(watched?.subject_id ?? guessSubject(name, subjects)?.id ?? subjects[0]?.id)
+  $('watch-kind').value = watched?.kind ?? (/\bVL\s*\/\s*UE\b/.test(name) ? '' : kindInTitle)
+  show(watched)
+  $('watch').hidden = false
+  $('watch-btn').addEventListener('click', async () => {
+    $('watch-btn').disabled = true
+    try {
+      await lecturelab.watchCourse({
+        host: course.host,
+        moodle_id: course.moodleId,
+        name,
+        subject_id: Number($('watch-subject').value),
+        kind: $('watch-kind').value,
+      })
+      const now = (await lecturelab.watch()).courses.find(
+        (c) => c.host === course.host && c.moodle_id === course.moodleId,
+      )
+      show(now)
+      $('watch-status').textContent +=
+        ' Checking now: recordings already online show up in LectureLab for you to pick.'
+    } catch (e) {
+      showError(e.message)
+    } finally {
+      $('watch-btn').disabled = false
+    }
+  })
+}
+
 async function main() {
   // popup.html?tab=<id> opens the popup for that tab in a normal tab (debugging).
   const tabParam = Number(new URLSearchParams(location.search).get('tab'))
@@ -250,6 +308,8 @@ async function main() {
   for (const s of subjects) $('subject').append(new Option(s.name, String(s.id)))
   if (subjects.length) $('subject').value = String(await defaultSubject(subjects))
   $('form').hidden = false
+  const course = moodleCourse(tab?.url || '')
+  if (course) watchSection(course, tab.title || '', subjects).catch((e) => showError(e.message))
 
   if (tab?.url && /^https?:/i.test(tab.url)) {
     $('page').append(

@@ -92,6 +92,23 @@ phone access* paired, open the subject page there and use **Import**. Slides are
 the video automatically; the date comes from the file, so the timetable check above catches a
 file imported into the wrong course.
 
+### New Moodle recordings automatically
+
+For courses that put their recordings on Moodle (Opencast videos), the browser extension can
+fetch new ones by itself: open the course on Moodle, click the extension and **Watch this
+course** (pick the subject; the type comes from the recording's title, or set VL/UE).
+
+- The first check finds what is already online and lists it on the **Overview** to pick from
+  (anything that looks like a lecture you already have is unticked). Everything uploaded after
+  that is downloaded straight away into the right subject, notes and cards included.
+- Checks run hourly, and every 15 minutes in the six hours after a timetable slot of the
+  course. **Settings → Moodle recordings** shows each course's last check and has **Check now**.
+- The browser does the looking, since only it is logged in to Moodle: Chrome or Edge has to be
+  open (Edge: *Settings → System → Continue running background extensions* covers closed
+  windows). If the Moodle login expired, Settings says so; log in again and it continues.
+- Recordings are matched by their Opencast id, so nothing is downloaded twice, including links
+  you sent with the extension before.
+
 ## Transcripts
 
 After transcription, a quick pass with the cheap Claude model fixes misheard technical terms

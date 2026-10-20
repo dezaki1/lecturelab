@@ -675,3 +675,42 @@ class EvalRun(SQLModel, table=True):
     config: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     cost_usd: float = 0.0
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class WatchedCourse(SQLModel, table=True):
+    """A Moodle course whose Opencast recordings the browser extension checks for new ones."""
+
+    __tablename__ = "watched_course"
+
+    id: int | None = Field(default=None, primary_key=True)
+    host: str = "moodle.jku.at"
+    moodle_id: int = Field(index=True)
+    name: str = ""
+    subject_id: int = Field(foreign_key="subject.id", index=True)
+    kind: str = ""  # session type for its recordings when the title doesn't say (VL/UE)
+    # False until the first scan: what that finds is the backlog, offered for review instead of
+    # downloaded; later finds are downloaded straight away.
+    initial_done: bool = False
+    last_scan_at: datetime | None = None
+    last_error: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class WatchedRecording(SQLModel, table=True):
+    """An Opencast episode seen in a watched course. Its id is the Opencast episode id."""
+
+    __tablename__ = "watched_recording"
+
+    episode_id: str = Field(primary_key=True)
+    course_id: int = Field(foreign_key="watched_course.id", index=True)
+    title: str = ""
+    duration_s: float = 0.0
+    recorded_on: date | None = None
+    # review: found in the first scan, waiting for the user | wanted: approved, waiting for a
+    # fresh link from the extension | queued: downloading or downloaded | skipped | have: a
+    # lecture already has it
+    status: str = "review"
+    lecture_id: int | None = None
+    have_hint: str = ""  # "Probably 'X' (89 min)": an imported file of the same length
+    page_url: str = ""
+    found_at: datetime = Field(default_factory=utcnow)

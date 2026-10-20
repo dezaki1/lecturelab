@@ -1034,3 +1034,32 @@ export type LinkInfo = {
   height: number | null
   filesize: number | null
 }
+
+export interface WatchCourse {
+  id: number
+  host: string
+  moodle_id: number
+  name: string
+  subject_id: number
+  subject_name: string
+  kind: string
+  last_scan_at: string | null
+  last_error: string
+  counts: Record<'review' | 'wanted' | 'queued' | 'have' | 'skipped', number>
+}
+
+export interface WatchRecording {
+  episode_id: string
+  course_id: number
+  subject_name: string
+  title: string
+  duration_s: number
+  recorded_on: string | null
+  have_hint: string
+  status: 'review' | 'wanted'
+}
+
+export interface WatchOverview {
+  courses: WatchCourse[]
+  review: WatchRecording[]
+}

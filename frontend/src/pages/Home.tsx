@@ -3,6 +3,7 @@ import { CalendarClock, Flame, Layers, Target } from 'lucide-react'
 import { Link } from 'react-router'
 
 import { WeakSpotsCard } from '@/components/hub/WeakSpots'
+import { MoodleReview } from '@/components/MoodleWatch'
 import { PlanTodayCard } from '@/components/PlanTodayCard'
 import { TodayCard } from '@/components/TodayCard'
 import { Button } from '@/components/ui/button'
@@ -88,6 +89,7 @@ export function Home() {
         </Tile>
       </div>
 
+      <MoodleReview compact />
       <TodayCard />
       <PlanTodayCard />
 

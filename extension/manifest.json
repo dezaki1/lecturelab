@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "LectureLab Video Grabber",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Finds lecture videos on a page (Moodle, Panopto, Zoom recordings, streams) and sends them to LectureLab on this PC.",
-  "permissions": ["webRequest", "cookies", "storage", "tabs", "contextMenus", "notifications"],
+  "permissions": ["webRequest", "cookies", "storage", "tabs", "contextMenus", "notifications", "alarms"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js", "type": "module" },
   "action": {

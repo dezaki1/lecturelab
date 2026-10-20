@@ -40,6 +40,11 @@ export const lecturelab = {
   save: (data) => call('POST', '/api/downloads/save', data),
   probe: (data) => call('POST', '/api/downloads/probe', data),
   openFolder: () => call('POST', '/api/downloads/open-folder'),
+  watch: () => call('GET', '/api/downloads/watch'),
+  watchState: () => call('GET', '/api/downloads/watch/state'),
+  watchReport: (data) => call('POST', '/api/downloads/watch/report', data),
+  watchCourse: (data) => call('PUT', '/api/downloads/watch/courses', data),
+  watchCheck: () => call('POST', '/api/downloads/watch/check'),
 }
 
 /** The subject used last from the extension, else the recorder's last subject, else the first. */

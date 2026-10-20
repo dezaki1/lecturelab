@@ -203,6 +203,15 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   `lecture_ops.repair` runs at startup and fixes lectures moved by older versions (idempotent).
   A subject change while the lecture is processing queues `lecture_ops.MOVE_JOB` (FIFO, so it
   runs before the pending transcribe/generate) and sets `meta.move_queued`.
+- Watched Moodle courses (`pipeline.watch`, endpoints under `/api/downloads/watch`, so PC-only
+  with the origin check): the extension (`extension/watch.js`, alarm every minute) asks
+  `state()` which courses are due and `report()`s Opencast episodes (id, title, length, signed
+  mp4 link of the `mainAudio` stream, ~720p). LectureLab keeps the schedule and decides: first
+  scan = backlog to review, later finds download at once. Episode ids dedupe (also old
+  `engage-player_<id>` links); the lecture stores the Moodle page URL, never the signed link
+  (`queue_download(stored_url=...)`). A failed download is retried with the next fresh link
+  (`retry_download`); a deleted lecture is never re-imported. Tests use the local http.server
+  from test_download (`/private/` = expired link).
 - Imports and finished captures store `meta.slot_suggestion` when the timetable has another
   subject's slot at that time (`timetable.service.suggest_subject`); `dismiss_slot` sets
   `meta.slot_dismissed` so it never comes back.
