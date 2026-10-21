@@ -130,3 +130,27 @@ def test_batched_whisper_halves_the_batch_when_the_gpu_is_full(monkeypatch) -> N
 @pytest.fixture(autouse=True)
 def _no_running_workers() -> None:
     assert jobs.worker is None  # tests drive Worker() themselves
+
+
+def test_claude_lane_runs_courses_side_by_side_but_not_one_course_twice(
+    client: TestClient, monkeypatch
+) -> None:
+    """2026-10-21: one slow overview batch held up the next lecture's notes for 20+ minutes."""
+    monkeypatch.setattr(jobs, "_remote_llm", lambda: True)
+    one, _ = _lectures(client)
+    with session_scope() as s:
+        for kind, lecture, payload, status in (
+            ("subject_hub", None, {"subject_id": 7}, JobStatus.running),  # waiting for a batch
+            ("subject_hub", None, {"subject_id": 7}, JobStatus.queued),
+            ("subject_hub", None, {"subject_id": 10}, JobStatus.queued),
+            ("generate", one, {}, JobStatus.queued),
+        ):
+            s.add(Job(kind=kind, lecture_id=lecture, payload=payload, status=status))
+        s.commit()
+    with session_scope() as s:
+        job = jobs.Worker(lane="llm")._next(s)
+        assert job is not None and (job.kind, job.payload) == ("subject_hub", {"subject_id": 10})
+        job.status = JobStatus.running
+        s.add(job)
+        s.commit()
+    assert _next("llm") == ("generate", one)

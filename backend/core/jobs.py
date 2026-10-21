@@ -88,6 +88,10 @@ LLM_LANE = {"cleanup", "generate", "subject_hub", "cheatsheet"}
 BEFORE_SLIDE_TEXT = {"download_media", "import_media", "encode_recording", "transcribe"}
 
 
+def _subject_of(job: Job) -> Any:
+    return (job.payload or {}).get("subject_id")
+
+
 def lane_of(kind: str, remote_llm: bool) -> str:
     if kind in SIDE_LANE:
         return "side"
@@ -229,6 +233,8 @@ class Worker:
             return queued[0] if queued else None
         running = s.exec(select(Job).where(Job.status == JobStatus.running)).all()
         busy = {j.lecture_id for j in running if j.lecture_id is not None}
+        # Course-level jobs (overview, cheat sheet) of one subject never run side by side.
+        busy_courses = {(j.kind, _subject_of(j)) for j in running if j.lecture_id is None}
         reading = {j.lecture_id for j in [*queued, *running] if j.kind in SIDE_LANE}
         remote = _remote_llm()
         for job in queued:
@@ -236,6 +242,8 @@ class Worker:
             if lane_of(job.kind, remote) != self.lane:
                 continue
             if job.lecture_id is not None and job.lecture_id in busy:
+                continue
+            if job.lecture_id is None and (job.kind, _subject_of(job)) in busy_courses:
                 continue
             if not side and job.lecture_id in reading and job.kind not in BEFORE_SLIDE_TEXT:
                 continue
@@ -301,39 +309,47 @@ class Worker:
             self._wake.clear()
 
 
+# Claude jobs mostly wait (a batch can take a while), so a few run side by side: one slow
+# course overview must not hold up the next lecture's notes.
+LLM_WORKERS = 3
+
 worker: Worker | None = None
 side_worker: Worker | None = None
-llm_worker: Worker | None = None
+llm_workers: list[Worker] = []
+
+
+def _all_workers() -> list[Worker]:
+    return [w for w in (worker, side_worker, *llm_workers) if w is not None]
 
 
 def wake_all() -> None:
-    for w in (worker, side_worker, llm_worker):
-        if w is not None:
-            w.wake()
+    for w in _all_workers():
+        w.wake()
 
 
 def shutting_down() -> bool:
     """True once the app is stopping: long waits (Claude batches) give up and clean up."""
-    return any(w is not None and w._stop.is_set() for w in (worker, side_worker, llm_worker))
+    return any(w._stop.is_set() for w in _all_workers())
 
 
 def start_worker() -> Worker:
-    global worker, side_worker, llm_worker
+    global worker, side_worker, llm_workers
     worker = Worker(lane="main")
     side_worker = Worker(lane="side")
-    llm_worker = Worker(lane="llm")
+    llm_workers = [Worker(lane="llm") for _ in range(LLM_WORKERS)]
     worker.start()  # re-queues jobs a shutdown interrupted, before the other lanes look
     side_worker.start(requeue=False)
-    llm_worker.start(requeue=False)
+    for w in llm_workers:
+        w.start(requeue=False)
     return worker
 
 
 def stop_worker() -> None:
-    global worker, side_worker, llm_worker
-    for w in (llm_worker, side_worker, worker):
-        if w is not None:
-            w._stop.set()  # all at once: a lane waiting for Claude notices and cancels
-    for w in (llm_worker, side_worker, worker):
-        if w is not None:
-            w.stop()
-    worker = side_worker = llm_worker = None
+    global worker, side_worker, llm_workers
+    workers = _all_workers()
+    for w in workers:
+        w._stop.set()  # all at once: a lane waiting for Claude notices and cancels
+    for w in workers:
+        w.stop()
+    worker = side_worker = None
+    llm_workers = []
