@@ -60,6 +60,7 @@ from backend.capture.recorder import (
 )
 from backend.capture.slides import ScreenFactory, default_screen
 from backend.core import jobs
+from backend.core.awake import KeepAwake
 from backend.core.backup import BackupScheduler
 from backend.core.config import Settings, set_settings
 from backend.core.db import init_db, session_scope
@@ -126,6 +127,8 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         schedulers = [BackupScheduler(), TimetableScheduler()] if start_worker else []
+        if start_worker and settings.keep_awake:
+            schedulers.append(KeepAwake(lambda: rec.recording))
         if start_worker:
             jobs.start_worker()
         for sch in schedulers:

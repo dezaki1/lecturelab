@@ -176,6 +176,14 @@ the cards you keep forgetting and the answers that lost points. **Practice my we
 writes new questions aimed at exactly those mistakes (about $0.03-0.06 with Claude) and opens
 them on the Practice page.
 
+## Sleep
+
+While LectureLab records or has work queued, Windows doesn't go to sleep after inactivity (on
+battery that would otherwise happen after a few minutes). During a recording the screen stays on
+too, for slide capture; during processing it may turn off. Closing the lid or choosing Sleep
+still sleeps the laptop and pauses LectureLab, so keep the lid open until the queue is done.
+Turn it off with `keep_awake = false` in `config.toml`.
+
 ## Start without PowerShell
 
 Run once:

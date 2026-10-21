@@ -230,6 +230,9 @@ class Settings(BaseSettings):
     open_browser: bool = True
     app_window: bool = True  # open as an app window (Edge/Chrome --app) instead of a browser tab
     tray: bool = True
+    # Don't let Windows sleep after inactivity while recording or processing (lid and the Sleep
+    # button still sleep).
+    keep_awake: bool = True
     ffmpeg: str = "ffmpeg"
     ffprobe: str = "ffprobe"
     hotkeys: HotkeyConfig = Field(default_factory=HotkeyConfig)

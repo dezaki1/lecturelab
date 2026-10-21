@@ -37,7 +37,9 @@ backend/            Python package (import as `backend.*`), entry point backend/
                     library (lecture folders), state (last-used subject), backup (DB snapshot
                     zips with day/week rotation + incremental mirror of subjects/; scheduler
                     thread outside the job queue; `lecturelab backup` / `restore` CLI)
-                    lan (LAN mode: LanGuard ASGI token wrapper + second uvicorn server thread)
+                    lan (LAN mode: LanGuard ASGI token wrapper + second uvicorn server thread),
+                    awake (KeepAwake thread: SetThreadExecutionState while recording (screen on
+                    too) or while jobs are queued/running; `keep_awake` setting)
   capture/          live (LiveTranscriber: tails recording.pcm, windows -> voice.stt), sources (system audio = process loopback of every app except our own process
                     tree via process_loopback (plain ctypes COM), works muted; falls back to
                     soundcard WASAPI device loopback; mic via soundcard) -> mixer (wall-clock alignment, silence
