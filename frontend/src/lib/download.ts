@@ -20,8 +20,11 @@ export async function downloadPdf(pdfUrl: string, printPath: string): Promise<vo
     const a = document.createElement('a')
     a.href = url
     a.download = name
+    document.body.append(a)
     a.click()
-    URL.revokeObjectURL(url)
+    a.remove()
+    // Edge copies the file after click() returns: revoking the URL right away saved empty PDFs.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000)
     toast.success('PDF ready', { id })
   } catch (e) {
     toast.error((e as Error).message, { id })
