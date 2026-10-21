@@ -131,6 +131,35 @@ class QuestionOut(BaseModel):
     emphasized: bool = Field(description="True if it targets something the lecturer stressed")
     refs: list[Ref]
 
+    @field_validator("type", mode="before")
+    @classmethod
+    def _lenient_type(cls, v: object) -> object:
+        """Maths lectures get "proof" or "derivation" questions: one odd type used to fail (and
+        retry, three times) the whole questions call. The JSON schema it sees is unchanged."""
+        t = str(v).strip().lower().replace("_", " ").replace("-", " ")
+        if t in ("mcq", "multi", "tf", "short", "long", "calculation", "code"):
+            return t
+        for keys, kind in (
+            (("multiple choice", "single choice", "choice"), "mcq"),
+            (("multi", "select all", "multiple answer"), "multi"),
+            (("true", "false", "t/f"), "tf"),
+            (("calc", "numer", "comput"), "calculation"),
+            (("code", "program"), "code"),
+            (("short",), "short"),
+        ):
+            if any(k in t for k in keys):
+                return kind
+        return "long"  # proof, derivation, essay, explain...
+
+    @field_validator("bloom", mode="before")
+    @classmethod
+    def _lenient_bloom(cls, v: object) -> object:
+        t = str(v).strip().lower()
+        for level in ("remember", "understand", "apply", "analyze", "evaluate", "create"):
+            if t.startswith(level[:4]):
+                return level
+        return "understand"
+
 
 class QuestionsOut(BaseModel):
     questions: list[QuestionOut]
