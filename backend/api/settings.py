@@ -28,6 +28,10 @@ class ProviderRequest(BaseModel):
     provider: str
 
 
+class BatchRequest(BaseModel):
+    enabled: bool
+
+
 class Ping(BaseModel):
     ok: bool
 
@@ -43,11 +47,25 @@ def llm_settings() -> dict[str, Any]:
             "cheap": cfg.anthropic_cheap,
             "main_effort": cfg.main_effort,
             "key": keys.key_hint("anthropic"),
+            "batch": batch_enabled(),
         },
         "ollama": {"url": cfg.ollama_url, "model": cfg.ollama_model},
         "openai": {"base_url": cfg.openai_base_url, "model": cfg.openai_model},
         "generation": get_settings().generation.model_dump(),
     }
+
+
+def batch_enabled() -> bool:
+    saved = load_state().get("llm_batch")
+    return get_settings().llm.anthropic_batch if saved is None else bool(saved)
+
+
+@router.put("/llm/batch")
+def set_batch(req: BatchRequest) -> dict[str, Any]:
+    """Half-price batch mode for notes, cards and other background work (Anthropic only)."""
+    update_state(llm_batch=req.enabled)
+    bus.publish("settings", {})
+    return llm_settings()
 
 
 @router.put("/llm/provider")

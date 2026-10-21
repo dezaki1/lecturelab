@@ -39,7 +39,7 @@ def get_provider(name: str | None = None) -> Provider:
         key = get_key("anthropic")
         if not key:
             raise LLMError("No Anthropic API key set. Add it on the Settings page.")
-        return AnthropicProvider(cfg, key)
+        return AnthropicProvider(cfg, key, batch=load_state().get("llm_batch"))
     if name == "ollama":
         from backend.ai.providers.local_providers import OllamaProvider
 

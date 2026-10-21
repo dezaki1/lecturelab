@@ -518,6 +518,7 @@ export interface LLMSettings {
     cheap: string
     main_effort: string
     key: { set: boolean; hint: string | null; source: string | null }
+    batch: boolean
   }
   ollama: { url: string; model: string }
   openai: { base_url: string; model: string }

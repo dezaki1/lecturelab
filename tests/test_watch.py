@@ -310,3 +310,42 @@ def test_reused_lecture_id_is_not_mistaken_for_the_recording(
     client.post("/api/downloads/watch/decide", json={"get": [LATER]}, headers=EXT)
     assert _report(client, [{"episode_id": LATER, "url": f"{site}/lecture.mp4"}])["queued"] == 1
     assert client.get("/api/lectures/2").json()["title"] == "Intro"  # untouched
+
+
+def test_own_recording_is_asked_about_not_downloaded_again(
+    client: TestClient,
+    site: str,  # noqa: F811
+) -> None:
+    """You recorded the lecture live; Moodle puts it online too: ask, don't pay twice.
+    (A day of its own: _setup's imported lecture is dated today.)"""
+    from datetime import datetime
+
+    from backend.core.models import LectureSource, LectureStatus, Subject
+
+    sid = _setup(client)
+    _report(client, [])  # first scan done: later finds would download at once
+    with session_scope() as s:
+        own = create_lecture(
+            s,
+            s.get(Subject, sid),
+            source=LectureSource.recording,
+            status=LectureStatus.ready,
+            title="Kernel methods",
+            kind="VL",
+            started_at=datetime(2026, 10, 23, 12, 0).astimezone(),
+        )
+        own.duration_s = 80 * 60
+        s.add(own)
+        s.commit()
+    got = _report(
+        client,
+        [
+            {"episode_id": NEW, "title": "HS 7 23.10.2026", "url": f"{site}/lecture.mp4"},
+            # the exercise class the same day is something else: downloaded
+            {"episode_id": LATER, "title": "23.10.2026 UE Exercises", "url": f"{site}/lecture.mp4"},
+        ],
+    )
+    assert got == {"queued": 1, "review": 1}
+    review = client.get("/api/downloads/watch").json()["review"]
+    assert [r["episode_id"] for r in review] == [NEW]
+    assert review[0]["have_hint"] == "You recorded this yourself: “Kernel methods” (80 min)"

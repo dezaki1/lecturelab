@@ -125,6 +125,17 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   places write `lecture.stages`), and lecture jobs not in `BEFORE_SLIDE_TEXT` wait while that
   lecture's OCR is queued or running. Tests' `Worker()` (no lane) still runs everything in id
   order. GPU/CPU-heavy handlers must run the heavy part in a child process.
+- Claude jobs (`jobs.LLM_LANE`: cleanup, generate, subject_hub, cheatsheet) run on a third lane
+  "llm" when the provider is Anthropic (Ollama uses the GPU: they stay on "main"), so a long
+  wait for Claude never holds up a transcription. Batch mode (`llm.anthropic_batch`, Settings
+  switch -> state.json `llm_batch`, default on): background tasks (`BATCH_TASKS`) become
+  one-request Message Batches at half price; no `fallbacks` there (rejected), so a refusal or a
+  batch older than `batch_timeout_s` is re-sent streamed; 1-hour cache TTL so the 8 parallel
+  calls of a lecture still share the cached context; shutdown cancels open batches
+  (`jobs.shutting_down()`). `Usage.batch` halves the price, `cache_write_1h_tokens` = 2x input.
+- Moodle watch: a new episode whose subject already has a non-Opencast lecture that day (same
+  type, >= 5 min: the user's own recording) goes to review with "You recorded this yourself"
+  instead of downloading (`watch._own_recording`).
 - Whisper on the GPU runs batched (`transcription.batch_size`, faster-whisper's
   BatchedInferencePipeline; halves itself on CUDA out-of-memory). OCR groups pictures of the same
   slide (only additions, `ocr_worker.runs`) and reads the last of each group, 3 at a time.

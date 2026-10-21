@@ -105,6 +105,10 @@ class LLMConfig(BaseModel):
     chat_effort: str = "low"  # chat replies: short thinking keeps them fast
     # Server-side refusal fallback for the main model (Claude API only; Haiku has none).
     anthropic_fallbacks: bool = True
+    # Background work (notes, cards, cleanup, overviews) through the Message Batches API: half
+    # price, usually done within minutes. Settings can switch it (state.json "llm_batch").
+    anthropic_batch: bool = True
+    batch_timeout_s: float = 3 * 3600  # then cancel and send the call the normal way
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:8b"
     ollama_num_ctx: int = 32768

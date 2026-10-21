@@ -10,6 +10,7 @@ import { SlideCaptureSettings } from '@/components/SlideCaptureSettings'
 import { TimetableSettings } from '@/components/TimetableSettings'
 import { VoiceSettings } from '@/components/VoiceSettings'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -45,6 +46,7 @@ export function SettingsPage() {
   })
   const removeKey = useMutation({ mutationFn: () => api.deleteApiKey(), onSuccess: () => refresh() })
   const provider = useMutation({ mutationFn: api.setProvider, onSuccess: refresh })
+  const batch = useMutation({ mutationFn: api.setBatch, onSuccess: refresh })
   const runTest = useMutation({ mutationFn: api.testLlm, onSuccess: setTest })
 
   if (system?.remote)
@@ -87,6 +89,24 @@ export function SettingsPage() {
             Study material: <code>{s.anthropic.main}</code> (effort {s.anthropic.main_effort}) · checks:{' '}
             <code>{s.anthropic.cheap}</code>
           </p>
+        )}
+        {s.provider === 'anthropic' && (
+          <label className="flex items-start gap-3 text-sm">
+            <Switch
+              className="mt-0.5"
+              checked={s.anthropic.batch}
+              onCheckedChange={(v) => batch.mutate(v)}
+              disabled={batch.isPending}
+            />
+            <span>
+              <span className="font-medium">Half price for notes and cards</span>
+              <span className="block text-muted-foreground">
+                Background work (notes, cards, questions, course overviews) goes through Anthropic's batch
+                service at 50% of the price. Usually done within minutes, rarely up to an hour. Chat, exam
+                grading and oral practice stay instant.
+              </span>
+            </span>
+          </label>
         )}
         {s.provider === 'ollama' && (
           <p className="text-sm text-muted-foreground">

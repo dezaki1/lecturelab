@@ -227,6 +227,7 @@ export const api = {
 
   llmSettings: () => request<LLMSettings>('GET', '/api/settings/llm'),
   setProvider: (provider: string) => request<LLMSettings>('PUT', '/api/settings/llm/provider', { provider }),
+  setBatch: (enabled: boolean) => request<LLMSettings>('PUT', '/api/settings/llm/batch', { enabled }),
   setApiKey: (key: string, provider = 'anthropic') =>
     request<{ set: boolean; hint: string | null }>('PUT', '/api/settings/api-key', { provider, key }),
   deleteApiKey: (provider = 'anthropic') => request<unknown>('DELETE', `/api/settings/api-key/${provider}`),

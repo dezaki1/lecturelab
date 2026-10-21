@@ -107,7 +107,9 @@ course** (pick the subject; the type comes from the recording's title, or set VL
   open (Edge: *Settings → System → Continue running background extensions* covers closed
   windows). If the Moodle login expired, Settings says so; log in again and it continues.
 - Recordings are matched by their Opencast id, so nothing is downloaded twice, including links
-  you sent with the extension before.
+  you sent with the extension before. If you recorded a lecture yourself, its Moodle version
+  isn't downloaded but offered on the Overview ("You recorded this yourself"), in case your
+  recording has gaps.
 
 ## Transcripts
 
@@ -136,6 +138,11 @@ can be regenerated with extra instructions.
 Setup: open **Settings**, paste an Anthropic API key (stored in Windows Credential Manager). The
 lecture page shows a cost estimate before generating, typically a few tens of cents for a
 90-minute lecture with Claude Sonnet 5.5.
+
+**Half price** (Settings, on by default): notes, cards, questions and course overviews go through
+Anthropic's batch service at 50% of the price. They're usually ready a few minutes later than
+otherwise (rarely up to an hour); chat, exam grading and oral practice stay instant. While Claude
+works on one lecture's notes, the next lecture is already being transcribed.
 
 **Offline mode:** pick **Ollama** in Settings (requires [Ollama](https://ollama.com) with
 `ollama pull qwen3:8b`). Nothing leaves your computer. On a 4 GB GPU the 8B model runs mostly

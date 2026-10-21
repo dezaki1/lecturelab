@@ -35,18 +35,22 @@ class Usage:
     input_tokens: int = 0
     output_tokens: int = 0
     cache_read_tokens: int = 0
-    cache_write_tokens: int = 0
+    cache_write_tokens: int = 0  # 5-minute cache: 1.25x the input price
+    cache_write_1h_tokens: int = 0  # 1-hour cache (batch mode): 2x the input price
+    batch: bool = False  # Message Batches: half price on everything
 
     def cost(self, model: str) -> float:
         p = PRICING.get(model)
         if p is None:
             return 0.0
-        return (
+        usd = (
             self.input_tokens * p[0]
             + self.output_tokens * p[1]
             + self.cache_write_tokens * p[2]
+            + self.cache_write_1h_tokens * p[0] * 2
             + self.cache_read_tokens * p[3]
         ) / 1e6
+        return usd / 2 if self.batch else usd
 
     def __add__(self, other: Usage) -> Usage:
         return Usage(
@@ -54,6 +58,8 @@ class Usage:
             self.output_tokens + other.output_tokens,
             self.cache_read_tokens + other.cache_read_tokens,
             self.cache_write_tokens + other.cache_write_tokens,
+            self.cache_write_1h_tokens + other.cache_write_1h_tokens,
+            self.batch and other.batch,
         )
 
 

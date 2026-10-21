@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from datetime import date, timedelta
 from itertools import pairwise
 from typing import Any
 
@@ -100,7 +101,8 @@ class MockProvider:
                 {
                     "kind": "deadline",
                     "text": "Assignment due",
-                    "date": "2026-10-20",
+                    # Always ahead: past deadlines are (rightly) not suggested.
+                    "date": (date.today() + timedelta(days=14)).isoformat(),
                     "at": lines[-1][0],
                 }
             ]

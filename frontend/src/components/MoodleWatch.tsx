@@ -86,8 +86,8 @@ export function MoodleReview({ compact = false }: { compact?: boolean }) {
       {review.length > 0 && (
         <>
           <p className="mt-2 text-muted-foreground">
-            These were already online when you started watching the course. Tick the ones to download; new
-            recordings come in by themselves from now on.
+            Recordings that were already online when you started watching a course, or that you seem to have
+            recorded yourself. Tick the ones to download; everything else new comes in by itself.
           </p>
           {[...bySubject].map(([subject, recs]) => (
             <div key={subject} className="mt-3">

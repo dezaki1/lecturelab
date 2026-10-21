@@ -81,7 +81,27 @@ SELF_NOTIFYING = {"generate"}
 # lecture at once (they would overwrite each other's stage updates), and jobs that use a
 # lecture's slide text wait until its OCR is done.
 SIDE_LANE = {"slides"}
+# Jobs that only wait for Claude (in batch mode possibly for many minutes) get a lane of their
+# own, so they never hold up a transcription. With a local model (Ollama) they use the GPU and
+# stay on the main lane.
+LLM_LANE = {"cleanup", "generate", "subject_hub", "cheatsheet"}
 BEFORE_SLIDE_TEXT = {"download_media", "import_media", "encode_recording", "transcribe"}
+
+
+def lane_of(kind: str, remote_llm: bool) -> str:
+    if kind in SIDE_LANE:
+        return "side"
+    if kind in LLM_LANE and remote_llm:
+        return "llm"
+    return "main"
+
+
+def _remote_llm() -> bool:
+    from backend.ai.providers import active_provider_name
+
+    return active_provider_name() == "anthropic"
+
+
 _claim_lock = threading.Lock()
 
 
@@ -210,9 +230,10 @@ class Worker:
         running = s.exec(select(Job).where(Job.status == JobStatus.running)).all()
         busy = {j.lecture_id for j in running if j.lecture_id is not None}
         reading = {j.lecture_id for j in [*queued, *running] if j.kind in SIDE_LANE}
+        remote = _remote_llm()
         for job in queued:
             side = job.kind in SIDE_LANE
-            if side != (self.lane == "side"):
+            if lane_of(job.kind, remote) != self.lane:
                 continue
             if job.lecture_id is not None and job.lecture_id in busy:
                 continue
@@ -282,26 +303,37 @@ class Worker:
 
 worker: Worker | None = None
 side_worker: Worker | None = None
+llm_worker: Worker | None = None
 
 
 def wake_all() -> None:
-    for w in (worker, side_worker):
+    for w in (worker, side_worker, llm_worker):
         if w is not None:
             w.wake()
 
 
+def shutting_down() -> bool:
+    """True once the app is stopping: long waits (Claude batches) give up and clean up."""
+    return any(w is not None and w._stop.is_set() for w in (worker, side_worker, llm_worker))
+
+
 def start_worker() -> Worker:
-    global worker, side_worker
+    global worker, side_worker, llm_worker
     worker = Worker(lane="main")
     side_worker = Worker(lane="side")
-    worker.start()  # re-queues jobs a shutdown interrupted, before either lane looks
+    llm_worker = Worker(lane="llm")
+    worker.start()  # re-queues jobs a shutdown interrupted, before the other lanes look
     side_worker.start(requeue=False)
+    llm_worker.start(requeue=False)
     return worker
 
 
 def stop_worker() -> None:
-    global worker, side_worker
-    for w in (side_worker, worker):
+    global worker, side_worker, llm_worker
+    for w in (llm_worker, side_worker, worker):
+        if w is not None:
+            w._stop.set()  # all at once: a lane waiting for Claude notices and cancels
+    for w in (llm_worker, side_worker, worker):
         if w is not None:
             w.stop()
-    worker = side_worker = None
+    worker = side_worker = llm_worker = None

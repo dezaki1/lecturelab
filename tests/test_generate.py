@@ -282,7 +282,7 @@ def test_anthropic_request_shape_without_network() -> None:
         calls.append(kwargs)
         return _FakeStream(parsed)
 
-    provider = AnthropicProvider(LLMConfig(), api_key="sk-ant-fake")
+    provider = AnthropicProvider(LLMConfig(), api_key="sk-ant-fake", batch=False)  # streamed shape
     provider.client = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=stream)))
     req = LLMRequest(
         task="summary", system="SYS", context="CTX", instruction="DO", output=sc.SummaryOut
@@ -329,7 +329,7 @@ def test_shared_tool_mode_keeps_prefix_identical() -> None:
         calls.append(kwargs)
         return ToolStream(None)
 
-    provider = AnthropicProvider(LLMConfig(), api_key="sk-ant-fake")
+    provider = AnthropicProvider(LLMConfig(), api_key="sk-ant-fake", batch=False)  # streamed shape
     provider.client = SimpleNamespace(beta=SimpleNamespace(messages=SimpleNamespace(stream=stream)))
     for task in ("summary", "glossary"):
         r = provider.complete(

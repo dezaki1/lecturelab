@@ -32,6 +32,7 @@ SCAN_AFTER_SLOT = timedelta(minutes=15)
 AFTER_SLOT_WINDOW = timedelta(hours=6)
 RETRY_WANTED = timedelta(minutes=2)
 SAME_LENGTH_S = 120
+OWN_MIN_S = 5 * 60
 
 _scan_requested = False
 
@@ -109,6 +110,28 @@ def _episode_lectures(s: Session) -> dict[str, int]:
         if "engage-player_" in url and (m := uuid.search(url.split("engage-player_", 1)[1])):
             found[m.group(0)] = lecture.id  # type: ignore[assignment]
     return found
+
+
+def _own_recording(s: Session, course: WatchedCourse, rec: WatchedRecording) -> str:
+    """A lecture of the subject on the recording's day that didn't come from Opencast (the user
+    recorded it live or imported a file), of the same type: probably the same lecture."""
+    if rec.recorded_on is None:
+        return ""
+    same = {"VO": "VL"}
+    kind = m.group(1) if (m := _KIND.search(rec.title)) else course.kind
+    for lecture in s.exec(select(Lecture).where(Lecture.subject_id == course.subject_id)).all():
+        if (lecture.meta.get("opencast") or {}).get("episode") or not lecture.duration_s:
+            continue
+        if lecture.duration_s < OWN_MIN_S:
+            continue  # a test or a few seconds by accident
+        if _aware(lecture.started_at).astimezone().date() != rec.recorded_on:
+            continue
+        if kind and lecture.kind and same.get(kind, kind) != same.get(lecture.kind, lecture.kind):
+            continue
+        return (
+            f"You recorded this yourself: “{lecture.title}” ({round(lecture.duration_s / 60)} min)"
+        )
+    return ""
 
 
 def _same_length(s: Session, course: WatchedCourse, duration: float, taken: set[int]) -> str:
@@ -232,6 +255,7 @@ def report(
     episodes = _episode_lectures(s)
     taken = set(episodes.values())
     queued: list[Lecture] = []
+    asked: list[str] = []  # new recordings held back because you recorded them yourself
     review = 0
     for item in body.get("recordings") or []:
         eid = str(item.get("episode_id") or "").strip()
@@ -252,6 +276,12 @@ def report(
             )
             if eid in episodes:
                 rec.status, rec.lecture_id = "have", episodes[eid]
+            elif own := _own_recording(s, course, rec):
+                # Recorded live as well: ask instead of downloading (and paying) twice.
+                rec.status, rec.have_hint = "review", own
+                review += 1
+                if course.initial_done:
+                    asked.append(rec.title)
             elif not course.initial_done:
                 rec.status = "review"
                 rec.have_hint = _same_length(s, course, rec.duration_s, taken)
@@ -289,6 +319,18 @@ def report(
                 "title": "New recordings from Moodle",
                 "message": f"{n} new recording{'s' if n > 1 else ''} for "
                 f"{subject.name if subject else 'your course'}: downloading.",
+                "level": "info",
+            },
+        )
+    if asked:
+        n = len(asked)
+        bus.publish(
+            "notify",
+            {
+                "title": "Moodle recordings",
+                "message": f"{n} new recording{'s' if n > 1 else ''} for "
+                f"{subject.name if subject else 'your course'} that you recorded yourself: "
+                "get or skip on the Overview.",
                 "level": "info",
             },
         )
