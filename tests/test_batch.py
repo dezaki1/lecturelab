@@ -146,3 +146,22 @@ def test_batch_switch_in_settings(client: TestClient) -> None:
     assert client.get("/api/settings/llm").json()["anthropic"]["batch"] is True
     r = client.put("/api/settings/llm/batch", json={"enabled": False})
     assert r.json()["anthropic"]["batch"] is False
+
+
+def test_finished_batch_is_used_after_a_long_sleep(monkeypatch) -> None:
+    """Lid closed for hours: the batch finished meanwhile. Take its answer, don't cancel it and
+    pay full price for a second, normal request."""
+    p, batches, streamed = _provider(monkeypatch, [NS(type="succeeded", message=_msg())])
+    clock = iter([0.0, 10 * 24 * 3600.0])  # started, then woken days later
+    monkeypatch.setattr(ap.time, "time", lambda: next(clock, 10 * 24 * 3600.0))
+    out = p.complete(_req())
+    assert out.usage.batch and not batches.cancelled and not streamed
+
+
+def test_batch_still_running_too_long_is_sent_normally(monkeypatch) -> None:
+    p, batches, streamed = _provider(monkeypatch, [])
+    batches.retrieve = lambda batch_id: NS(id=batch_id, processing_status="in_progress")
+    clock = iter([0.0, 13 * 3600.0])
+    monkeypatch.setattr(ap.time, "time", lambda: next(clock, 13 * 3600.0))
+    out = p.complete(_req())
+    assert batches.cancelled == ["b1"] and streamed and not out.usage.batch

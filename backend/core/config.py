@@ -108,9 +108,10 @@ class LLMConfig(BaseModel):
     # Background work (notes, cards, cleanup, overviews) through the Message Batches API: half
     # price, usually done within minutes. Settings can switch it (state.json "llm_batch").
     anthropic_batch: bool = True
-    # Most batches answer within minutes; one that hasn't after this long is cancelled and that
-    # call is sent the normal way (full price for it alone), so notes never wait for hours.
-    batch_timeout_s: float = 20 * 60
+    # Most batches answer within minutes. One that hasn't after this long (wall clock, so time
+    # with the lid closed counts) is cancelled and that call sent the normal way, full price.
+    # Long on purpose: cheap beats fast here, and Claude jobs run side by side.
+    batch_timeout_s: float = 12 * 3600
     ollama_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen3:8b"
     ollama_num_ctx: int = 32768

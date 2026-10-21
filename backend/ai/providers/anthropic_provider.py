@@ -292,21 +292,25 @@ class AnthropicProvider:
             raise LLMError("Could not reach the Anthropic API (offline?).") from e
         except anthropic.APIStatusError as e:
             raise _UseStreaming(f"batch not accepted ({e.status_code})") from e
-        started = time.monotonic()
+        started = time.time()  # wall clock: hours with the lid closed count too
         polls = 0
         while batch.processing_status != "ended":
             if jobs.shutting_down():  # don't leave it running (and billed) behind us
                 self._cancel(batch.id)
                 raise LLMError("Stopped for shutdown")
-            if time.monotonic() - started > self.cfg.batch_timeout_s:
-                self._cancel(batch.id)
-                raise _UseStreaming(f"batch still running after {self.cfg.batch_timeout_s:.0f} s")
             time.sleep(BATCH_POLL_S[min(polls, len(BATCH_POLL_S) - 1)])
             polls += 1
             try:
                 batch = self.client.messages.batches.retrieve(batch.id)
             except (anthropic.APIConnectionError, anthropic.APIStatusError) as e:
                 log.warning("%s: checking batch %s failed (%s); retrying", task, batch.id, e)
+                continue
+            # Only after looking: woken from sleep, the answer is usually there already.
+            if batch.processing_status != "ended" and time.time() - started > (
+                self.cfg.batch_timeout_s
+            ):
+                self._cancel(batch.id)
+                raise _UseStreaming(f"batch still running after {self.cfg.batch_timeout_s:.0f} s")
         for item in self.client.messages.batches.results(batch.id):
             if item.result.type == "succeeded":
                 return item.result.message

@@ -133,7 +133,7 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   side; course-level jobs (no lecture) of the same kind and subject never run at once. Batch mode (`llm.anthropic_batch`, Settings
   switch -> state.json `llm_batch`, default on): background tasks (`BATCH_TASKS`) become
   one-request Message Batches at half price; no `fallbacks` there (rejected), so a refusal or a
-  batch older than `batch_timeout_s` (20 min) is cancelled and re-sent streamed; 1-hour cache TTL so the 8 parallel
+  batch older than `batch_timeout_s` (12 h wall clock, checked only after a poll so a laptop woken from sleep collects a finished batch) is cancelled and re-sent streamed; 1-hour cache TTL so the 8 parallel
   calls of a lecture still share the cached context; shutdown cancels open batches
   (`jobs.shutting_down()`). `Usage.batch` halves the price, `cache_write_1h_tokens` = 2x input.
 - Moodle watch: a new episode whose subject already has a non-Opencast lecture that day (same
