@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from datetime import date
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, Field
@@ -58,20 +59,38 @@ def pdf_available() -> dict[str, bool]:
     return {"available": pdf.find_browser() is not None}
 
 
-def _pdf(path: str, filename: str) -> Response:
+def _pdf(path: str, filename: str, raw: bool = False) -> Response:
     try:
         data = pdf.print_pdf(f"{base_url()}{path}")
     except pdf.PdfError as e:
         raise HTTPException(501, str(e)) from e
+    if raw:
+        # For the app's own PDF button: plain bytes, no "attachment", no .pdf in the URL.
+        # Download managers (IDM) take over anything that looks like a file download, and
+        # the page was left with an empty file.
+        return Response(
+            data,
+            media_type="application/octet-stream",
+            headers={"X-Filename": quote(filename), "Cache-Control": "no-store"},
+        )
     return _download(data, "application/pdf", filename)
 
 
 @router.get("/lectures/{lecture_id}/export.pdf")
 def lecture_pdf(lecture_id: int, session: Session = Depends(get_session)) -> Response:
+    return _lecture_pdf(session, lecture_id, raw=False)
+
+
+@router.get("/lectures/{lecture_id}/pdf-bytes")
+def lecture_pdf_bytes(lecture_id: int, session: Session = Depends(get_session)) -> Response:
+    return _lecture_pdf(session, lecture_id, raw=True)
+
+
+def _lecture_pdf(session: Session, lecture_id: int, raw: bool) -> Response:
     lecture = session.get(Lecture, lecture_id)
     if lecture is None:
         raise HTTPException(404, "Lecture not found")
-    return _pdf(f"/print/lectures/{lecture_id}", _filename(lecture.title, "pdf"))
+    return _pdf(f"/print/lectures/{lecture_id}", _filename(lecture.title, "pdf"), raw)
 
 
 @router.get("/subjects/{subject_id}/cheatsheet")
@@ -114,11 +133,19 @@ def build_cheatsheet(
 
 @router.get("/subjects/{subject_id}/cheatsheet.pdf")
 def cheatsheet_pdf(subject_id: int, session: Session = Depends(get_session)) -> Response:
+    return _cheatsheet_pdf(session, subject_id, raw=False)
+
+
+@router.get("/subjects/{subject_id}/cheatsheet-pdf-bytes")
+def cheatsheet_pdf_bytes(subject_id: int, session: Session = Depends(get_session)) -> Response:
+    return _cheatsheet_pdf(session, subject_id, raw=True)
+
+
+def _cheatsheet_pdf(session: Session, subject_id: int, raw: bool) -> Response:
     subject = session.get(Subject, subject_id)
     if subject is None:
         raise HTTPException(404, "Subject not found")
     if current_subject_note(session, subject_id, CHEATSHEET_KIND) is None:
         raise HTTPException(404, "No cheat sheet yet")
-    return _pdf(
-        f"/print/subjects/{subject_id}/cheatsheet", _filename(f"{subject.name} cheat sheet", "pdf")
-    )
+    name = _filename(f"{subject.name} cheat sheet", "pdf")
+    return _pdf(f"/print/subjects/{subject_id}/cheatsheet", name, raw)

@@ -14,9 +14,10 @@ export async function downloadPdf(pdfUrl: string, printPath: string): Promise<vo
       const data = await res.json().catch(() => ({}))
       throw new Error(typeof data.detail === 'string' ? data.detail : res.statusText)
     }
-    const name =
-      /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? 'lecturelab.pdf'
-    const url = URL.createObjectURL(await res.blob())
+    const name = decodeURIComponent(res.headers.get('x-filename') ?? '') || 'lecturelab.pdf'
+    const data = await res.blob()
+    if (!data.size) throw new Error('The PDF came back empty. Is a download manager (IDM) catching it?')
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = url
     a.download = name

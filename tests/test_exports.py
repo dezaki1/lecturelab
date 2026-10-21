@@ -119,6 +119,12 @@ def test_pdf_endpoints(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> N
     assert 'filename="Mock lecture topic.pdf"' in r.headers["content-disposition"]
     assert urls == [f"http://127.0.0.1:8765/print/lectures/{lid}"]
     assert client.get(f"/api/subjects/{sid}/cheatsheet.pdf").status_code == 404  # none yet
+    # What the PDF button fetches: plain bytes, so download managers (IDM) don't grab them.
+    r = client.get(f"/api/lectures/{lid}/pdf-bytes")
+    assert r.content.startswith(b"%PDF") and "content-disposition" not in r.headers
+    assert r.headers["content-type"] == "application/octet-stream"
+    assert r.headers["x-filename"] == "Mock%20lecture%20topic.pdf"
+    assert client.get(f"/api/subjects/{sid}/cheatsheet-pdf-bytes").status_code == 404
 
     # No Edge/Chrome: the real printer reports it and the UI falls back to "Save as PDF".
     monkeypatch.setattr(pdf, "print_pdf", real_print)
