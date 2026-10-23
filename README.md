@@ -4,7 +4,8 @@ A personal, local-first study app. It records Zoom lectures (or imports recordin
 them, and turns them into study material organised by subject: summaries, notes, flashcards,
 exercises and exam questions, each linked back to the exact moment in the lecture.
 
-> Status: Phase 1 in progress. See [PROGRESS.md](PROGRESS.md).
+> Status: Phases 1-3 done (recording, transcription, study material, study engine, automation).
+> See [PROGRESS.md](PROGRESS.md). Built for my own studies at JKU Linz; Windows only.
 
 ## Setup (Windows)
 
@@ -447,3 +448,15 @@ See [CLAUDE.md](CLAUDE.md) for the folder map and conventions.
 
 Recordings and slide pictures never leave your machine. The server binds to `127.0.0.1`. Only
 LLM API calls go out, and none when Ollama is selected. Recording lectures may need the lecturer's permission.
+
+## Use and recordings
+
+LectureLab is meant for personal study. Lecture recordings and slides belong to the lecturers
+and the university; the app keeps them on your own computer and shares nothing. Follow your
+university's rules on recordings: record or download only lectures you are allowed to, ask the
+lecturer when in doubt, and don't redistribute recordings or material generated from them. The
+Moodle/Opencast features only fetch what your own login can already watch.
+
+## License
+
+[MIT](LICENSE). The license covers the code, not lecture recordings or material you make with it.
