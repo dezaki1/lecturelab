@@ -281,7 +281,7 @@ Phase 3 complete (2026-10-15).
   - Verified: pytest against a local server (direct mp4, `<video>` page, cookie-protected file);
     extension loaded in Chromium: mp4, cookie-protected and HLS streams sniffed and sent, all
     four lectures reached "ready" (fake Whisper, mock LLM); a request from another site was
-    refused. Not yet tried on real Moodle/Panopto pages.
+    refused.
 - [x] **Just download** (2026-10-15): `save_media` job (no lecture) saves to the Downloads folder
   (Windows known folder, or `downloads.save_dir`) via `<data>/tmp/save-<job>/`; mp4/m4a preferred,
   `--windows-filenames`, optional file name (the extension sends the tab title for streams), no
@@ -298,6 +298,8 @@ Phase 3 complete (2026-10-15).
   files inline, else shows the frame large. The link dialog shows the frame/quality/size too.
   - Verified: pytest (direct, HLS, page, cookie-protected, WebM without ranges, audio); popup in
     Chromium: previews in ~1.5 s, inline playback, HLS frame.
+- Confirmed on the Windows laptop (2026-10-19): extension installed in the browser; import from
+  link, just download (Downloads folder, open folder) and previews all work on real sites.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 
