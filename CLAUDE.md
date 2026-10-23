@@ -199,7 +199,9 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   an open stream keeps headless Edge from ever printing.
 - Exam-simulator questions are stored with `generation = 0`; lecture regeneration never retires
   them.
-- GitHub: private repo dezaki1/lecturelab; push after each milestone commit.
+- GitHub: PUBLIC repo dezaki1/lecturelab (since 2026-10-23, MIT); push after each milestone
+  commit. Everything pushed is public: never commit keys, cookies, calendar links, the data
+  folder, real recordings/slides/transcripts or personal details.
 - Background schedulers (backup, timetable) are threads started in the app lifespan only when
   `start_worker`; tests call their methods directly with a fixed `now` (and a fake `find_zoom`).
 - Recorder start without subject_id: timetable slot first, then the last-used subject.
