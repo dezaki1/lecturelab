@@ -49,6 +49,9 @@ export interface LanStatus {
   public_network: boolean
   pair_url: string | null
   qr_svg: string | null
+  tailscale_url: string | null
+  tailscale_pair_url: string | null
+  tailscale_qr_svg: string | null
 }
 
 export type BookmarkKind = 'important' | 'confused' | 'question'

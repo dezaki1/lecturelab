@@ -114,3 +114,20 @@ def test_address_order() -> None:
         "192.168.0.100", ["192.168.0.100", "127.0.0.1", "169.254.3.4", "8.8.4.4", "10.0.0.5"]
     ) == ["192.168.0.100", "10.0.0.5"]
     assert lan.order_addresses(None, ["192.168.56.1"]) == ["192.168.56.1"]  # offline
+
+
+def test_tailscale_address(monkeypatch, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    """Tailscale's 100.x addresses aren't "private" to Python, so they come from Tailscale."""
+    exe = tmp_path / "tailscale.exe"
+    exe.write_text("")
+    monkeypatch.setattr(lan.shutil, "which", lambda name: str(exe))
+    monkeypatch.setattr(
+        lan.subprocess,
+        "run",
+        lambda *a, **k: type("R", (), {"stdout": "100.90.155.90\n"})(),
+    )
+    assert lan.tailscale_address() == "100.90.155.90"
+    assert not lan.is_public("100.90.155.90")  # no "public network" warning for it
+    monkeypatch.setattr(lan.shutil, "which", lambda name: None)
+    monkeypatch.setattr(lan, "TAILSCALE_EXE", tmp_path / "missing.exe")
+    assert lan.tailscale_address() is None

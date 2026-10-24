@@ -348,6 +348,15 @@ addresses. On the tablet, open `chrome://flags/#unsafely-treat-insecure-origin-a
 `http://<your PC's address>:8770` (shown in Settings), enable it and relaunch Chrome. After that,
 "Add to home screen" installs LectureLab as an app.
 
+### Away from home (Tailscale)
+
+Tablet access only works on the same network as the PC. To use it anywhere, install
+[Tailscale](https://tailscale.com) (free) on the PC and the tablet and sign in with the same
+account: **Settings → Tablet & phone access** then shows an *Away from home* pairing code with the
+PC's Tailscale address. Only your own devices can reach it, encrypted; nothing is opened to the
+internet. If the tablet loses its internet while Tailscale is on, turn off *Use Tailscale DNS* in
+the Tailscale app. Speaking answers (microphone) needs a secure connection, which this isn't.
+
 ## Exports and the cheat sheet
 
 - **Obsidian vault**: **Obsidian** on a subject page (or **Settings → Export** for everything)

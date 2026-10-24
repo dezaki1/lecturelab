@@ -22,11 +22,15 @@ import contextlib
 import ipaddress
 import json
 import logging
+import os
 import secrets
+import shutil
 import socket
+import subprocess
 import threading
 import time
 from http.cookies import SimpleCookie
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
 
@@ -215,8 +219,39 @@ def lan_addresses() -> list[str]:
     return order_addresses(default_route_address(), others)
 
 
+# Tailscale gives each device an address from the shared range 100.64.0.0/10. Python doesn't
+# count that as private, so the list above leaves it out; it comes from Tailscale itself.
+TAILSCALE_RANGE = ipaddress.ip_network("100.64.0.0/10")
+PROGRAM_FILES = Path(os.environ.get("PROGRAMFILES", "C:/Program Files"))
+TAILSCALE_EXE = PROGRAM_FILES / "Tailscale" / "tailscale.exe"
+
+
+def tailscale_address() -> str | None:
+    """This PC's address in the user's Tailscale network: reachable from their own devices
+    anywhere, encrypted, never from the open internet. None without Tailscale (or offline)."""
+    exe = shutil.which("tailscale") or (str(TAILSCALE_EXE) if TAILSCALE_EXE.exists() else None)
+    if exe is None:
+        return None
+    try:
+        out = subprocess.run(
+            [exe, "ip", "-4"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    for word in out.split():
+        with contextlib.suppress(ValueError):
+            if ipaddress.ip_address(word) in TAILSCALE_RANGE:
+                return word
+    return None
+
+
 def is_public(address: str) -> bool:
-    return not ipaddress.ip_address(address).is_private
+    ip = ipaddress.ip_address(address)
+    return not ip.is_private and ip not in TAILSCALE_RANGE
 
 
 # The second server ----------------------------------------------------------------------------

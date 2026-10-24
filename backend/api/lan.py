@@ -49,14 +49,26 @@ def _status(srv: lan.LanServer) -> dict[str, Any]:
         "public_network": bool(addresses) and lan.is_public(addresses[0]),
         "pair_url": None,
         "qr_svg": None,
+        # Away from home: the same server through Tailscale (the user's private network).
+        "tailscale_url": None,
+        "tailscale_pair_url": None,
+        "tailscale_qr_svg": None,
     }
     if srv.running and urls:
-        pair = f"{urls[0]}?token={lan.ensure_token()}"
-        out["pair_url"] = pair
-        # viewBox (omitsize) so the page can scale it without cropping; 4-module quiet zone,
-        # which phone cameras need to find the code.
-        out["qr_svg"] = segno.make(pair, error="m").svg_inline(scale=5, border=4, omitsize=True)
+        out["pair_url"] = pair = f"{urls[0]}?token={lan.ensure_token()}"
+        out["qr_svg"] = _qr(pair)
+    if ts := lan.tailscale_address():
+        out["tailscale_url"] = url = f"http://{ts}:{port}/"
+        if srv.running:
+            out["tailscale_pair_url"] = pair = f"{url}?token={lan.ensure_token()}"
+            out["tailscale_qr_svg"] = _qr(pair)
     return out
+
+
+def _qr(text: str) -> str:
+    # viewBox (omitsize) so the page can scale it without cropping; 4-module quiet zone, which
+    # phone cameras need to find the code.
+    return str(segno.make(text, error="m").svg_inline(scale=5, border=4, omitsize=True))
 
 
 @router.get("")

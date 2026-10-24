@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, KeyRound, Loader2, TabletSmartphone, TriangleAlert, XCircle } from 'lucide-react'
+import { Copy, Globe, KeyRound, Loader2, TabletSmartphone, TriangleAlert, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -121,6 +121,58 @@ export function LanSettings() {
               <KeyRound /> New pairing code
             </Button>
           </div>
+        </div>
+      )}
+      {s.running && (
+        <div className="space-y-2 border-t pt-4">
+          <h3 className="flex items-center gap-2 font-medium">
+            <Globe className="size-4" /> Away from home (Tailscale)
+          </h3>
+          {s.tailscale_pair_url ? (
+            <div className="flex flex-wrap items-start gap-5">
+              {s.tailscale_qr_svg && (
+                <div
+                  className="shrink-0 rounded-md bg-white [&_svg]:block [&_svg]:size-44"
+                  aria-label="Pairing QR code for Tailscale"
+                  role="img"
+                  dangerouslySetInnerHTML={{ __html: s.tailscale_qr_svg }}
+                />
+              )}
+              <div className="min-w-0 flex-1 space-y-2">
+                <p>
+                  With Tailscale on (same account on both devices), the tablet reaches this PC from anywhere,
+                  encrypted and only from your own devices. Scan this code or open the link once to pair:
+                </p>
+                <div className="flex items-center gap-1">
+                  <code className="min-w-0 truncate rounded bg-muted px-1.5 py-0.5 text-xs">
+                    {s.tailscale_pair_url}
+                  </code>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label="Copy Tailscale pairing link"
+                    onClick={() =>
+                      navigator.clipboard
+                        .writeText(s.tailscale_pair_url ?? '')
+                        .then(() => toast.success('Pairing link copied'))
+                        .catch(() => toast.error('Could not copy the link'))
+                    }
+                  >
+                    <Copy />
+                  </Button>
+                </div>
+                <p className="text-muted-foreground">
+                  Then the tablet opens <code>{s.tailscale_url}</code>. If it loses its internet while
+                  Tailscale is on, turn off <i>Use Tailscale DNS</i> in the Tailscale app&apos;s settings.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              To use LectureLab on the tablet away from home, install Tailscale (free) on this PC and on the
+              tablet and sign in with the same account. Its address then appears here with a pairing code.
+            </p>
+          )}
         </div>
       )}
     </section>
