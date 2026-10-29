@@ -27,6 +27,62 @@ from backend.core.models import (
 from backend.study.review import counts, local_day_start, now_utc, stats
 
 MATURE_DAYS = 21.0
+# Readiness: flashcards weigh more than exam questions (there are more of them and they are
+# the course's facts); questions show whether you can use what you know.
+CARD_WEIGHT, QUESTION_WEIGHT = 0.7, 0.3
+
+
+def _mean(xs: list[float]) -> float | None:
+    return sum(xs) / len(xs) if xs else None
+
+
+def _r3(x: float | None) -> float | None:
+    return None if x is None else round(x, 3)
+
+
+def readiness(card_recall: list[float | None], question_scores: list[float | None]) -> dict:
+    """How ready you are for a course, 0..1, and its parts.
+
+    ``card_recall``: per active card, the chance you'd recall it today, or None if you never
+    studied it. ``question_scores``: per question, your latest score (0..1), or None if never
+    answered. An unseen card or unanswered question counts as 0, so the score grows with
+    coverage, memory and practice alike.
+    """
+    seen = [r for r in card_recall if r is not None]
+    answered = [q for q in question_scores if q is not None]
+    total = len(card_recall) + len(question_scores)
+    parts: list[tuple[float, float]] = []
+    if card_recall:
+        parts.append((CARD_WEIGHT, sum(seen) / len(card_recall)))
+    if question_scores:
+        parts.append((QUESTION_WEIGHT, sum(answered) / len(question_scores)))
+    weight = sum(w for w, _ in parts)
+    score = sum(w * v for w, v in parts) / weight if weight else None
+    return {
+        "score": _r3(score),
+        "covered": _r3((len(seen) + len(answered)) / total) if total else None,
+        "remembered": _r3(_mean(seen)),
+        "practised": _r3(_mean(answered)),
+        "cards_unseen": len(card_recall) - len(seen),
+        "questions_unanswered": len(question_scores) - len(answered),
+    }
+
+
+def _latest_scores(s: Session, subject_id: int) -> dict[int, float]:
+    """Question id -> your latest answer's score (0..1)."""
+    rows = s.exec(
+        select(Attempt.question_id, Attempt.score, Attempt.max_points, Attempt.correct)
+        .join(Question, col(Question.id) == col(Attempt.question_id))
+        .where(Question.subject_id == subject_id)
+        .order_by(col(Attempt.created_at), col(Attempt.id))
+    ).all()
+    out: dict[int, float] = {}
+    for qid, score, mx, correct in rows:
+        if mx and mx > 0:
+            out[qid] = max(0.0, min(1.0, score / mx))
+        else:
+            out[qid] = 1.0 if correct else 0.0
+    return out
 
 
 def retrievability(sch: Scheduler, card: Flashcard, now: datetime) -> float:
@@ -111,6 +167,14 @@ def _subject_rows(s: Session, now: datetime) -> list[dict[str, Any]]:
         ).all()
         active = [c for c in cards if not c.suspended]
         recall = [retrievability(sch, c, now) for c in active]
+        questions = s.exec(
+            select(Question.id).where(Question.subject_id == sub.id, col(Question.is_current))
+        ).all()
+        latest = _latest_scores(s, sub.id)  # type: ignore[arg-type]
+        ready = readiness(
+            [None if c.due is None else r for c, r in zip(active, recall, strict=True)],
+            [latest.get(q) for q in questions],  # type: ignore[arg-type]
+        )
         stab = [c.fsrs.get("stability") or 0 for c in active if c.due is not None]
         lectures = s.exec(select(Lecture.status).where(Lecture.subject_id == sub.id)).all()
         n, score, mx = practice.get(sub.id, (0, 0.0, 0.0))  # type: ignore[arg-type]
@@ -132,6 +196,8 @@ def _subject_rows(s: Session, now: datetime) -> list[dict[str, Any]]:
                 "due": c["due"],
                 "mastery": round(sum(recall) / len(recall), 3) if recall else None,
                 "practice": {"attempts": n, "score": round(score, 1), "max": round(mx, 1)},
+                "questions": len(questions),
+                "readiness": ready,
             }
         )
     # Exams soonest first, then subjects without an exam date by name.

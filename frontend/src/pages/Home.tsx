@@ -4,12 +4,12 @@ import { Link } from 'react-router'
 
 import { WeakSpotsCard } from '@/components/hub/WeakSpots'
 import { MoodleReview } from '@/components/MoodleWatch'
+import { CourseReadiness } from '@/components/CourseReadiness'
 import { PlanTodayCard } from '@/components/PlanTodayCard'
 import { TodayCard } from '@/components/TodayCard'
 import { Button } from '@/components/ui/button'
 import { useEvent } from '@/hooks/useEvents'
 import { api } from '@/lib/api'
-import type { SubjectProgress } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
 const pct = (x: number | null | undefined) => (x == null ? '—' : `${Math.round(x * 100)}%`)
@@ -120,34 +120,7 @@ export function Home() {
 
       <WeakSpotsCard />
 
-      <section className="mt-3 rounded-lg border bg-card">
-        <div className="flex items-baseline justify-between px-4 pt-4">
-          <h2 className="text-sm font-medium">Subjects</h2>
-          <span className="text-xs text-muted-foreground">
-            mastery = how much of the deck you would recall today
-          </span>
-        </div>
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr className="border-b">
-                <th className="px-4 py-2 font-normal">Subject</th>
-                <th className="px-2 py-2 font-normal">Exam</th>
-                <th className="px-2 py-2 font-normal">Lectures</th>
-                <th className="px-2 py-2 font-normal">Cards</th>
-                <th className="w-40 px-2 py-2 font-normal">Mastery</th>
-                <th className="px-2 py-2 text-right font-normal">Due</th>
-                <th className="px-4 py-2 text-right font-normal">Practice</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {d.subjects.map((s) => (
-                <SubjectRow key={s.subject_id} s={s} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <CourseReadiness subjects={d.subjects} />
 
       {system && (
         <p className="mt-6 text-xs text-muted-foreground">
@@ -210,77 +183,5 @@ function Bars({
         </div>
       )}
     </div>
-  )
-}
-
-function SubjectRow({ s }: { s: SubjectProgress }) {
-  const total = s.new + s.young + s.mature
-  const seg = (n: number) => `${total ? (n / total) * 100 : 0}%`
-  const practice = s.practice.max ? s.practice.score / s.practice.max : null
-  return (
-    <tr className="hover:bg-muted/40">
-      <td className="max-w-56 px-4 py-2.5">
-        <Link to={`/subjects/${s.subject_id}`} className="flex items-center gap-2 hover:underline">
-          <span className="size-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
-          <span className="truncate">{s.name}</span>
-        </Link>
-      </td>
-      <td className="px-2 py-2.5 whitespace-nowrap text-muted-foreground">
-        {s.days_left == null ? (
-          '—'
-        ) : s.days_left < 0 ? (
-          'done'
-        ) : (
-          <span className={cn(s.days_left <= 14 && 'font-medium text-amber-600 dark:text-amber-400')}>
-            in {s.days_left} d
-          </span>
-        )}
-      </td>
-      <td className="px-2 py-2.5 text-muted-foreground tabular-nums">
-        {s.lectures_ready}
-        {s.lectures !== s.lectures_ready && `/${s.lectures}`}
-      </td>
-      <td className="px-2 py-2.5">
-        {total ? (
-          <div
-            className="w-28"
-            title={`${s.new} new · ${s.young} learning/young · ${s.mature} mature (21+ days)`}
-          >
-            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="bg-emerald-500" style={{ width: seg(s.mature) }} />
-              <div className="bg-amber-400" style={{ width: seg(s.young) }} />
-              <div className="bg-sky-400/60" style={{ width: seg(s.new) }} />
-            </div>
-            <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{total} cards</div>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )}
-      </td>
-      <td className="px-2 py-2.5">
-        {s.mastery == null ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary" style={{ width: pct(s.mastery) }} />
-            </div>
-            <span className="text-xs tabular-nums">{pct(s.mastery)}</span>
-          </div>
-        )}
-      </td>
-      <td className="px-2 py-2.5 text-right tabular-nums">
-        {s.due ? (
-          <Link to={`/review?subject=${s.subject_id}`} className="text-primary hover:underline">
-            {s.due}
-          </Link>
-        ) : (
-          <span className="text-muted-foreground">0</span>
-        )}
-      </td>
-      <td className="px-4 py-2.5 text-right text-muted-foreground tabular-nums">
-        {practice == null ? '—' : pct(practice)}
-      </td>
-    </tr>
   )
 }

@@ -193,3 +193,24 @@ def test_practice_api(client: TestClient) -> None:
     assert weakest[0]["id"] == mcq and weakest[0]["last_score"] == 0  # failed one first
     stats = client.get("/api/practice/stats").json()["by_subject"][0]
     assert stats["attempts"] == 3 and stats["score"] == 5
+
+
+def test_readiness_combines_coverage_memory_and_practice() -> None:
+    from backend.study.dashboard import readiness
+
+    # 4 cards: two studied (recall 0.9 and 0.5), two never seen; 2 questions: one 80%.
+    r = readiness([0.9, 0.5, None, None], [0.8, None])
+    assert r["covered"] == 0.5  # 3 of 6 items
+    assert r["remembered"] == 0.7 and r["practised"] == 0.8
+    assert r["cards_unseen"] == 2 and r["questions_unanswered"] == 1
+    # cards part 1.4/4 = 0.35, questions part 0.8/2 = 0.4 -> 0.7*0.35 + 0.3*0.4
+    assert r["score"] == round(0.7 * 0.35 + 0.3 * 0.4, 3)
+    assert readiness([], [])["score"] is None  # no material yet
+    assert readiness([1.0, 1.0], [])["score"] == 1.0  # only cards: their part alone
+
+
+def test_dashboard_rows_include_readiness(client) -> None:  # type: ignore[no-untyped-def]
+    sid = client.post("/api/subjects", json={"name": "Algebra"}).json()["id"]
+    rows = client.get("/api/dashboard").json()["subjects"]
+    row = next(r for r in rows if r["subject_id"] == sid)
+    assert row["readiness"]["score"] is None and row["questions"] == 0

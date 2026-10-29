@@ -639,6 +639,18 @@ export interface SubjectProgress {
   due: number
   mastery: number | null
   practice: { attempts: number; score: number; max: number }
+  questions: number
+  readiness: Readiness
+}
+
+/** A course's readiness (0..1): covered x remembered x practised, see backend study.dashboard. */
+export interface Readiness {
+  score: number | null
+  covered: number | null
+  remembered: number | null
+  practised: number | null
+  cards_unseen: number
+  questions_unanswered: number
 }
 
 export interface Dashboard extends ReviewSummary {
