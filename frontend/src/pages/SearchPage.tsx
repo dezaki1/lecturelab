@@ -67,7 +67,9 @@ export function SearchPage() {
                   L{h.lecture_number} {h.lecture_title}
                 </span>
                 {h.start_s != null && (
-                  <span className="ml-auto font-mono text-primary">{formatDuration(h.start_s)}</span>
+                  <span className="ml-auto font-mono text-primary">
+                    {h.page != null ? `p. ${h.page}` : formatDuration(h.start_s)}
+                  </span>
                 )}
               </div>
               {h.heading && <div className="mb-1 text-sm font-medium">{h.heading}</div>}

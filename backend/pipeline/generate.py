@@ -50,6 +50,7 @@ from backend.core.models import (
 from backend.core.util import format_hms
 from backend.pipeline.hints import candidates_text, hints_block, lecture_hints
 from backend.pipeline.stages import GENERATE_JOB, lecture_ready
+from backend.pipeline.study_docs import is_document, page_of, page_refs
 
 log = logging.getLogger(__name__)
 
@@ -75,7 +76,10 @@ def parse_ts(text: str) -> float | None:
     return h * 3600 + mins * 60 + secs
 
 
-def to_refs(lecture_id: int, refs: list[sc.Ref], duration: float) -> list[dict[str, Any]]:
+def to_refs(
+    lecture_id: int, refs: list[sc.Ref], duration: float, document: bool = False
+) -> list[dict[str, Any]]:
+    """Validated refs; for a document lecture (a PDF) each also gets its ``page``."""
     out: list[dict[str, Any]] = []
     for r in refs:
         start, end = parse_ts(r.start), parse_ts(r.end)
@@ -91,11 +95,13 @@ def to_refs(lecture_id: int, refs: list[sc.Ref], duration: float) -> list[dict[s
                 "end_s": min(end, duration),
             }
         )
-    return out
+    return page_refs(out) if document else out
 
 
-def ts_ref(lecture_id: int, ts: str, duration: float) -> list[dict[str, Any]]:
-    return to_refs(lecture_id, [sc.Ref(start=ts, end=ts)], duration)
+def ts_ref(
+    lecture_id: int, ts: str, duration: float, document: bool = False
+) -> list[dict[str, Any]]:
+    return to_refs(lecture_id, [sc.Ref(start=ts, end=ts)], duration, document)
 
 
 def chip(refs: list[dict[str, Any]]) -> str:
@@ -112,6 +118,7 @@ class LectureContext:
     context: str
     title_is_default: bool
     lines: list[tuple[float, float, str]]  # (start, end, text) for verification excerpts
+    document: bool = False  # a PDF studied like a lecture: refs get pages
 
 
 def lecture_number(session: Session, lecture: Lecture) -> int:
@@ -135,18 +142,9 @@ def build_context(session: Session, lecture: Lecture) -> LectureContext:
         raise JobError("This lecture has no transcript yet")
     duration = lecture.duration_s or segments[-1].end
     number = lecture_number(session, lecture)
-
-    out_lang = LANGUAGE_NAMES.get(subject.output_language, subject.output_language or "English")
-    instructions = subject.instructions.strip()
-    if subject.vocabulary:
-        instructions += "\nCourse vocabulary (correct spellings): " + ", ".join(subject.vocabulary)
-    system = load_prompt("system").render(
-        output_language=out_lang,
-        subject=f"{subject.name}{f' ({subject.course_code})' if subject.course_code else ''}",
-        subject_instructions=f"Course-specific instructions: {instructions}"
-        if instructions
-        else "",
-    )
+    if is_document(lecture):
+        return _document_context(session, lecture, subject, segments, duration, number)
+    system = _system_prompt(subject)
 
     parts = [
         "# Lecture material",
@@ -192,6 +190,58 @@ def build_context(session: Session, lecture: Lecture) -> LectureContext:
         context="\n".join(parts),
         title_is_default=bool(lecture.meta.get("title_is_default")),
         lines=[(s.start, s.end, s.text) for s in segments],
+    )
+
+
+def _system_prompt(subject: Subject) -> str:
+    out_lang = LANGUAGE_NAMES.get(subject.output_language, subject.output_language or "English")
+    instructions = subject.instructions.strip()
+    if subject.vocabulary:
+        instructions += "\nCourse vocabulary (correct spellings): " + ", ".join(subject.vocabulary)
+    return load_prompt("system").render(
+        output_language=out_lang,
+        subject=f"{subject.name}{f' ({subject.course_code})' if subject.course_code else ''}",
+        subject_instructions=f"Course-specific instructions: {instructions}"
+        if instructions
+        else "",
+    )
+
+
+def _document_context(
+    session: Session,
+    lecture: Lecture,
+    subject: Subject,
+    segments: list[TranscriptSegment],
+    duration: float,
+    number: int,
+) -> LectureContext:
+    """A PDF studied like a lecture: its text in place of a transcript (pipeline.study_docs)."""
+    pages = int(lecture.meta.get("document", {}).get("pages") or page_of(duration - 1))
+    earlier = _earlier_lectures(session, lecture)
+    parts = [
+        "# Course material: a document, not a recording",
+        f"Course: {subject.name}",
+        f'Document: L{number} "{lecture.title}" (PDF, {pages} pages). It is part of the course '
+        "material (a script, paper or exercise sheet). Nobody is speaking: where the "
+        "instructions say lecture or lecturer, read document. Build the study material from "
+        "it as you would from a lecture.",
+        "Each line starts with its position in the document as [mm:ss], where the minutes "
+        "are the page minus one: [00:00]-[00:59] is page 1, [01:00]-[01:59] page 2. Use these "
+        "labels as timestamps in refs.",
+        "\n## Earlier lectures in this course",
+        "\n".join(earlier) if earlier else "(none yet)",
+        "\n## Document text",
+    ]
+    parts.extend(f"[{format_hms(s.start)}] {s.text}" for s in segments)
+    return LectureContext(
+        lecture_id=lecture.id,  # type: ignore[arg-type]
+        subject_id=lecture.subject_id,
+        duration=duration,
+        system=_system_prompt(subject),
+        context="\n".join(parts),
+        title_is_default=bool(lecture.meta.get("title_is_default")),
+        lines=[(s.start, s.end, s.text) for s in segments],
+        document=True,
     )
 
 
@@ -382,7 +432,7 @@ def gen_note(r: Runner, kind: str, instructions: str) -> str:
     out = result.parsed
 
     def refs(rs: list[sc.Ref]) -> list[dict]:
-        return to_refs(ctx.lecture_id, rs, ctx.duration)
+        return to_refs(ctx.lecture_id, rs, ctx.duration, ctx.document)
 
     all_refs: list[dict] = []
     if kind == "summary":
@@ -398,11 +448,11 @@ def gen_note(r: Runner, kind: str, instructions: str) -> str:
     elif kind == "glossary":
         content = render_glossary(out)
         for t in out.terms:
-            all_refs += ts_ref(ctx.lecture_id, t.first_mention, ctx.duration)
+            all_refs += ts_ref(ctx.lecture_id, t.first_mention, ctx.duration, ctx.document)
     else:
         content = render_announcements(out)
         for a in out.items:
-            all_refs += ts_ref(ctx.lecture_id, a.at, ctx.duration)
+            all_refs += ts_ref(ctx.lecture_id, a.at, ctx.duration, ctx.document)
     tag = f"{prompt.tag}+{load_prompt('system').tag}"
     note = save_note(ctx, kind, content, out.model_dump(), all_refs, result, tag, instructions)
     if kind == "announcements":
@@ -447,7 +497,9 @@ def gen_hints(r: Runner, instructions: str) -> str:
     )
     rows = []
     for h in result.parsed.hints:
-        refs = to_refs(ctx.lecture_id, [sc.Ref(start=h.start, end=h.end)], ctx.duration)
+        refs = to_refs(
+            ctx.lecture_id, [sc.Ref(start=h.start, end=h.end)], ctx.duration, ctx.document
+        )
         if not refs:
             continue
         kind = h.kind.strip().lower()
@@ -519,7 +571,7 @@ def gen_explanations(r: Runner, instructions: str) -> str:
             row.example_md = e.example.strip()
             row.check_question = e.check_question.strip()
             row.check_answer = e.check_answer.strip()
-            row.source_refs = to_refs(ctx.lecture_id, e.refs, ctx.duration)
+            row.source_refs = to_refs(ctx.lecture_id, e.refs, ctx.duration, ctx.document)
             row.model = result.model
             row.prompt_version = tag
             row.created_at = utcnow()
@@ -614,7 +666,7 @@ def gen_flashcards(r: Runner, instructions: str) -> str:
             key = card_key(c.front, c.back)
             if not c.front.strip() or is_duplicate(key, kept):
                 continue
-            refs = to_refs(ctx.lecture_id, c.refs, ctx.duration)
+            refs = to_refs(ctx.lecture_id, c.refs, ctx.duration, ctx.document)
             card = Flashcard(
                 subject_id=ctx.subject_id,
                 lecture_id=ctx.lecture_id,
@@ -671,7 +723,7 @@ def gen_questions(r: Runner, kind: str, instructions: str) -> str:
                         explanation=q.explanation,
                         rubric=[x.model_dump() for x in q.rubric],
                         emphasized=q.emphasized,
-                        source_refs=to_refs(ctx.lecture_id, q.refs, ctx.duration),
+                        source_refs=to_refs(ctx.lecture_id, q.refs, ctx.duration, ctx.document),
                         generation=gen,
                         model=result.model,
                     )
@@ -691,7 +743,7 @@ def gen_questions(r: Runner, kind: str, instructions: str) -> str:
                         hints=e.hints,
                         solution_steps=e.solution_steps,
                         expected_output=e.expected_output,
-                        source_refs=to_refs(ctx.lecture_id, e.refs, ctx.duration),
+                        source_refs=to_refs(ctx.lecture_id, e.refs, ctx.duration, ctx.document),
                         generation=gen,
                         model=result.model,
                     )

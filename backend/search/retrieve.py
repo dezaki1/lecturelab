@@ -16,6 +16,7 @@ from sqlalchemy import text
 from sqlmodel import Session, col, select
 
 from backend.core.models import Chunk, Lecture, Subject
+from backend.pipeline.study_docs import is_document, page_of
 from backend.search.embeddings import EmbeddingError, embed, pack
 
 log = logging.getLogger(__name__)
@@ -43,13 +44,17 @@ class Hit:
     score: float
     keyword_rank: int | None
     semantic_rank: int | None
+    page: int | None = None  # a document lecture (PDF): the page instead of a time
 
     def label(self, with_subject: bool = False) -> str:
-        """Citation label, e.g. "L5 · 34:12" (or "NLP L5 · 34:12" across subjects)."""
+        """Citation label, e.g. "L5 · 34:12", "L7 · p. 3" for a PDF (or "NLP L5 · 34:12")."""
         from backend.core.util import format_hms
 
         prefix = f"{short_name(self.subject_name)} " if with_subject else ""
-        ts = f" · {format_hms(self.start_s)}" if self.start_s is not None else ""
+        if self.page is not None:
+            ts = f" · p. {self.page}"
+        else:
+            ts = f" · {format_hms(self.start_s)}" if self.start_s is not None else ""
         return f"{prefix}L{self.lecture_number}{ts}"
 
     def as_dict(self) -> dict[str, Any]:
@@ -196,6 +201,7 @@ def search(
                 score=round(scores[cid], 5),
                 keyword_rank=k_rank.get(cid),
                 semantic_rank=v_rank.get(cid),
+                page=page_of(c.start_s) if is_document(lec) and c.start_s is not None else None,
             )
         )
     return hits

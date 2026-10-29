@@ -16,6 +16,7 @@ from backend.core.events import bus
 from backend.core.library import abs_path, rel_path
 from backend.core.models import Lecture, Material, Slide, Subject
 from backend.pipeline import handwriting as hw
+from backend.pipeline import study_docs
 from backend.pipeline.documents import (
     DOCS_DIR,
     delete_document,
@@ -28,7 +29,7 @@ from backend.pipeline.documents import (
 
 router = APIRouter(prefix="/api", tags=["documents"])
 
-KINDS = ("slides", "notes", "past_exam", "other", "handwritten")
+KINDS = ("slides", "notes", "past_exam", "other", "handwritten", "study")
 MAX_BYTES = 200 * 1024 * 1024
 
 
@@ -100,15 +101,22 @@ async def upload_subject_document(
     filename: str,
     request: Request,
     kind: str = "other",
+    study: bool = False,
     session: Session = Depends(get_session),
 ) -> dict:
-    """A PDF for the whole subject (script, exercise sheet...): text extracted, not placed."""
+    """A PDF for the whole subject (script, exercise sheet...). ``study``: studied like a
+    lecture (its own notes, cards and questions, see pipeline.study_docs); otherwise its text
+    is only extracted (search, chat)."""
     subject = session.get(Subject, subject_id)
     if subject is None:
         raise HTTPException(404, "Subject not found")
     if kind not in KINDS:
         raise HTTPException(422, f"kind must be one of {KINDS}")
     data = await _pdf_body(filename, request)
+    if study:
+        _, material = study_docs.create(session, subject, filename, data)
+        bus.publish("lecture", {"id": material.lecture_id, "subject_id": subject_id})
+        return _read(session, material)
     folder = get_settings().subjects_dir / subject.slug / DOCS_DIR
     folder.mkdir(parents=True, exist_ok=True)
     path = unique_path(folder, safe_name(filename))
@@ -144,6 +152,23 @@ async def _pdf_body(filename: str, request: Request, images: bool = False) -> by
     if not image and not data.startswith(b"%PDF"):
         raise HTTPException(415, "This file is not a PDF")
     return data
+
+
+@router.post("/documents/{document_id}/study", response_model=DocumentRead, status_code=202)
+def study_document(document_id: int, session: Session = Depends(get_session)) -> dict:
+    """Study a subject PDF that was added as background: it becomes a document lecture."""
+    material = session.get(Material, document_id)
+    if material is None:
+        raise HTTPException(404, "Document not found")
+    if material.lecture_id is not None or material.kind not in ("other", "notes"):
+        raise HTTPException(409, "Only a course PDF that isn't part of a lecture can be studied")
+    try:
+        lecture = study_docs.convert(session, material)
+    except ValueError as e:
+        raise HTTPException(409, str(e)) from e
+    bus.publish("lecture", {"id": lecture.id, "subject_id": lecture.subject_id})
+    study = session.exec(select(Material).where(Material.lecture_id == lecture.id)).one()
+    return _read(session, study)
 
 
 @router.get("/documents/{document_id}/file")

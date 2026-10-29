@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileText, FileUp, Loader2, RefreshCw, Search, Star, Trash2 } from 'lucide-react'
+import { BookOpen, FileText, FileUp, Loader2, RefreshCw, Search, Star, Trash2 } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
@@ -224,19 +224,43 @@ export function MaterialsPanel({ subjectId }: { subjectId: number }) {
     refetchInterval: (q) => (q.state.data?.some((d) => d.processing) ? 2000 : false),
   })
   const refresh = () => qc.invalidateQueries({ queryKey: ['subject-documents', subjectId] })
+  const [study, setStudy] = useState(true)
   const upload = useMutation({
-    mutationFn: (f: File) => uploadSubjectDocument(subjectId, f),
-    onSuccess: refresh,
+    mutationFn: (f: File) => uploadSubjectDocument(subjectId, f, 'other', study),
+    onSuccess: () => {
+      refresh()
+      qc.invalidateQueries({ queryKey: ['lectures'] })
+      if (study) toast.success('Reading the PDF; its notes, cards and questions follow in a few minutes')
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+  const studyIt = useMutation({
+    mutationFn: api.studyDocument,
+    onSuccess: () => {
+      refresh()
+      qc.invalidateQueries({ queryKey: ['lectures'] })
+      toast.success('Studying it: notes, cards and questions follow in a few minutes')
+    },
     onError: (e: Error) => toast.error(e.message),
   })
   const remove = useMutation({ mutationFn: api.deleteDocument, onSuccess: refresh })
   return (
     <div>
-      <div className="mb-3 flex items-center gap-2 text-sm text-muted-foreground">
-        <span>
-          PDFs of this subject. Slide decks are best added on the lecture they belong to (Slides tab), so
-          their pages are matched to the recording.
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
+        <span className="min-w-64 flex-1">
+          PDFs of this course: scripts, papers, exercise sheets. Studied like a lecture, a PDF gets its own
+          notes, glossary, cards and exam questions (linked to its pages) and flows into the course overview,
+          cheat sheet and chat. Slide decks of one lecture are best added on that lecture (Slides tab).
         </span>
+        <label className="flex shrink-0 items-center gap-1.5 text-foreground">
+          <input
+            type="checkbox"
+            className="size-4 accent-primary"
+            checked={study}
+            onChange={(e) => setStudy(e.target.checked)}
+          />
+          Study it like a lecture
+        </label>
         <input
           ref={input}
           type="file"
@@ -248,12 +272,7 @@ export function MaterialsPanel({ subjectId }: { subjectId: number }) {
             e.target.value = ''
           }}
         />
-        <Button
-          size="sm"
-          variant="outline"
-          className="ml-auto shrink-0"
-          onClick={() => input.current?.click()}
-        >
+        <Button size="sm" variant="outline" className="shrink-0" onClick={() => input.current?.click()}>
           {upload.isPending ? <Loader2 className="animate-spin" /> : <FileUp />} Add PDF
         </Button>
       </div>
@@ -275,9 +294,11 @@ export function MaterialsPanel({ subjectId }: { subjectId: number }) {
               <span className="shrink-0 text-xs text-muted-foreground">
                 {d.processing
                   ? 'reading…'
-                  : d.lecture_id
-                    ? `L${d.lecture_number} · ${d.placed} of ${d.pages} pages placed`
-                    : `${d.pages} pages`}
+                  : d.kind === 'study'
+                    ? `L${d.lecture_number} · studied like a lecture, ${d.pages} pages`
+                    : d.lecture_id
+                      ? `L${d.lecture_number} · ${d.placed} of ${d.pages} pages placed`
+                      : `${d.pages} pages, background only`}
               </span>
               {d.lecture_id ? (
                 <Link
@@ -287,15 +308,26 @@ export function MaterialsPanel({ subjectId }: { subjectId: number }) {
                   open lecture
                 </Link>
               ) : (
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  className="ml-auto"
-                  aria-label={`Remove ${d.title}`}
-                  onClick={() => remove.mutate(d.id)}
-                >
-                  <Trash2 />
-                </Button>
+                <>
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    className="ml-auto"
+                    title="Make notes, cards and questions from it, like a lecture"
+                    onClick={() => studyIt.mutate(d.id)}
+                    disabled={studyIt.isPending || d.processing}
+                  >
+                    <BookOpen /> Study it
+                  </Button>
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    aria-label={`Remove ${d.title}`}
+                    onClick={() => remove.mutate(d.id)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </>
               )}
             </li>
           ))}

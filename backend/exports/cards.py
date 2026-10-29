@@ -131,8 +131,8 @@ def _source(card: Flashcard, subject: Subject | None, number: int | None, link: 
     if not card.source_refs or number is None:
         return ""
     ref = card.source_refs[0]
-    label = (
-        f"{short_name(subject.name) if subject else ''} L{number} · {format_hms(ref['start_s'])}"
+    label = f"{short_name(subject.name) if subject else ''} L{number} · " + (
+        f"p. {ref['page']}" if ref.get("page") else format_hms(ref["start_s"])
     )
     if not link:
         return label.strip()

@@ -41,6 +41,7 @@ from backend.core.models import (
 )
 from backend.core.util import format_hms
 from backend.pipeline.generate import record_usage, to_refs
+from backend.pipeline.study_docs import is_document
 from backend.study.practice import CHOICE_TYPES, grade_choice
 
 log = logging.getLogger(__name__)
@@ -345,7 +346,7 @@ def store_generated(
             lec = numbers.get(q.lecture)
             if lec is None or q.type not in types:
                 continue
-            refs = to_refs(lec.id, q.refs, lec.duration_s or 10**6)  # type: ignore[arg-type]
+            refs = to_refs(lec.id, q.refs, lec.duration_s or 10**6, is_document(lec))  # type: ignore[arg-type]
             row = Question(
                 subject_id=lec.subject_id,
                 lecture_id=lec.id,

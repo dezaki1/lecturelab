@@ -62,6 +62,7 @@ class LectureRead(BaseModel):
     cleanup: dict | None = None  # last cleanup run: changed lines, model, time
     cleanup_error: str = ""
     moved_from: dict | None = None  # {subject_id, name, at} until regenerated or dismissed
+    pages: int | None = None  # a document lecture (PDF): its page count
     # The timetable says it happened during another subject's slot: {subject_id, subject_name,
     # summary, kind, start}, until moved or dismissed.
     slot_suggestion: dict | None = None
@@ -125,6 +126,7 @@ def _to_read(
         "cleanup": lecture.meta.get("cleanup"),
         "cleanup_error": lecture.meta.get("cleanup_error", ""),
         "moved_from": lecture.meta.get("moved_from"),
+        "pages": (lecture.meta.get("document") or {}).get("pages"),
         "slot_suggestion": lecture.meta.get("slot_suggestion"),
         "move_queued": lecture.meta.get("move_queued"),
         "bookmark_count": bookmark_count,

@@ -25,6 +25,14 @@ function nodeText(node: ReactNode): string {
 /** Lets timestamp chips anywhere inside a lecture page seek the player. */
 export const SeekContext = createContext<((t: number) => void) | null>(null)
 
+/** How a lecture's positions read: times for a recording, "p. 3" for a PDF studied like a
+ * lecture (each page is one minute of its timeline, see backend pipeline.study_docs). */
+export const TimeLabelContext = createContext<((t: number) => string) | null>(null)
+
+export const PAGE_S = 60
+export const pageOf = (t: number) => Math.floor(Math.max(t, 0) / PAGE_S) + 1
+export const pageLabel = (t: number) => `p. ${pageOf(t)}`
+
 // [12:34], [1:02:03] and ranges like [12:34-13:10] (the chip seeks to the start).
 const TS = /\[((?:\d{1,2}:)?\d{1,3}:\d{2})(?:\s*[-–]\s*((?:\d{1,2}:)?\d{1,3}:\d{2}))?\](?!\()/g
 
@@ -51,7 +59,9 @@ export function linkTimestamps(md: string): string {
 
 export function TimeChip({ t, children }: { t: number; children?: ReactNode }) {
   const seek = useContext(SeekContext)
+  const timeLabel = useContext(TimeLabelContext)
   const label =
+    (timeLabel && timeLabel(t)) ??
     children ??
     (t >= 3600
       ? `${Math.floor(t / 3600)}:${String(Math.floor((t % 3600) / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`
@@ -64,7 +74,7 @@ export function TimeChip({ t, children }: { t: number; children?: ReactNode }) {
         seek?.(t)
       }}
       className="mx-0.5 inline-flex items-center rounded-md bg-primary/10 px-1.5 py-px align-baseline font-mono text-[0.78em] text-primary transition hover:bg-primary/20"
-      title="Play from here"
+      title={timeLabel ? 'Open this page' : 'Play from here'}
     >
       {label}
     </button>

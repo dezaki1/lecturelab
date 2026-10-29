@@ -72,6 +72,15 @@ lectures. PDF pages then replace the captured screenshots in the transcript and 
 between the two on the Slides tab), and their text is used for search, chat and study material.
 PDFs without a text layer (scans) can't be placed.
 
+### Course PDFs studied like a lecture
+
+On a course page, **Materials → Add PDF** with *Study it like a lecture* ticked (the default)
+turns a script, paper or exercise sheet into a lecture of its own: Claude writes notes, a
+glossary, flashcards and exam questions from it, each linked to its page (**p. 3**; click to
+open the page). It then counts like any lecture: course overview, topics, cheat sheet, search,
+chat, review and the readiness bar all include it. Scanned PDFs are read with OCR. A PDF added
+earlier as background only has a **Study it** button. About as much as a lecture to generate.
+
 ## Importing recordings
 
 Drag audio or video files (mp4, m4a, mp3, wav, webm, …) anywhere onto the LectureLab window, or
@@ -384,7 +393,13 @@ Each subject page has tabs next to the lecture list:
   **mastery** per topic (recall of the topic's flashcards today), sortable "weakest first".
 - **Concept map**: the key ideas and how they relate; click a concept to open its lecture.
 - **Glossary**: every term of every lecture in one searchable list, with the German term.
-- **Exam hints** and **Materials** (all PDFs of the subject; add scripts or exercise sheets here).
+- **Exam hints** and **Materials** (all PDFs of the subject; add scripts or exercise sheets here,
+  to be studied like a lecture or kept as background for search and chat).
+
+The **Overview** shows a **readiness** bar per course: how much of its cards and exam questions
+you have studied (*covered*), how well you'd recall the studied cards today (*remembered*) and
+your latest scores on its questions (*practised*), combined as 70% cards and 30% questions, next
+to the exam countdown and what to do next.
 
 ## Cards and the dashboard
 

@@ -22,6 +22,7 @@ def utcnow() -> datetime:
 class LectureSource(StrEnum):
     recording = "recording"
     import_ = "import"
+    document = "document"  # a PDF studied like a lecture (pipeline.study_docs)
 
 
 class LectureStatus(StrEnum):

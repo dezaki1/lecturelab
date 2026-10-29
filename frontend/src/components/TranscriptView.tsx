@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronUp, CircleHelp, Crosshair, Search, SpellCheck, Star } from 'lucide-react'
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { HintIcon } from '@/components/materials/Hints'
 import { SlideThumb } from '@/components/slides'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { TimeLabelContext } from '@/components/Markdown'
 import { formatDuration } from '@/lib/dates'
 import { diffWords } from '@/lib/wordDiff'
 import type { Bookmark, ExamHint, Segment, Slide } from '@/lib/types'
@@ -85,6 +86,7 @@ export function TranscriptView({
   onRevert?: (segmentId: number) => void
   hints?: ExamHint[]
 }) {
+  const timeLabel = useContext(TimeLabelContext)
   const [query, setQuery] = useState('')
   const [matchPos, setMatchPos] = useState(0)
   const [follow, setFollow] = useState(true)
@@ -258,7 +260,7 @@ export function TranscriptView({
                     isActive ? 'text-primary' : 'text-muted-foreground',
                   )}
                 >
-                  {formatDuration(s.start)}
+                  {timeLabel ? timeLabel(s.start) : formatDuration(s.start)}
                 </span>
                 <p
                   className={cn(

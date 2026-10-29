@@ -33,11 +33,13 @@ export function SlideThumb({
   onClick,
   className,
   showTime = true,
+  document = false,
 }: {
   slide: Slide
   onClick: () => void
   className?: string
   showTime?: boolean
+  document?: boolean
 }) {
   return (
     <button
@@ -60,7 +62,7 @@ export function SlideThumb({
       />
       {showTime && (
         <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1 font-mono text-[10px] text-white">
-          {formatDuration(slide.t_s)}
+          {document && slide.page ? `p. ${slide.page}` : formatDuration(slide.t_s)}
         </span>
       )}
     </button>
@@ -89,12 +91,14 @@ export function SlideViewer({
   index,
   onIndex,
   onSeek,
+  document = false,
 }: {
   lectureId: number
   slides: Slide[]
   index: number | null
   onIndex: (i: number | null) => void
   onSeek: (t: number) => void
+  document?: boolean // a PDF studied like a lecture: pages, nothing to play
 }) {
   const qc = useQueryClient()
   const del = useMutation({
@@ -123,7 +127,9 @@ export function SlideViewer({
         {slide && (
           <>
             <DialogTitle className="pr-8 text-sm font-medium">
-              Slide {index! + 1} of {slides.length} · {formatDuration(slide.t_s)}
+              {document
+                ? `Page ${slide.page ?? index! + 1} of ${slides.length}`
+                : `Slide ${index! + 1} of ${slides.length} · ${formatDuration(slide.t_s)}`}
             </DialogTitle>
             <DialogDescription className="sr-only">Slide image and its recognised text</DialogDescription>
             <img
@@ -143,15 +149,17 @@ export function SlideViewer({
               >
                 Next <ChevronRight />
               </Button>
-              <Button
-                size="sm"
-                onClick={() => {
-                  onSeek(slide.t_s)
-                  onIndex(null)
-                }}
-              >
-                <Play /> Play from here
-              </Button>
+              {!document && (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    onSeek(slide.t_s)
+                    onIndex(null)
+                  }}
+                >
+                  <Play /> Play from here
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="ghost"
@@ -182,11 +190,13 @@ export function SlidesGrid({
   slides,
   stage,
   onOpen,
+  document = false,
 }: {
   lectureId: number
   slides: Slide[]
   stage?: string
   onOpen: (index: number) => void
+  document?: boolean // pages of a PDF studied like a lecture
 }) {
   const qc = useQueryClient()
   const ocr = useMutation({
@@ -219,7 +229,9 @@ export function SlidesGrid({
         ) : stage === 'failed' ? (
           <span className="text-destructive">Reading the slide text failed.</span>
         ) : (
-          <span>{slides.length} slides · click one to enlarge, or ← → to browse</span>
+          <span>
+            {slides.length} {document ? 'pages' : 'slides'} · click one to enlarge, or ← → to browse
+          </span>
         )}
         {!fromPdf && (
           <Button
@@ -235,7 +247,7 @@ export function SlidesGrid({
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {slides.map((s, i) => (
-          <SlideThumb key={s.id} slide={s} onClick={() => onOpen(i)} />
+          <SlideThumb key={s.id} slide={s} onClick={() => onOpen(i)} document={document} />
         ))}
       </div>
     </div>

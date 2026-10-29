@@ -21,7 +21,14 @@ from typing import Any
 from sqlmodel import Session, col, select
 
 from backend.core.events import bus
-from backend.core.models import Lecture, Subject, WatchedCourse, WatchedRecording, utcnow
+from backend.core.models import (
+    Lecture,
+    LectureSource,
+    Subject,
+    WatchedCourse,
+    WatchedRecording,
+    utcnow,
+)
 from backend.pipeline.download import queue_download, retry_download
 
 log = logging.getLogger(__name__)
@@ -121,6 +128,8 @@ def _own_recording(s: Session, course: WatchedCourse, rec: WatchedRecording) -> 
     kind = m.group(1) if (m := _KIND.search(rec.title)) else course.kind
     for lecture in s.exec(select(Lecture).where(Lecture.subject_id == course.subject_id)).all():
         if (lecture.meta.get("opencast") or {}).get("episode") or not lecture.duration_s:
+            continue
+        if lecture.source == LectureSource.document:  # a PDF, not a recording of the lecture
             continue
         if lecture.duration_s < OWN_MIN_S:
             continue  # a test or a few seconds by accident

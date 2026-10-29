@@ -139,6 +139,7 @@ export const api = {
   documents: (lectureId: number) => request<LectureDocument[]>('GET', `/api/lectures/${lectureId}/documents`),
   documentFileUrl: (id: number) => `/api/documents/${id}/file`,
   deleteDocument: (id: number) => request<void>('DELETE', `/api/documents/${id}`),
+  studyDocument: (id: number) => request<LectureDocument>('POST', `/api/documents/${id}/study`),
   handwritten: (lectureId: number) =>
     request<HandwrittenNotes[]>('GET', `/api/lectures/${lectureId}/handwritten`),
   handwrittenPageUrl: (id: number, page: number) => `/api/documents/${id}/pages/${page}/image`,
@@ -479,8 +480,9 @@ export async function uploadSubjectDocument(
   subjectId: number,
   file: File,
   kind: 'other' | 'past_exam' = 'other',
+  study = false, // study it like a lecture: its own notes, cards and questions
 ): Promise<LectureDocument> {
-  const params = new URLSearchParams({ filename: file.name, kind })
+  const params = new URLSearchParams({ filename: file.name, kind, ...(study ? { study: 'true' } : {}) })
   const res = await fetch(`/api/subjects/${subjectId}/documents?${params}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/pdf' },

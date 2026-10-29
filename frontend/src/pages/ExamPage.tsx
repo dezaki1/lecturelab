@@ -444,7 +444,7 @@ function SourceLinks({ refs }: { refs: NonNullable<ExamAnswer['question']['sourc
           to={`/lectures/${r.lecture_id}?t=${Math.floor(r.start_s!)}`}
           className="rounded bg-primary/10 px-1.5 py-px font-mono text-primary hover:bg-primary/20"
         >
-          {formatDuration(r.start_s!)}
+          {r.page ? `p. ${r.page}` : formatDuration(r.start_s!)}
         </Link>
       ))}
     </div>

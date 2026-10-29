@@ -37,7 +37,11 @@ export function LectureList({ subjectId }: { subjectId: number }) {
               </div>
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {formatDateTime(l.started_at)}
-                {l.duration_s != null && <> · {formatDuration(l.duration_s)}</>}
+                {l.source === 'document' ? (
+                  <> · PDF{l.pages ? `, ${l.pages} pages` : ''}</>
+                ) : (
+                  l.duration_s != null && <> · {formatDuration(l.duration_s)}</>
+                )}
               </div>
             </div>
             <LectureStatusBadge lecture={l} />

@@ -73,7 +73,8 @@ export interface Lecture {
   kind: string
   started_at: string
   duration_s: number | null
-  source: 'recording' | 'import'
+  source: 'recording' | 'import' | 'document'
+  pages?: number | null // a PDF studied like a lecture
   status: LectureStatus
   stages: Record<string, string>
   error: string | null
@@ -548,6 +549,7 @@ export interface SearchHit {
   heading: string
   snippet: string
   start_s: number | null
+  page?: number | null // a PDF studied like a lecture
   score: number
 }
 

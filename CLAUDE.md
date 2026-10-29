@@ -235,6 +235,17 @@ start; start.ps1 now also falls back to `uv run --no-sync` when `uv sync` can't 
   (`queue_download(stored_url=...)`). A failed download is retried with the next fresh link
   (`retry_download`); a deleted lecture is never re-imported. Tests use the local http.server
   from test_download (`/private/` = expired link).
+- PDFs studied like a lecture (`pipeline.study_docs`, `LectureSource.document`, Material kind
+  "study"): each page is one minute of the lecture's timeline (page p = (p-1)*60 s, paragraphs
+  get the seconds), page text = transcript, rendered pages = its PDF slides, so refs,
+  verification, search and topics work unchanged. Refs of a document lecture carry `page`
+  (`to_refs(..., document=True)`), search hits too; the UI shows "p. N" through
+  `TimeLabelContext` (lecture page) or `ref.page` / `hit.page`, and a "seek" opens the page in
+  the slide viewer. No cleanup step (no ASR). The source column is a plain VARCHAR(9): no
+  migration was needed for the new value.
+- Readiness (`study.dashboard.readiness`): 0.7 x cards part (sum of today's recall over all
+  active cards, unseen = 0) + 0.3 x questions part (latest score per current question,
+  unanswered = 0); shown per course on the Overview (`CourseReadiness`).
 - Imports and finished captures store `meta.slot_suggestion` when the timetable has another
   subject's slot at that time (`timetable.service.suggest_subject`); `dismiss_slot` sets
   `meta.slot_dismissed` so it never comes back.
