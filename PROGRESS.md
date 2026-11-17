@@ -300,6 +300,16 @@ Phase 3 complete (2026-10-15).
     Chromium: previews in ~1.5 s, inline playback, HLS frame.
 - Confirmed on the Windows laptop (2026-10-19): extension installed in the browser; import from
   link, just download (Downloads folder, open folder) and previews all work on real sites.
+- [x] **Original audio + download bar** (2026-11-17): YouTube's auto-dubbed tracks (e.g. Korean)
+  won over the original because our `-S` fields (`+size` for audio-only lectures, `ext:mp4:m4a`
+  for saved videos) outrank yt-dlp's default `lang`; `lang` now comes first in every mode.
+  Popup "Downloads" list (`GET /api/downloads/active`: running/waiting downloads plus the last
+  15 min, one entry per lecture across download + import) with bars, speed and time left
+  (yt-dlp's progress template now carries speed/ETA); the tab title names the download until
+  yt-dlp knows the video's (kept for direct streams named "index").
+  - Verified: yt-dlp format choice on a fake dubbed YouTube video in all four modes (old code
+    picked `251-ko`); popup in Chromium against a throttled server: 0→93 % with speed and ETA,
+    "Saved ✓", lecture bar through "Extracting audio" to "Downloaded ✓".
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

@@ -13,6 +13,9 @@ Like Video DownloadHelper, with two modes (the switch at the top of the popup):
   so you can check it's the right one before downloading. Click the picture: plain video files
   play right in the popup; for streams and pages you get the frame bigger. LectureLab makes the
   preview (with your login, like the download), so it has to be running.
+- **Downloads**: the top of the popup shows a progress bar for each download (percent, speed,
+  time left), also for lectures (download, then extracting the audio) and for courses LectureLab
+  watches. Finished ones stay listed for 15 minutes with **Show in folder** / **Open**.
 - **This page**: sends the page link. LectureLab works out where the video is (YouTube, Panopto,
   Vimeo, Zoom cloud recordings, plain `<video>` pages and 1000+ other sites).
 - **Found while playing**: videos, audio and HLS/DASH streams (`.m3u8`/`.mpd`) the page loaded

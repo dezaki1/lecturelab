@@ -124,6 +124,94 @@ function togglePreview(item, li, thumb) {
   li.append(box)
 }
 
+// Downloads -----------------------------------------------------------------------------------
+
+/** One download: name, bar, and what it's doing (or what came of it). */
+function downloadRow(d) {
+  const li = document.createElement('li')
+  const head = document.createElement('div')
+  head.className = 'dl-head'
+  const title = document.createElement('span')
+  title.className = 'dl-title'
+  title.textContent = d.title
+  title.title = d.title
+  const pct = document.createElement('span')
+  pct.className = 'dl-pct'
+  head.append(title, pct)
+
+  const bar = document.createElement('div')
+  bar.className = 'bar'
+  const fill = document.createElement('div')
+  fill.className = 'fill'
+  bar.append(fill)
+
+  const note = document.createElement('div')
+  note.className = 'dl-note'
+  const text = document.createElement('span')
+  text.className = 'grow'
+  note.append(text)
+
+  const percent = Math.round((d.progress || 0) * 100)
+  if (d.status === 'queued') {
+    bar.classList.add('waiting')
+    text.textContent = 'Waiting for its turn…'
+  } else if (d.status === 'running') {
+    const importing = d.step === 'import'
+    // A lecture's bar: download 0-90 %, then extracting the audio 90-100 %.
+    const shown = d.kind === 'lecture' ? (importing ? 90 + percent / 10 : percent * 0.9) : percent
+    fill.style.width = `${shown}%`
+    pct.textContent = `${Math.round(shown)}%`
+    text.textContent = d.message || (importing ? 'Extracting the audio' : 'Starting…')
+  } else if (d.status === 'done') {
+    bar.classList.add('done')
+    fill.style.width = '100%'
+    const link = document.createElement('a')
+    link.href = '#'
+    if (d.kind === 'save') {
+      text.textContent = 'Saved ✓'
+      link.textContent = 'Show in folder'
+      link.onclick = (e) => {
+        e.preventDefault()
+        lecturelab.openFolder().catch((err) => showError(err.message))
+      }
+    } else {
+      // The lecture goes on to transcription and notes inside LectureLab.
+      text.textContent = d.step === 'import' ? 'Downloaded ✓ · transcription next' : 'Downloaded ✓'
+      link.textContent = 'Open'
+      link.onclick = async (e) => {
+        e.preventDefault()
+        chrome.tabs.create({ url: await lectureUrl(d.lecture_id) })
+      }
+    }
+    note.append(link)
+  } else {
+    bar.classList.add('failed')
+    fill.style.width = '100%'
+    note.classList.add('failed')
+    text.textContent = d.error || 'Failed'
+    text.title = d.error || ''
+  }
+  li.append(head, bar, note)
+  return li
+}
+
+let downloadsTimer = null
+
+/** Show the download list and keep it moving: every second while something runs. */
+async function refreshDownloads() {
+  clearTimeout(downloadsTimer)
+  let list = []
+  try {
+    list = await lecturelab.active()
+  } catch {
+    /* LectureLab stopped: the status at the top says so */
+  }
+  $('downloads').hidden = list.length === 0
+  $('dl-list').replaceChildren(...list.map(downloadRow))
+  const busy = list.some((d) => d.status === 'queued' || d.status === 'running')
+  downloadsTimer = setTimeout(refreshDownloads, busy ? 1000 : 4000)
+}
+
 function itemRow(item, tags, name, detail) {
   const li = document.createElement('li')
   const thumb = document.createElement('div')
@@ -178,6 +266,7 @@ function itemRow(item, tags, name, detail) {
       }
       relabel.delete(label)
       btn.classList.add('done')
+      refreshDownloads()
     } catch (e) {
       showError(e.message)
       label()
@@ -218,7 +307,9 @@ async function watchSection(course, tabTitle, subjects) {
   const overview = await lecturelab.watch()
   const watched = overview.courses.find((c) => c.host === course.host && c.moodle_id === course.moodleId)
   const kindInTitle = /\b(VL|VO|UE)\b/.exec(name)?.[1] || ''
-  $('watch-subject').value = String(watched?.subject_id ?? guessSubject(name, subjects)?.id ?? subjects[0]?.id)
+  $('watch-subject').value = String(
+    watched?.subject_id ?? guessSubject(name, subjects)?.id ?? subjects[0]?.id,
+  )
   $('watch-kind').value = watched?.kind ?? (/\bVL\s*\/\s*UE\b/.test(name) ? '' : kindInTitle)
   show(watched)
   $('watch').hidden = false
@@ -305,6 +396,7 @@ async function main() {
   }
   $('status').textContent = 'Connected'
   $('status').className = 'status ok'
+  refreshDownloads()
   for (const s of subjects) $('subject').append(new Option(s.name, String(s.id)))
   if (subjects.length) $('subject').value = String(await defaultSubject(subjects))
   $('form').hidden = false
@@ -314,7 +406,7 @@ async function main() {
   if (tab?.url && /^https?:/i.test(tab.url)) {
     $('page').append(
       itemRow(
-        { url: tab.url, pageUrl: tab.url },
+        { url: tab.url, pageUrl: tab.url, label: tab.title },
         ['Page'],
         tab.title || shortName(tab.url),
         'LectureLab finds the video on the page',
