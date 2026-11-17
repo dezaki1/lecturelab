@@ -488,21 +488,28 @@ def _payload_source(p: dict[str, Any]) -> Source:
     return Source(p["url"], cookie_file, p.get("referer", ""), p.get("user_agent", ""))
 
 
+# YouTube names the original track "English (US) original" (DASH) or "... - original" (HLS);
+# dubs are "Korean" / "... - dubbed-auto".
+ORIGINAL_AUDIO = "[format_note*=original]"
+
+
 def _fetch_cmd(src: Source, output: Path, *, video: bool, keep: bool) -> list[str]:
     """yt-dlp download command. ``keep``: the user keeps the file, so prefer formats Windows
     plays (mp4/m4a); otherwise any container is fine since only the audio is extracted."""
     cfg = get_settings().downloads
-    # "lang" first: YouTube offers dubbed audio tracks (often smaller, often m4a) next to the
-    # original, and our own sort fields outrank yt-dlp's defaults, so without it a dub could win.
+    # YouTube offers auto-dubbed audio tracks (Korean, German, ...) next to the original. Ask for
+    # the track YouTube calls "original" by name: yt-dlp's own ranking ("lang") marked it only
+    # "(default)" on a real video and a dub still won. Videos with one audio track fall back
+    # to the plain choice; "lang" first so our own sort fields can't put a dub ahead there.
     if video:
         sort = f"lang,res:{cfg.max_height}" + (",ext:mp4:m4a" if keep else "")
-        fmt = ["-f", "bv*+ba/b", "-S", sort]
+        fmt = ["-f", f"bv*+ba{ORIGINAL_AUDIO}/bv*+ba/b", "-S", sort]
         if keep:
             fmt += ["--merge-output-format", "mp4/mkv"]
     elif keep:
-        fmt = ["-f", "ba/b", "-S", "lang", "-x", "--audio-format", "m4a"]
+        fmt = ["-f", f"ba{ORIGINAL_AUDIO}/ba/b", "-S", "lang", "-x", "--audio-format", "m4a"]
     else:
-        fmt = ["-f", "ba/b", "-S", "lang,+size"]
+        fmt = ["-f", f"ba{ORIGINAL_AUDIO}/ba/b", "-S", "lang,+size"]
     return [
         *_base_cmd(src), *fmt,
         "--newline", "--match-filter", "!is_live",
