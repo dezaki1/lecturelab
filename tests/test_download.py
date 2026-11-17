@@ -26,6 +26,7 @@ from backend.pipeline.download import (
     _fetch_cmd,
     clean_tmp,
     parse_progress,
+    progress_note,
     safe_filename,
     unique_path,
     write_cookies,
@@ -383,3 +384,57 @@ def test_original_audio_beats_dubs(
     audio = chosen.split("+")[-1]
     assert audio.endswith("-en"), f"picked {chosen}"
     assert ("+" in chosen) == video
+
+
+def test_progress_note() -> None:
+    assert progress_note("LLPROGRESS 50 100 NA NA NA 3200000 80") == "3.2 MB/s · 1:20 left"
+    assert progress_note("LLPROGRESS 50 100 NA NA NA 45000 3725") == "45 kB/s · 1:02:05 left"
+    assert progress_note("LLPROGRESS 50 100 NA NA NA NA NA") == ""
+    assert progress_note("LLPROGRESS 50 100 NA NA NA") == ""  # older 5-field lines
+    assert parse_progress("LLPROGRESS 50 100 NA NA NA 3200000 80") == 0.5
+
+
+def test_active_downloads_for_the_extension(client: TestClient, site: str, save_dir: Path) -> None:
+    sid = client.post("/api/subjects", json={"name": "Algorithms"}).json()["id"]
+    client.post(
+        "/api/downloads/save",
+        json={"url": f"{site}/hls/index.m3u8", "label": "Panopto - Week 3"},
+        headers={"Origin": "chrome-extension://abc"},
+    )
+    lid = client.post(
+        "/api/downloads", json={"url": f"{site}/page.html", "subject_id": sid}
+    ).json()["id"]
+    waiting = client.get("/api/downloads/active").json()
+    assert [(d["kind"], d["status"]) for d in waiting] == [
+        ("lecture", "queued"),
+        ("save", "queued"),
+    ]
+    assert waiting[1]["title"] == "Panopto - Week 3"
+
+    Worker().run_pending()
+    done = client.get("/api/downloads/active").json()
+    lecture = [d for d in done if d["kind"] == "lecture"]
+    assert len(lecture) == 1, "one entry per lecture, not one per job"
+    assert lecture[0]["lecture_id"] == lid
+    assert lecture[0]["step"] == "import"
+    assert lecture[0]["status"] == "done"
+    assert lecture[0]["title"] == "VL Algorithms - Week 3"
+    (saved,) = [d for d in done if d["kind"] == "save"]
+    assert saved["status"] == "done"
+    assert saved["message"].startswith("Saved ")
+    r = client.get("/api/downloads/active", headers={"Origin": "https://evil.example"})
+    assert r.status_code == 403
+
+
+def test_a_stream_keeps_the_tab_title(client: TestClient, site: str) -> None:
+    sid = client.post("/api/subjects", json={"name": "Algorithms"}).json()["id"]
+    lec = client.post(
+        "/api/downloads",
+        json={"url": f"{site}/hls/index.m3u8", "subject_id": sid, "label": "Panopto - Week 3"},
+    ).json()
+    assert lec["title"] == "Panopto - Week 3", "named while it downloads"
+    Worker().run_pending()
+    after = client.get(f"/api/lectures/{lec['id']}").json()
+    assert after["stages"]["capture"] == "done"
+    # yt-dlp would call it "index"; the generated topic title may still replace it later.
+    assert after["title"] in ("Panopto - Week 3", "Mock lecture topic")

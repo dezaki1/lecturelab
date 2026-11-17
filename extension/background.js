@@ -95,7 +95,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     return
   }
   const { video = true, sendCookies = true } = await chrome.storage.local.get(['video', 'sendCookies'])
-  const item = { url, referer: info.pageUrl, pageUrl: tab?.url, fileTitle: info.srcUrl ? tab?.title : '' }
+  const item = {
+    url,
+    referer: info.pageUrl,
+    pageUrl: tab?.url,
+    fileTitle: info.srcUrl ? tab?.title : '',
+    label: tab?.title || '',
+  }
   if (info.menuItemId === 'save') {
     try {
       await saveToDisk(item, { video, sendCookies })

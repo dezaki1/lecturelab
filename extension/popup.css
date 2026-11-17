@@ -227,6 +227,79 @@ button.done {
 .watch h2 {
   margin-top: 0;
 }
+.downloads {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+.downloads li {
+  margin-bottom: 8px;
+}
+.downloads .dl-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.downloads .dl-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.downloads .dl-pct {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.bar {
+  position: relative;
+  height: 6px;
+  margin: 3px 0 2px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 3px;
+}
+.bar .fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.bar.done .fill {
+  background: var(--ok);
+}
+.bar.failed .fill {
+  background: var(--bad);
+}
+/* waiting: a stripe sliding across instead of a fill */
+.bar.waiting .fill {
+  position: absolute;
+  width: 30%;
+  opacity: 0.6;
+  animation: waiting 1.4s ease-in-out infinite;
+}
+@keyframes waiting {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 100%;
+  }
+}
+.dl-note {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.dl-note .grow {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.dl-note.failed {
+  color: var(--bad);
+}
 .muted {
   color: var(--muted);
   font-weight: 400;

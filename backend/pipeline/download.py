@@ -409,19 +409,22 @@ def queue_download(
     started_at: datetime | None = None,
     meta: dict[str, Any] | None = None,
     audio_url: str = "",
+    label: str = "",
 ) -> Lecture:
     """A new lecture plus its download job. ``stored_url`` is what the lecture remembers instead
     of ``url`` (a signed media link expires and shouldn't sit in the database); ``started_at``
     wins over the date yt-dlp finds; ``audio_url``: take the sound from this file instead (an
-    Opencast slides video whose sound is on the camera video)."""
+    Opencast slides video whose sound is on the camera video). ``label``: the browser tab's
+    title, the lecture's name until yt-dlp finds a better one."""
     title = title.strip()
+    label = label.strip()[:200]
     video = get_settings().slides.from_video if video is None else video
     lecture = create_lecture(
         s,
         subject,
         source=LectureSource.import_,
         status=LectureStatus.processing,
-        title=title or f"Video from {urlsplit(url).hostname}",
+        title=title or label or f"Video from {urlsplit(url).hostname}",
         title_is_default=not title if title_is_default is None else title_is_default,
         kind=kind,
         started_at=started_at,  # also names the folder: the lecture's day, not today
@@ -439,6 +442,7 @@ def queue_download(
         "stored_url": stored_url,
         "keep_date": started_at is not None,
         "audio_url": audio_url,
+        "label": label,
     }
     jobs.enqueue(s, DOWNLOAD_JOB, lecture_id=lecture.id, payload=payload)
     return lecture
@@ -503,7 +507,7 @@ def _fetch_cmd(src: Source, output: Path, *, video: bool, keep: bool) -> list[st
         "--progress-template",
         f"download:{PROGRESS} %(progress.downloaded_bytes)s %(progress.total_bytes)s "
         "%(progress.total_bytes_estimate)s %(progress.fragment_index)s "
-        "%(progress.fragment_count)s",
+        "%(progress.fragment_count)s %(progress.speed)s %(progress.eta)s",
         "-o", str(output),
         "--", src.url,
     ]  # fmt: skip
@@ -557,7 +561,15 @@ def _download(ctx: JobContext) -> None:
         title = clean_title(info)
         # A Moodle recording's own title ("HS 1 - 15.10.2026") beats its file name ("concat");
         # generation names it properly later.
-        if lecture.meta.get("title_is_default") and title and not ctx.payload.get("stored_url"):
+        # A direct file or stream ("Generic") is only named after its URL ("index"): the
+        # tab's title it was found on says more.
+        named_by_url = ctx.payload.get("label") and info.get("extractor_key") == "Generic"
+        if (
+            lecture.meta.get("title_is_default")
+            and title
+            and not ctx.payload.get("stored_url")
+            and not named_by_url
+        ):
             lecture.title = title[:200]
         if not ctx.payload.get("keep_date") and (when := started_at_from(info)):
             lecture.started_at = when
@@ -674,6 +686,8 @@ def _run(cmd: list[str], ctx: JobContext, log_path: Path) -> str:
     jobs.track_child(proc)
     lines: list[str] = []
     last = 0.0
+    phase = "Downloading"
+    parts = 0
     try:
         for raw in proc.stdout:
             line = raw.rstrip()
@@ -681,10 +695,14 @@ def _run(cmd: list[str], ctx: JobContext, log_path: Path) -> str:
                 fraction = parse_progress(line)
                 now = time.monotonic()
                 if fraction is not None and now - last > 1.0:
-                    ctx.progress(fraction, "Downloading")
+                    ctx.progress(fraction, " · ".join(filter(None, [phase, progress_note(line)])))
                     last = now
                 continue
             lines.append(line)
+            if line.startswith("[download] Destination:"):
+                parts += 1
+                if parts == 2:  # "bv*+ba": the video comes first, then its audio track
+                    phase = "Downloading the audio"
             if line.startswith("[Merger]") or line.startswith("[FixupM3u8]"):
                 ctx.progress(1.0, "Joining video and audio")
         code = proc.wait()
@@ -698,8 +716,31 @@ def _run(cmd: list[str], ctx: JobContext, log_path: Path) -> str:
     return output
 
 
+def progress_note(line: str) -> str:
+    """``3.2 MB/s · 1:20 left`` from the speed and ETA fields of a progress line, if known."""
+    parts = line.split()[1:]
+    if len(parts) < 7:
+        return ""
+    try:
+        speed = float(parts[5])
+    except ValueError:
+        speed = 0.0  # "NA"
+    try:
+        eta = int(float(parts[6]))
+    except ValueError:
+        eta = -1
+    bits = []
+    if speed > 0:
+        bits.append(f"{speed / 1e6:.1f} MB/s" if speed >= 1e6 else f"{speed / 1e3:.0f} kB/s")
+    if eta >= 0:
+        h, rest = divmod(eta, 3600)
+        m, s = divmod(rest, 60)
+        bits.append((f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}") + " left")
+    return " · ".join(bits)
+
+
 def parse_progress(line: str) -> float | None:
-    """``LLPROGRESS downloaded total estimate frag_index frag_count`` -> fraction."""
+    """``LLPROGRESS downloaded total estimate frag_index frag_count [speed eta]`` -> fraction."""
 
     def num(s: str) -> float | None:
         try:
@@ -708,9 +749,9 @@ def parse_progress(line: str) -> float | None:
             return None  # "NA"
 
     parts = line.split()[1:]
-    if len(parts) != 5:
+    if len(parts) < 5:
         return None
-    done, total, estimate, frag, frags = (num(p) for p in parts)
+    done, total, estimate, frag, frags = (num(p) for p in parts[:5])
     if done is not None and (total or estimate):
         return min(1.0, done / (total or estimate))  # type: ignore[operator]
     if frag is not None and frags:

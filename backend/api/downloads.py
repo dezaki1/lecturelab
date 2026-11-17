@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import os
 import shutil
+from datetime import timedelta
 from functools import partial
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from sqlmodel import col, or_, select
 from starlette.concurrency import run_in_threadpool
 
 from backend.api.lectures import KINDS, LectureRead, lecture_read
@@ -21,9 +23,10 @@ from backend.core import jobs
 from backend.core.config import get_settings
 from backend.core.db import session_scope
 from backend.core.events import bus
-from backend.core.models import Subject
+from backend.core.models import Job, JobStatus, Lecture, Subject, utcnow
 from backend.pipeline import watch
 from backend.pipeline.download import (
+    DOWNLOAD_JOB,
     SAVE_JOB,
     Source,
     downloads_folder,
@@ -31,6 +34,7 @@ from backend.pipeline.download import (
     queue_download,
     write_cookies,
 )
+from backend.pipeline.ingest import IMPORT_JOB
 
 EXTENSION_SCHEMES = ("chrome-extension", "moz-extension", "extension", "safari-web-extension")
 
@@ -64,6 +68,8 @@ class LinkIn(BaseModel):
 class DownloadIn(LinkIn):
     subject_id: int
     title: str = ""
+    # The browser tab's title: the lecture's name until yt-dlp finds the video's own.
+    label: str = ""
     kind: str = ""
     # Download the video (for slides) or only the audio; None = the slides.from_video setting.
     video: bool | None = None
@@ -121,6 +127,7 @@ def start_download(body: DownloadIn) -> dict:
             referer=body.referer,
             user_agent=body.user_agent,
             cookies=body.cookies,
+            label=body.label,
         )
         result = lecture_read(s, lecture)
     bus.publish("lecture", {"id": result["id"], "subject_id": body.subject_id})
@@ -132,6 +139,8 @@ class SaveIn(LinkIn):
     # File name; empty = the video's own title. The extension sends the tab title for
     # streams it found (their own "title" is the URL's file name, e.g. "index").
     title: str = ""
+    # Name shown in the extension's download list while yt-dlp hasn't named the file yet.
+    label: str = ""
 
 
 @router.post("/save", status_code=202)
@@ -147,6 +156,7 @@ def save(body: SaveIn) -> dict:
         "url": url,
         "video": body.video,
         "title": body.title.strip(),
+        "label": body.label.strip()[:200],
         "referer": body.referer,
         "user_agent": body.user_agent,
         "cookies": cookie_file.name if cookie_file else None,
@@ -257,3 +267,60 @@ def watch_decide(body: DecideIn) -> dict:
 def watch_check() -> None:
     """Check all watched courses at the extension's next tick (within a minute)."""
     watch.request_scan()
+
+
+ACTIVE_WINDOW_S = 15 * 60
+
+
+def _short_url(url: str) -> str:
+    parts = urlsplit(url)
+    name = parts.path.rstrip("/").rsplit("/", 1)[-1]
+    return f"{parts.hostname} · {name}" if name else parts.hostname or url
+
+
+@router.get("/active")
+def active_downloads() -> list[dict]:
+    """Downloads for the extension's progress bars: running or waiting ones, and those that
+    finished in the last 15 minutes. One entry per lecture (its download, then its import)."""
+    since = utcnow() - timedelta(seconds=ACTIVE_WINDOW_S)
+    with session_scope() as s:
+        rows = s.exec(
+            select(Job)
+            .where(col(Job.kind).in_([DOWNLOAD_JOB, SAVE_JOB, IMPORT_JOB]))
+            .where(
+                or_(
+                    col(Job.status).in_([JobStatus.queued, JobStatus.running]),
+                    col(Job.finished_at) >= since,
+                )
+            )
+            .order_by(col(Job.id).desc())
+            .limit(40)
+        ).all()
+        ids = {j.lecture_id for j in rows if j.lecture_id}
+        lectures = {
+            lec.id: lec for lec in s.exec(select(Lecture).where(col(Lecture.id).in_(ids))).all()
+        }
+        out: list[dict] = []
+        seen: set[int] = set()
+        for job in rows:  # newest first: a lecture's import comes before its download
+            lec = lectures.get(job.lecture_id) if job.lecture_id else None
+            if job.lecture_id:
+                if job.lecture_id in seen or lec is None or "download" not in lec.meta:
+                    continue  # older step of the same lecture, or a plain file upload
+                seen.add(job.lecture_id)
+            p = job.payload
+            title = lec.title if lec else (p.get("title") or p.get("label") or "")
+            out.append(
+                {
+                    "id": job.id,
+                    "lecture_id": job.lecture_id,
+                    "kind": "lecture" if lec else "save",
+                    "step": "import" if job.kind == IMPORT_JOB else "download",
+                    "status": job.status,
+                    "progress": job.progress,
+                    "message": job.message,
+                    "error": job.error,
+                    "title": title or _short_url(p.get("url") or ""),
+                }
+            )
+    return out[:15]
