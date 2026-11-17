@@ -316,6 +316,13 @@ Phase 3 complete (2026-10-15).
   (adds yt-dlp-ejs) and `--js-runtimes node:<path>` when Node is on PATH (it builds the UI).
   - Verified here: yt-dlp reports "JS runtimes: node" and yt_dlp_ejs. YouTube itself blocks this
     cloud machine (bot check), so the actual audio tracks are untested until the laptop.
+- [x] **Original audio track by name** (2026-11-17): with every format visible, `-F` on the laptop
+  showed 16 dubs plus the original, but yt-dlp marked the original DASH tracks only "(default)",
+  so "lang" still let the Korean dub win. Every mode now selects `ba[format_note*=original]`
+  first (original notes: "English (US) original", "... - original"; dubs never say it), then
+  falls back to the plain choice for videos with one audio track.
+  - Confirmed on the Windows laptop (2026-11-17): "Just download" of an auto-dubbed YouTube video
+    gives the original English audio.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 
