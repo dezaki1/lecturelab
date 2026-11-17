@@ -310,6 +310,12 @@ Phase 3 complete (2026-10-15).
   - Verified: yt-dlp format choice on a fake dubbed YouTube video in all four modes (old code
     picked `251-ko`); popup in Chromium against a throttled server: 0→93 % with speed and ETA,
     "Saved ✓", lecture bar through "Extracting audio" to "Downloaded ✓".
+- [x] **YouTube JavaScript runtime** (2026-11-17): the dubbed-audio fix alone didn't help on the
+  laptop: with no JS runtime (no Deno) and no `yt-dlp-ejs`, yt-dlp fell back to YouTube clients
+  that miss formats, and the original audio track wasn't offered at all. Now `yt-dlp[default]`
+  (adds yt-dlp-ejs) and `--js-runtimes node:<path>` when Node is on PATH (it builds the UI).
+  - Verified here: yt-dlp reports "JS runtimes: node" and yt_dlp_ejs. YouTube itself blocks this
+    cloud machine (bot check), so the actual audio tracks are untested until the laptop.
 
 ## Decisions (from SPEC §13, 2026-10-08)
 

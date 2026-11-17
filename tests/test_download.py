@@ -23,6 +23,7 @@ from backend.core.lan import _blocked
 from backend.core.media import probe_duration
 from backend.pipeline.download import (
     Source,
+    _base_cmd,
     _fetch_cmd,
     clean_tmp,
     parse_progress,
@@ -438,3 +439,15 @@ def test_a_stream_keeps_the_tab_title(client: TestClient, site: str) -> None:
     assert after["stages"]["capture"] == "done"
     # yt-dlp would call it "index"; the generated topic title may still replace it later.
     assert after["title"] in ("Panopto - Week 3", "Mock lecture topic")
+
+
+def test_youtube_gets_a_javascript_runtime(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Without one, YouTube only offers some formats (e.g. just an auto-dubbed audio track).
+    set_settings(settings)
+    monkeypatch.setattr(shutil, "which", lambda name: f"/opt/{name}" if name == "node" else None)
+    cmd = _base_cmd(Source("https://www.youtube.com/watch?v=x"))
+    assert cmd[cmd.index("--js-runtimes") + 1] == "node:/opt/node"
+    monkeypatch.setattr(shutil, "which", lambda name: None)
+    assert "--js-runtimes" not in _base_cmd(Source("https://www.youtube.com/watch?v=x"))

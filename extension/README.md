@@ -50,8 +50,9 @@ links it sends are Opencast's signed links, which work without cookies.
 
 ## YouTube
 
-YouTube needs a JavaScript runtime for yt-dlp. Install Deno once: `winget install DenoLand.Deno`,
-then restart LectureLab. University platforms (Moodle, Panopto, Zoom) don't need it.
+YouTube needs a JavaScript runtime for yt-dlp. LectureLab uses Node.js, which is already there
+because it builds the UI (Deno works too). Without one, yt-dlp only sees some of a video's
+formats, and often only an auto-dubbed audio track instead of the original.
 
 ## When a site stops working
 
