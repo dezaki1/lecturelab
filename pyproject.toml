@@ -31,7 +31,7 @@ dependencies = [
     "sqlmodel>=0.0.48",
     "sse-starlette>=3.5.0",
     "uvicorn[standard]>=0.54.0",
-    "yt-dlp>=2025.9",
+    "yt-dlp[default]>=2026.8.19",
 ]
 
 [dependency-groups]

@@ -161,6 +161,11 @@ def _ffmpeg_location() -> str | None:
 def _base_cmd(src: Source) -> list[str]:
     cmd = [sys.executable, "-m", "yt_dlp", "--ignore-config", "--no-playlist", "--no-colors"]
     cmd += ["--socket-timeout", "30"]
+    # YouTube's player needs a JavaScript runtime (with yt-dlp-ejs's solver scripts). Without
+    # one yt-dlp falls back to clients that miss formats, e.g. offer only an auto-dubbed audio
+    # track. yt-dlp only looks for Deno by default; Node is usually there (it builds the UI).
+    if node := shutil.which("node"):
+        cmd += ["--js-runtimes", f"node:{node}"]
     if ffmpeg := _ffmpeg_location():
         cmd += ["--ffmpeg-location", ffmpeg]
     if src.cookie_file is not None:
