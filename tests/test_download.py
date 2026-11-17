@@ -335,15 +335,20 @@ def test_preview_of_audio(client: TestClient, site: str) -> None:
     assert info["duration"] == pytest.approx(3, abs=0.2)
 
 
-def _youtube_info(original_as_m4a: bool) -> dict:
-    """A YouTube-like video with its English original and two dubs (yt-dlp's language_preference:
-    10 = original, 5 = YouTube's default for the viewer, -1 = other dubs)."""
+def _youtube_info(original_as_m4a: bool, dub_ranked_first: bool = False) -> dict:
+    """A YouTube-like video with its English original and dubs, notes as yt-dlp shows them on a
+    real auto-dubbed video. language_preference: 10 = original, 5 = default, -1 = other dubs;
+    ``dub_ranked_first``: yt-dlp ranks the Korean dub above the original (as seen for real)."""
 
     def audio(fid: str, lang: str, pref: int, ext: str, size: int) -> dict:
         acodec = "mp4a.40.2" if ext == "m4a" else "opus"
+        name = {"en": "English (US) original (default)", "ko": "Korean", "de": "German (DE)"}
+        if dub_ranked_first:
+            pref = {"en": 5, "ko": 10}.get(lang, pref)
         return {"format_id": fid, "url": f"https://example.invalid/{fid}", "ext": ext,
                 "vcodec": "none", "acodec": acodec, "language": lang,
                 "language_preference": pref, "filesize": size, "abr": size / 70_000,
+                "format_note": f"{name[lang]}, medium, {ext}_dash",
                 "protocol": "https"}  # fmt: skip
 
     def video(fid: str, height: int, ext: str, vcodec: str) -> dict:
@@ -365,16 +370,22 @@ def _youtube_info(original_as_m4a: bool) -> dict:
             "webpage_url": "https://www.youtube.com/watch?v=x", "formats": formats}  # fmt: skip
 
 
+@pytest.mark.parametrize("dub_ranked_first", [False, True])
 @pytest.mark.parametrize("original_as_m4a", [True, False])
 @pytest.mark.parametrize(
     ("video", "keep"), [(True, False), (False, False), (True, True), (False, True)]
 )
 def test_original_audio_beats_dubs(
-    settings: Settings, tmp_path: Path, video: bool, keep: bool, original_as_m4a: bool
+    settings: Settings,
+    tmp_path: Path,
+    video: bool,
+    keep: bool,
+    original_as_m4a: bool,
+    dub_ranked_first: bool,
 ) -> None:
     set_settings(settings)
     info = tmp_path / "info.json"
-    info.write_text(json.dumps(_youtube_info(original_as_m4a)), encoding="utf-8")
+    info.write_text(json.dumps(_youtube_info(original_as_m4a, dub_ranked_first)), encoding="utf-8")
     cmd = _fetch_cmd(Source("https://example.invalid/x"), tmp_path / "o.%(ext)s", video=video,
                      keep=keep)  # fmt: skip
     # The real download command, but reading the fake video and only printing its choice.
@@ -451,3 +462,25 @@ def test_youtube_gets_a_javascript_runtime(
     assert cmd[cmd.index("--js-runtimes") + 1] == "node:/opt/node"
     monkeypatch.setattr(shutil, "which", lambda name: None)
     assert "--js-runtimes" not in _base_cmd(Source("https://www.youtube.com/watch?v=x"))
+
+
+@pytest.mark.parametrize(("video", "keep"), [(True, False), (False, True)])
+def test_a_video_with_one_audio_track_still_downloads(
+    settings: Settings, tmp_path: Path, video: bool, keep: bool
+) -> None:
+    # No dubs, so no track is called "original": the plain choice must still find the audio.
+    set_settings(settings)
+    info = _youtube_info(original_as_m4a=True)
+    info["formats"] = [
+        {**f, "format_note": "medium, m4a_dash", "language": None, "language_preference": None}
+        for f in info["formats"]
+        if f["vcodec"] != "none" or f["format_id"] == "140-en"
+    ]
+    path = tmp_path / "info.json"
+    path.write_text(json.dumps(info), encoding="utf-8")
+    cmd = _fetch_cmd(Source("https://example.invalid/x"), tmp_path / "o.%(ext)s", video=video,
+                     keep=keep)  # fmt: skip
+    cmd = [*cmd[: cmd.index("--")], "--load-info-json", str(path), "--simulate",
+           "--print", "format_id"]  # fmt: skip
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    assert out.stdout.strip().splitlines()[-1].split("+")[-1] == "140-en"
