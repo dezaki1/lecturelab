@@ -483,15 +483,17 @@ def _fetch_cmd(src: Source, output: Path, *, video: bool, keep: bool) -> list[st
     """yt-dlp download command. ``keep``: the user keeps the file, so prefer formats Windows
     plays (mp4/m4a); otherwise any container is fine since only the audio is extracted."""
     cfg = get_settings().downloads
+    # "lang" first: YouTube offers dubbed audio tracks (often smaller, often m4a) next to the
+    # original, and our own sort fields outrank yt-dlp's defaults, so without it a dub could win.
     if video:
-        sort = f"res:{cfg.max_height},ext:mp4:m4a" if keep else f"res:{cfg.max_height}"
+        sort = f"lang,res:{cfg.max_height}" + (",ext:mp4:m4a" if keep else "")
         fmt = ["-f", "bv*+ba/b", "-S", sort]
         if keep:
             fmt += ["--merge-output-format", "mp4/mkv"]
     elif keep:
-        fmt = ["-f", "ba/b", "-x", "--audio-format", "m4a"]
+        fmt = ["-f", "ba/b", "-S", "lang", "-x", "--audio-format", "m4a"]
     else:
-        fmt = ["-f", "ba/b", "-S", "+size"]
+        fmt = ["-f", "ba/b", "-S", "lang,+size"]
     return [
         *_base_cmd(src), *fmt,
         "--newline", "--match-filter", "!is_live",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import shutil
 import subprocess
 import threading
@@ -16,11 +17,13 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from backend.core.config import Settings
+from backend.core.config import Settings, set_settings
 from backend.core.jobs import Worker
 from backend.core.lan import _blocked
 from backend.core.media import probe_duration
 from backend.pipeline.download import (
+    Source,
+    _fetch_cmd,
     clean_tmp,
     parse_progress,
     safe_filename,
@@ -328,3 +331,55 @@ def test_preview_of_audio(client: TestClient, site: str) -> None:
     assert info["has_video"] is False
     assert info["thumbnail"] is None
     assert info["duration"] == pytest.approx(3, abs=0.2)
+
+
+def _youtube_info(original_as_m4a: bool) -> dict:
+    """A YouTube-like video with its English original and two dubs (yt-dlp's language_preference:
+    10 = original, 5 = YouTube's default for the viewer, -1 = other dubs)."""
+
+    def audio(fid: str, lang: str, pref: int, ext: str, size: int) -> dict:
+        acodec = "mp4a.40.2" if ext == "m4a" else "opus"
+        return {"format_id": fid, "url": f"https://example.invalid/{fid}", "ext": ext,
+                "vcodec": "none", "acodec": acodec, "language": lang,
+                "language_preference": pref, "filesize": size, "abr": size / 70_000,
+                "protocol": "https"}  # fmt: skip
+
+    def video(fid: str, height: int, ext: str, vcodec: str) -> dict:
+        return {"format_id": fid, "url": f"https://example.invalid/{fid}", "ext": ext,
+                "vcodec": vcodec, "acodec": "none", "height": height, "width": height * 16 // 9,
+                "filesize": 50_000 * height, "tbr": height, "protocol": "https"}  # fmt: skip
+
+    formats = [
+        video("137", 1080, "mp4", "avc1"),
+        video("248", 1080, "webm", "vp9"),
+        audio("251-en", "en", 10, "webm", 8_000_000),
+        audio("140-ko", "ko", -1, "m4a", 4_000_000),  # dubs are often smaller
+        audio("251-ko", "ko", -1, "webm", 3_500_000),
+        audio("140-de", "de", 5, "m4a", 8_500_000),
+    ]
+    if original_as_m4a:
+        formats.append(audio("140-en", "en", 10, "m4a", 9_000_000))
+    return {"id": "x", "title": "t", "extractor": "youtube", "extractor_key": "Youtube",
+            "webpage_url": "https://www.youtube.com/watch?v=x", "formats": formats}  # fmt: skip
+
+
+@pytest.mark.parametrize("original_as_m4a", [True, False])
+@pytest.mark.parametrize(
+    ("video", "keep"), [(True, False), (False, False), (True, True), (False, True)]
+)
+def test_original_audio_beats_dubs(
+    settings: Settings, tmp_path: Path, video: bool, keep: bool, original_as_m4a: bool
+) -> None:
+    set_settings(settings)
+    info = tmp_path / "info.json"
+    info.write_text(json.dumps(_youtube_info(original_as_m4a)), encoding="utf-8")
+    cmd = _fetch_cmd(Source("https://example.invalid/x"), tmp_path / "o.%(ext)s", video=video,
+                     keep=keep)  # fmt: skip
+    # The real download command, but reading the fake video and only printing its choice.
+    cmd = [*cmd[: cmd.index("--")], "--load-info-json", str(info), "--simulate",
+           "--print", "format_id"]  # fmt: skip
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    chosen = out.stdout.strip().splitlines()[-1]
+    audio = chosen.split("+")[-1]
+    assert audio.endswith("-en"), f"picked {chosen}"
+    assert ("+" in chosen) == video
